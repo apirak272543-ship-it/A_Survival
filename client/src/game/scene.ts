@@ -13,12 +13,31 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
+import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
+import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
 export type GameSnapshot = {
   health: number;
   resources: number;
   enemies: number;
   phase: "day" | "night";
+  mapState?: string;
+  warning?: string;
+  companionState?: CompanionRuntimeState;
+};
+
+export type GameReward = {
+  definitionId: string;
+  displayName: string;
+  eventId: string;
+  provenanceType: "harvest" | "drop" | "reward";
+};
+
+export type CompanionConfig = {
+  following: boolean;
+  lootRadius: number;
+  resourceYieldMultiplier: number;
+  damageMitigation: number;
 };
 
 export type GameHandle = {
@@ -29,6 +48,8 @@ export type GameHandle = {
 type GameOptions = {
   mapId: string;
   onSnapshot?: (snapshot: GameSnapshot) => void;
+  onReward?: (reward: GameReward) => void;
+  companion?: CompanionConfig;
   reducedMotion?: boolean;
 };
 
@@ -51,6 +72,11 @@ const map001Asset = {
   stalker: "/manus-storage/glass-stalker-monster_48677eda.jpg",
   crystal: "/manus-storage/ley-crystal-resource_052c1bcd.jpg",
   boss: "/manus-storage/void-reaper-boss_03f9497f.jpg",
+  koral: "/manus-storage/commander-koral-portrait_06a487e5.jpg",
+  monolith: "/manus-storage/crashed-leyline-monolith_35d89c1e.jpg",
+  elite: "/manus-storage/obsidian-golem-elite_a0a82e7e.jpg",
+  alloy: "/manus-storage/frontier-alloy-icon_1192ae58.jpg",
+  companion: "/manus-storage/arcane-cyber-fox_d0832d7b.jpg",
 };
 
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
@@ -72,6 +98,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const mapAccent = mapDefinition?.accent ?? "#00d4ff";
   const regularMonster = mapDefinition?.content.monsters.find(monster => monster.role === "regular")?.name ?? "Glass Stalker";
   const eventBoss = mapDefinition?.eventBossName ?? mapDefinition?.content.monsters.find(monster => monster.role === "event-boss")?.name ?? "Void Reaper";
+  const isMap001 = options.mapId === "obsidian-frontier";
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
   const camera = new ArcRotateCamera("arcane-isometric-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
@@ -138,9 +165,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   heroArt.position.y = 1.55;
   heroArt.billboardMode = 7;
   heroArt.material = assetMaterial(scene, "survivor-key-art-material", map001Asset.hero, 0.68);
-  const pet = MeshBuilder.CreateSphere("spirit-pet", { segments: 16, diameter: 0.72 }, scene);
-  pet.position = new Vector3(-1.8, 0.55, -1.2);
-  pet.material = material(scene, "spirit-pet-material", mapAccent, 1.35);
+  const pet = new TransformNode("arcane-cyber-fox", scene);
+  pet.position = new Vector3(-1.8, 0, -1.2);
+  const petArt = MeshBuilder.CreatePlane("arcane-cyber-fox-art", { width: 1.7, height: 1.7 }, scene);
+  petArt.parent = pet;
+  petArt.position.y = 0.85;
+  petArt.billboardMode = 7;
+  petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
 
   const enemyMaterial = assetMaterial(scene, "glass-stalker-material", map001Asset.stalker, 0.62);
   const enemies = Array.from({ length: 7 }, (_, index) => {
@@ -169,6 +200,31 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   boss.material = assetMaterial(scene, "void-reaper-boss-material", map001Asset.boss, 0.92);
   boss.setEnabled(false);
 
+  const koral = MeshBuilder.CreatePlane("commander-koral-safe-zone", { width: 2.2, height: 2.2 }, scene);
+  koral.position = new Vector3(-5.5, 1.1, 2.8);
+  koral.billboardMode = 7;
+  koral.material = assetMaterial(scene, "commander-koral-material", map001Asset.koral, 0.48);
+  koral.setEnabled(false);
+
+  const monolith = MeshBuilder.CreatePlane("crashed-leyline-monolith", { width: 4.6, height: 4.6 }, scene);
+  monolith.position = new Vector3(MAP001_MONOLITH.x, 2.8, MAP001_MONOLITH.z);
+  monolith.billboardMode = 7;
+  monolith.material = assetMaterial(scene, "crashed-leyline-monolith-material", map001Asset.monolith, 0.62);
+  monolith.setEnabled(false);
+
+  const elite = MeshBuilder.CreatePlane("obsidian-golem-elite", { width: 3.9, height: 3.9 }, scene);
+  elite.position = new Vector3(9, 1.6, -10);
+  elite.billboardMode = 7;
+  elite.material = assetMaterial(scene, "obsidian-golem-elite-material", map001Asset.elite, 0.68);
+  elite.metadata = { health: 180, alive: true, encounterName: "Obsidian Golem", elite: true };
+  elite.setEnabled(false);
+
+  const distressPod = MeshBuilder.CreatePlane("distress-pod-signal", { width: 1.9, height: 1.9 }, scene);
+  distressPod.position = new Vector3(MAP001_DISTRESS_POD.x, 1, MAP001_DISTRESS_POD.z);
+  distressPod.billboardMode = 7;
+  distressPod.material = assetMaterial(scene, "frontier-alloy-distress-marker", map001Asset.alloy, 0.52);
+  distressPod.setEnabled(isMap001);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -176,6 +232,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let dashPulse = 0;
   let lastEmit = 0;
   let lastDamage = 0;
+  let map001Memory = initialMap001Encounter();
+  let pendingMapInteraction = false;
+  let map001Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -184,10 +243,15 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     if (control.type === "attack") attackPulse = 0.32;
     if (control.type === "dash") dashPulse = 0.25;
     if (control.type === "interact") {
+      pendingMapInteraction = true;
       resources.forEach(resource => {
-        if (resource.isEnabled() && Vector3.Distance(resource.position, player.position) < 2.8) {
+        const lootReach = 2.8 + Math.max(0, (options.companion?.lootRadius ?? 2) - 2) * 0.16;
+        if (resource.isEnabled() && Vector3.Distance(resource.position, player.position) < lootReach) {
           resource.setEnabled(false);
           collected += 1;
+          if (isMap001) {
+            options.onReward?.({ definitionId: "material-003", displayName: "Ley Crystal", eventId: `map001-ley-crystal-${resource.name}`, provenanceType: "harvest" });
+          }
         }
       });
     }
@@ -221,9 +285,12 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const heroScale = 1 + Math.sin((0.32 - attackPulse) * 18) * attackPulse * 0.24;
     heroArt.scaling.setAll(heroScale);
     heroArt.position.y = 1.55 + Math.sin(performance.now() / 250) * (isMoving ? 0.08 : 0.025);
-    pet.position.x = player.position.x - 1.3 + Math.sin(performance.now() / 500) * 0.22;
-    pet.position.z = player.position.z - 1.15 + Math.cos(performance.now() / 500) * 0.22;
-    pet.position.y = 0.65 + Math.sin(performance.now() / 350) * 0.16;
+    const companion = options.companion ?? { following: true, lootRadius: 2, resourceYieldMultiplier: 1, damageMitigation: 0 };
+    const companionRuntime = resolveCompanionRuntime({ pet: { x: pet.position.x, z: pet.position.z }, player: { x: player.position.x, z: player.position.z }, following: companion.following, playerMoving: isMoving, reducedMotion: options.reducedMotion, deltaSeconds: dt });
+    pet.position.x = companionRuntime.position.x;
+    pet.position.z = companionRuntime.position.z;
+    pet.position.y = companionRuntime.state === "resting" ? 0 : options.reducedMotion ? 0 : Math.sin(performance.now() / 350) * 0.12;
+    pet.setEnabled(companion.following || companionRuntime.state !== "resting");
 
     enemies.forEach((enemy, index) => {
       if (!enemy.metadata?.alive) return;
@@ -243,7 +310,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
-        health = Math.max(0, health - 4);
+        health = Math.max(0, health - Math.max(1, Math.round(4 * (1 - companion.damageMitigation))));
         lastDamage = performance.now();
       }
     });
@@ -254,7 +321,32 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     skyLight.diffuse = Color3.FromHexString(lighting.ambient);
     keyLight.diffuse = Color3.FromHexString(lighting.directional);
     glow.intensity = options.reducedMotion ? 0.45 : 0.65 + lighting.motionIntensity * 0.32;
-    const bossActive = lighting.phase === "night";
+    if (isMap001) {
+      const encounter = resolveMap001Encounter(map001Memory, { x: player.position.x, z: player.position.z, health, phase: lighting.phase, interacted: pendingMapInteraction, now: performance.now() });
+      map001Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map001Warning = encounter.warning;
+      distressPod.setEnabled(!map001Memory.distressResolved);
+      koral.setEnabled(Vector3.Distance(player.position, koral.position) < 4.5);
+      monolith.setEnabled(Vector3.Distance(player.position, monolith.position) < 13 || encounter.activateVoidReaper);
+      elite.setEnabled(Vector3.Distance(player.position, elite.position) < 9 && Boolean(elite.metadata?.alive));
+      if (encounter.spawnGlassStalkers > 0) {
+        enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnGlassStalkers).forEach((enemy, index) => {
+          enemy.setEnabled(true);
+          enemy.metadata = { health: 34, alive: true, encounterName: "Glass Stalker · Distress Pod" };
+          enemy.position = new Vector3(MAP001_DISTRESS_POD.x + 2 + index, 1.25, MAP001_DISTRESS_POD.z - 2 - index);
+        });
+      }
+      if (encounter.event === "safe-reset") {
+        health = 100;
+        player.position.set(0, 0, 1.5);
+      }
+      const pulse = options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 190) * 0.12;
+      monolith.scaling.setAll(pulse);
+      distressPod.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 150) * 0.18);
+    }
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -266,8 +358,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length,
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0),
         phase: lighting.phase,
+        mapState: isMap001 ? map001Memory.state : "exploring",
+        warning: map001Warning,
+        companionState: companionRuntime.state,
       });
       lastEmit = performance.now();
     }

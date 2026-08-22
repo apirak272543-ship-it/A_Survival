@@ -28,12 +28,12 @@ import {
   Zap,
 } from "lucide-react";
 import GameCanvas from "@/components/GameCanvas";
-import { ALL_ITEMS, SOILS, TIER_RULES, getItemDefinition } from "@/game/data/catalog";
+import { ALL_ITEMS, SOILS, TIER_RULES, createMapRewardInstance, getItemDefinition } from "@/game/data/catalog";
 import { MAP_REGISTRY } from "@/game/data/maps";
 import { WEEKLY_EVENTS } from "@/game/data/worldTime";
 import { GAME_VERSION, formatVersionLabel } from "@/game/version";
 import { trpc } from "@/lib/trpc";
-import { cacheMapModule, getCachedMapIds } from "@/game/storage/mapCache";
+import { getCachedMapIds, prepareMapModule } from "@/game/storage/mapCache";
 import { getPendingTransactions, loadOfflineProfile, markTransactionsSynced, reconcileOfflineVectorClock } from "@/game/storage/indexedDb";
 import { getCropStage, getPetBonus, harvestCrop, moveStructure, placeHomeObject, plantSeed, recallStructure, rotateStructure, togglePetFollowing, transferPetEquipment } from "@/game/home/homeSystemV2";
 import {
@@ -49,7 +49,7 @@ import {
 import type { GameSnapshot } from "@/game/scene";
 
 type Screen = "landing" | "identity" | "lobby" | "maps" | "home" | "game";
-type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number } | null;
+type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
 
 function getInitialScreen(): Screen {
   if (typeof window === "undefined") return "landing";
@@ -74,7 +74,7 @@ function ArcaneMark() {
 function LoadingGate({ transition }: { transition: NonNullable<Transition> }) {
   const keyArt = transition.mapId ? MAP_REGISTRY.find(map => map.id === transition.mapId)?.keyArt : null;
   return (
-    <div className="loading-gate" style={{ "--biome-accent": transition.accent } as React.CSSProperties}>
+    <div className="loading-gate" data-destination={transition.mapId ? "map" : transition.destination} style={{ "--biome-accent": transition.accent } as React.CSSProperties}>
       {keyArt && <img className="loading-keyart" src={keyArt} alt="" aria-hidden="true" />}
       <div className="loading-stars" />
       <div className="loading-orbit orbit-one" />
@@ -83,9 +83,9 @@ function LoadingGate({ transition }: { transition: NonNullable<Transition> }) {
         <ArcaneMark />
         <p className="eyebrow">Frontier relay</p>
         <h2>{transition.title}</h2>
-        <p>กำลังปรับเส้นทางพลังงานและสถานะผู้เล่น</p>
+        <p>{transition.phase}</p>
         <div className="load-track"><span style={{ width: `${transition.progress}%` }} /></div>
-        <small>{Math.round(transition.progress)}% · cache-aware transition</small>
+        <small>{Math.round(transition.progress)}% · {transition.offline ? "offline route" : transition.cached ? "cached route" : "cache preparation"}</small>
       </div>
     </div>
   );
@@ -133,7 +133,9 @@ function SettingsSheet({ settings, setSettings, close }: { settings: GameSetting
 }
 
 export default function ArcaneFrontier() {
-  const [screen, setScreen] = useState<Screen>(getInitialScreen);
+  const directEntryRef = useRef<Screen>(getInitialScreen());
+  const directMapRef = useRef(getInitialMapId());
+  const [screen, setScreen] = useState<Screen>("landing");
   const [transition, setTransition] = useState<Transition>(null);
   const [session, setSession] = useState<LocalGameSession | null>(null);
   const [playerId, setPlayerId] = useState("");
@@ -151,12 +153,16 @@ export default function ArcaneFrontier() {
 
   useEffect(() => {
     let active = true;
-    const requested = getInitialScreen();
+    const requested = directEntryRef.current;
     void hydrateSession().then(saved => {
       if (!active) return;
       const demoSession = requested !== "landing" && requested !== "identity" ? createSession("DEMO-EXPLORER") : null;
       setSession(saved ?? demoSession);
       setSettings(getSettings());
+      if (requested !== "landing") {
+        const map = requested === "game" ? MAP_REGISTRY.find(candidate => candidate.id === directMapRef.current) : undefined;
+        transitionTo(requested, { mapId: map?.id, title: map?.name, accent: map?.accent });
+      }
     });
     return () => { active = false; };
   }, []);
@@ -251,23 +257,29 @@ export default function ArcaneFrontier() {
     const map = options?.mapId ? MAP_REGISTRY.find(candidate => candidate.id === options.mapId) : undefined;
     const title = options?.title ?? map?.name ?? (destination === "home" ? "Aether Homestead" : "Frontier Lobby");
     const accent = options?.accent ?? map?.accent ?? "#00f3ff";
-    setTransition({ destination, mapId: options?.mapId, title, accent, progress: 0 });
-    if (map) void cacheMapModule(map).then(() => setCachedMapIds(current => new Set(Array.from(current).concat(map.id))));
-    let progress = 0;
-    const interval = window.setInterval(() => {
-      progress = Math.min(100, progress + 9 + Math.random() * 13);
-      setTransition(current => current ? { ...current, progress } : current);
-      if (progress >= 100) {
-        window.clearInterval(interval);
-        window.setTimeout(() => {
-          if (options?.mapId) {
-            setSelectedMapId(options.mapId);
-          }
-          setScreen(destination);
-          setTransition(null);
-        }, 260);
+    setTransition({ destination, mapId: options?.mapId, title, accent, progress: 0, phase: "กำลังปรับเส้นทางพลังงาน" });
+    const delay = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
+    void (async () => {
+      if (map) {
+        try {
+          await prepareMapModule(map, update => setTransition(current => current ? { ...current, progress: update.progress, phase: update.phase, cached: update.cached, offline: update.offline } : current));
+          setCachedMapIds(current => new Set(Array.from(current).concat(map.id)));
+        } catch {
+          setTransition(current => current ? { ...current, progress: 82, phase: "ใช้โมดูลที่มีในเครื่อง", offline: navigator.onLine === false } : current);
+        }
+      } else {
+        setTransition(current => current ? { ...current, progress: 28, phase: "ตรวจสถานะผู้เล่นในเครื่อง" } : current);
+        await delay(90);
+        setTransition(current => current ? { ...current, progress: 68, phase: "เตรียมเส้นทางปลายทาง" } : current);
+        await delay(90);
       }
-    }, 80);
+      await delay(180);
+      setTransition(current => current ? { ...current, progress: 100, phase: "พร้อมเดินทาง" } : current);
+      await delay(260);
+      if (options?.mapId) setSelectedMapId(options.mapId);
+      setScreen(destination);
+      setTransition(null);
+    })();
   }, []);
 
   const startIdentity = () => transitionTo("identity", { title: "Signal Alignment", accent: "#00f3ff" });
@@ -314,11 +326,28 @@ export default function ArcaneFrontier() {
     setGameSnapshot(next);
   }, []);
 
+  const rewardHandler = useCallback((reward: { definitionId: string; eventId: string; provenanceType: "harvest" | "drop" | "reward" }) => {
+    setSession(current => {
+      if (!current || current.inventory.some(instance => instance.provenance.eventId === reward.eventId)) return current;
+      const next = {
+        ...current,
+        inventory: [...current.inventory, createMapRewardInstance(reward.definitionId, current.inventory.length + 5000, selectedMapId, reward.eventId, reward.provenanceType)],
+      };
+      void saveSession(next);
+      return next;
+    });
+  }, [selectedMapId]);
+
   const primaryWeapon = session ? getItemDefinition(session.inventory[0]?.definitionId ?? "sword-001") : ALL_ITEMS[0];
   const homeSeeds = session?.inventory.filter(item => getItemDefinition(item.definitionId)?.category === "seed") ?? [];
   const homeObjects = session?.inventory.filter(item => ["structure", "furniture", "decoration"].includes(getItemDefinition(item.definitionId)?.category ?? "")) ?? [];
   const selectedHomeSeed = homeSeeds.find(item => item.instanceId === selectedHomeSeedId) ?? homeSeeds[0];
   const selectedHomeObject = homeObjects.find(item => item.instanceId === selectedHomeObjectId) ?? homeObjects[0];
+  const companionConfig = useMemo(() => {
+    if (!session) return undefined;
+    const bonus = getPetBonus(session.home);
+    return { following: bonus.following, lootRadius: bonus.lootRadius, resourceYieldMultiplier: bonus.resourceYieldMultiplier, damageMitigation: bonus.damageMitigation };
+  }, [session]);
 
   return <main className="arcane-app">
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
@@ -372,9 +401,11 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && <section className="game-screen"><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} onSnapshot={snapshotHandler} />
+    {screen === "game" && session && <section className="game-screen"><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} />
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div></div>
+      <div className="companion-hud"><img src="/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg" alt="Arcane Cyber Fox" /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ANOMALY DETECTED · {activeMap.eventBossName ?? "Unknown anomaly"} may emerge</span></div>
+      {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>
       <div className="quick-slots"><button><span>1</span><Wheat size={18} /></button><button><span>2</span><Zap size={18} /></button><button><span>3</span><Box size={18} /></button></div>
       <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })}><Zap size={20} /></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })}><Pickaxe size={20} /></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })}><Sword size={28} /><span>ATTACK</span></button></div></div>

@@ -2,22 +2,42 @@ import type { MapDefinition } from "@/game/data/maps";
 
 const CACHE_NAME = "arcane-frontier-map-modules-v2";
 
+export type MapPreparationUpdate = {
+  progress: number;
+  phase: string;
+  cached: boolean;
+  offline: boolean;
+};
+
 function cacheKey(mapId: string) {
   return `/offline-map-modules/${encodeURIComponent(mapId)}.json`;
 }
 
-export async function cacheMapModule(map: MapDefinition) {
-  if (typeof window === "undefined") return;
+export async function prepareMapModule(map: MapDefinition, onProgress?: (update: MapPreparationUpdate) => void) {
+  if (typeof window === "undefined") return { cached: false, offline: false };
+  const offline = navigator.onLine === false;
+  const alreadyCached = await hasCachedMapModule(map.id);
+  onProgress?.({ progress: alreadyCached ? 18 : 4, phase: alreadyCached ? "อ่านโมดูลที่บันทึกไว้" : "กำลังจัดเตรียม map module", cached: alreadyCached, offline });
   const payload = JSON.stringify({ id: map.id, name: map.name, cachedAt: Date.now(), keyArt: map.keyArt, content: map.content });
   if ("caches" in window) {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(cacheKey(map.id), new Response(payload, { headers: { "Content-Type": "application/json" } }));
+    onProgress?.({ progress: 42, phase: "บันทึกข้อมูล expedition", cached: alreadyCached, offline });
     if (map.keyArt) {
       try {
-        const keyArtResponse = await fetch(map.keyArt, { cache: "no-store" });
-        if (keyArtResponse.ok) await cache.put(map.keyArt, keyArtResponse.clone());
+        const existingAsset = await cache.match(map.keyArt);
+        if (existingAsset) {
+          onProgress?.({ progress: 78, phase: "ยืนยัน key art จาก cache", cached: true, offline });
+        } else if (!offline) {
+          onProgress?.({ progress: 64, phase: "ดาวน์โหลด key art ของ biome", cached: false, offline });
+          const keyArtResponse = await fetch(map.keyArt, { cache: "no-store" });
+          if (keyArtResponse.ok) await cache.put(map.keyArt, keyArtResponse.clone());
+          onProgress?.({ progress: 88, phase: "ตรวจ asset ของ biome", cached: false, offline });
+        } else {
+          onProgress?.({ progress: 78, phase: "ออฟไลน์: ใช้ metadata ที่มี", cached: false, offline });
+        }
       } catch {
-        // The module metadata is still available offline even if an image transfer was interrupted.
+        onProgress?.({ progress: 78, phase: "asset ไม่พร้อม: ใช้ expedition cache", cached: alreadyCached, offline });
       }
     }
   }
@@ -26,6 +46,12 @@ export async function cacheMapModule(map: MapDefinition) {
   } catch {
     // Cache Storage remains the source of truth when localStorage is unavailable.
   }
+  onProgress?.({ progress: 100, phase: offline ? "พร้อมเปิดแบบออฟไลน์" : "พร้อมเปิด expedition", cached: alreadyCached, offline });
+  return { cached: alreadyCached, offline };
+}
+
+export async function cacheMapModule(map: MapDefinition) {
+  await prepareMapModule(map);
 }
 
 export async function hasCachedMapModule(mapId: string) {

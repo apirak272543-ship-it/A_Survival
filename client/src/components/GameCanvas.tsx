@@ -1,14 +1,16 @@
 import { useEffect, useRef } from "react";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { createGameScene, type GameSnapshot, type GameHandle } from "@/game/scene";
+import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig } from "@/game/scene";
 
 type GameCanvasProps = {
   mapId: string;
   reducedMotion?: boolean;
   onSnapshot?: (snapshot: GameSnapshot) => void;
+  onReward?: (reward: GameReward) => void;
+  companion?: CompanionConfig;
 };
 
-export default function GameCanvas({ mapId, reducedMotion, onSnapshot }: GameCanvasProps) {
+export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, companion }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
 
@@ -20,7 +22,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot }: GameCan
     let handle: GameHandle | null = null;
     let cancelled = false;
 
-    createGameScene(engine, canvas, { mapId, onSnapshot, reducedMotion }).then(game => {
+    createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion }).then(game => {
       if (cancelled) {
         game.dispose();
         return;
@@ -38,7 +40,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot }: GameCan
       engine.dispose();
       startedRef.current = false;
     };
-  }, [mapId, onSnapshot, reducedMotion]);
+  }, [mapId, onSnapshot, onReward, companion, reducedMotion]);
 
   return <canvas ref={canvasRef} className="fixed inset-0 h-full w-full outline-none" style={{ touchAction: "none" }} />;
 }

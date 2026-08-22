@@ -237,3 +237,22 @@ export function createStarterInstance(definitionId: string, sequence: number): I
     },
   };
 }
+
+export function createMapRewardInstance(definitionId: string, sequence: number, mapId: string, eventId: string, provenanceType: Extract<ItemProvenance["type"], "drop" | "harvest" | "reward"> = "harvest"): ItemInstance {
+  const definition = getItemDefinition(definitionId);
+  if (!definition) throw new Error(`Unknown map reward definition: ${definitionId}`);
+  const stamp = 1800000000000 + sequence;
+  return {
+    instanceId: `inst-${mapId}-${eventId}-${sequence}`,
+    definitionId,
+    quantity: 1,
+    enhancement: 0,
+    provenance: {
+      eventId,
+      type: provenanceType,
+      timestamp: stamp,
+      mapId,
+      integrityHash: `map-reward:${mapId}:${eventId}:${definitionId}:${stamp}`,
+    },
+  };
+}

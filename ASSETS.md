@@ -54,3 +54,33 @@ The resource art needs an alpha/colour-key treatment before use directly over te
 หลังลงทะเบียน Babylon legacy shader modules ฉาก MAP_001 แสดง mesh และ asset texture ได้จริงในมุมกล้อง top-down. การตรวจภาพพบว่า texture plane บางชิ้นกลับด้านใน Babylon และบอสแสดงใหญ่เกิน safe zone ของ HUD จึงต้องใช้ `vScale = -1` หรือ `invertY` กับ texture asset และลดขนาด/ย้าย boss event ให้เป็น warning overlay ที่อ่านง่ายกว่าการวางเต็มจอในฉาก.
 
 การตรวจ Landing และ Lobby หลังนำ hero asset มาใช้ยืนยันว่าภาพจาก managed storage แสดงได้บนทั้งสองหน้า แต่ไฟล์ JPEG มีฉากหลังดำมาพร้อมภาพ จึงต้องใช้ blend treatment และ framing เพิ่มเติมเพื่อให้ตัวละครผสานกับฉาก UI แทนการดูเป็นกรอบรูปสี่เหลี่ยม.
+
+## MAP_001 gameplay slice — review pass 1
+
+| Asset | Gemini/Pollinations setting | Visual validation | Intended use |
+| --- | --- | --- | --- |
+| `commander-koral-portrait.jpg` | `flux` / seed `42` | 512×512 close-up ของทหารผ่านศึกโทน blue-grey, armor มีร่องรอยศึก, ไม่มีข้อความ | Portrait ใน objective/interaction ของ Commander Koral; ไม่ใช้เป็น world sprite โดยตรง |
+| `crashed-leyline-monolith.jpg` | `flux` / seed `108` | ภาพ landmark หินดำขนาดใหญ่กับพลัง cyan, ฉากหลังมืดอ่าน silhouette ได้ | Textured landmark plane และ backdrop/telegraph ของ Void Reaper; ไม่ใช้เป็น terrain tile |
+| `obsidian-golem-elite.jpg` | `flux` / seed `777` | 512×512 elite silhouette สีดำ มีรอยพลัง orange-red, ท่ายืนอ่านง่าย, ไม่มีข้อความ | Plane texture สำหรับ elite Obsidian Golem และ event warning |
+| `frontier-alloy-icon.jpg` | `flux` / seed `99` | 256×256 ingot มืด รอยพลังสีส้ม, พื้นหลังเข้ม, ไม่มีข้อความ | Reward icon ใน HUD/telegraph ของ alloy drop |
+
+ทั้งสองไฟล์เป็น JPEG ที่ยังมีพื้นหลัง จึงใช้เป็น Billboard/portrait/overlay ที่มี backing panel และ glow ได้ทันที แต่ไม่ใช่ transparent sprite จนกว่าจะมี asset pass ที่สร้าง alpha-safe art เพิ่มเติม.
+
+| Asset | Managed storage URL |
+| --- | --- |
+| Commander Koral portrait | `/manus-storage/commander-koral-portrait_06a487e5.jpg` |
+| Crashed Leyline Monolith | `/manus-storage/crashed-leyline-monolith_35d89c1e.jpg` |
+| Elite Obsidian Golem | `/manus-storage/obsidian-golem-elite_a0a82e7e.jpg` |
+| Frontier Alloy icon | `/manus-storage/frontier-alloy-icon_1192ae58.jpg` |
+
+## Companion asset review
+
+| Asset | Gemini/Pollinations setting | Visual validation | Intended use |
+| --- | --- | --- | --- |
+| `arcane-cyber-fox.jpg` | `flux` / seed `4209182` | 768×768 fox companion สีน้ำเงิน มีชุดเกราะ arcane; มีภาพ reference หลายมุมและตัวอักษร artifact เล็กน้อยจึงต้อง crop/framing ใน plane | Companion billboard ระหว่างฉากสำรวจ; ใช้ centre subject เป็นหลัก |
+| `arcane-cyber-fox-hud-icon.jpg` | `flux` / seed `882910` | 512×512 portrait ใบหน้าจิ้งจอกตาสี cyan ในวงแหวนสีอ่อน, contrast ดี, ไม่มีข้อความ | HUD avatar และ follow-toggle ในจอมือถือแนวนอน |
+
+| Asset | Managed storage URL |
+| --- | --- |
+| Arcane Cyber Fox companion | `/manus-storage/arcane-cyber-fox_d0832d7b.jpg` |
+| Arcane Cyber Fox HUD icon | `/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg` |

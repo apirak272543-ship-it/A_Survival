@@ -1,6 +1,8 @@
 import { createStarterInstance, getItemDefinition, isPlantCompatibleWithSoil, type ItemInstance, type SoilId } from "@/game/data/catalog";
 
 export type PetSlot = "collar" | "core";
+export type CompanionRuntimeState = "resting" | "idle" | "following" | "teleporting";
+export type CompanionPosition = { x: number; z: number };
 
 export type HomeStructure = {
   id: string;
@@ -30,7 +32,7 @@ export type HomeState = {
 
 export type HomeAction = {
   id: string;
-  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item";
+  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item" | "toggle-pet-follow";
   createdAt: number;
   payload: Record<string, unknown>;
 };
@@ -156,10 +158,23 @@ export function transferPetEquipment(home: HomeState, inventory: ItemInstance[],
 
 export function getPetBonus(home: HomeState) {
   const equipment = home.petEquipment ?? {};
-  return { scoutRadiusMeters: equipment.collar ? 18 : 8, harvestBonusPercent: equipment.core ? 10 : 0, following: home.petFollowing ?? true };
+  const lootRadius = Math.min(6, 2 + (equipment.collar ? 1.5 : 0) + (equipment.core ? 0.5 : 0));
+  const resourceYieldMultiplier = Math.min(2.5, 1 + (equipment.core ? 0.1 : 0));
+  const damageMitigation = Math.min(0.35, equipment.collar && equipment.core ? 0.05 : 0);
+  return { scoutRadiusMeters: lootRadius, harvestBonusPercent: Math.round((resourceYieldMultiplier - 1) * 100), lootRadius, resourceYieldMultiplier, damageMitigation, following: home.petFollowing ?? true };
+}
+
+export function resolveCompanionRuntime(input: { pet: CompanionPosition; player: CompanionPosition; following: boolean; playerMoving: boolean; reducedMotion?: boolean; deltaSeconds: number }): { position: CompanionPosition; state: CompanionRuntimeState } {
+  if (!input.following) return { position: input.pet, state: "resting" };
+  const target = { x: input.player.x - 1.3, z: input.player.z - 1.15 };
+  const distance = Math.hypot(target.x - input.pet.x, target.z - input.pet.z);
+  if (distance > 15) return { position: target, state: "teleporting" };
+  if (!input.playerMoving && distance < 1.8) return { position: input.pet, state: "idle" };
+  const factor = input.reducedMotion ? Math.min(1, 5 * input.deltaSeconds) : 1 - Math.exp(-4.5 * input.deltaSeconds);
+  return { position: { x: input.pet.x + (target.x - input.pet.x) * factor, z: input.pet.z + (target.z - input.pet.z) * factor }, state: "following" };
 }
 
 export function togglePetFollowing(home: HomeState, now = Date.now()) {
   const petFollowing = !(home.petFollowing ?? true);
-  return { home: { ...home, petFollowing }, action: { id: actionId("equip-pet-item", now), type: "equip-pet-item" as const, createdAt: now, payload: { mode: petFollowing ? "follow" : "stay" } } };
+  return { home: { ...home, petFollowing }, action: { id: actionId("toggle-pet-follow", now), type: "toggle-pet-follow" as const, createdAt: now, payload: { mode: petFollowing ? "follow" : "stay" } } };
 }

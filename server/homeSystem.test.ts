@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createStarterInstance } from "../client/src/game/data/catalog";
-import { DEFAULT_GROWTH_DURATION_MS, getCropStage, getPetBonus, harvestCrop, moveStructure, placeHomeObject, placeStructure, plantSeed, recallStructure, transferPetEquipment, type HomeState } from "../client/src/game/home/homeSystemV2";
+import { DEFAULT_GROWTH_DURATION_MS, getCropStage, getPetBonus, harvestCrop, moveStructure, placeHomeObject, placeStructure, plantSeed, recallStructure, resolveCompanionRuntime, transferPetEquipment, type HomeState } from "../client/src/game/home/homeSystemV2";
 
 const emptyHome = (): HomeState => ({
   structures: [],
@@ -81,6 +81,12 @@ describe("home relationship contract", () => {
     const coreEquipped = transferPetEquipment(collarEquipped.home, collarEquipped.inventory, "core", core.instanceId, 20);
     expect(coreEquipped.ok).toBe(true);
     if (!coreEquipped.ok) return;
-    expect(getPetBonus(coreEquipped.home)).toEqual({ following: true, scoutRadiusMeters: 18, harvestBonusPercent: 10 });
+    expect(getPetBonus(coreEquipped.home)).toMatchObject({ following: true, scoutRadiusMeters: 4, lootRadius: 4, harvestBonusPercent: 10, resourceYieldMultiplier: 1.1, damageMitigation: 0.05 });
+  });
+
+  it("uses smooth companion following and teleports only after the catch-up distance", () => {
+    expect(resolveCompanionRuntime({ pet: { x: 0, z: 0 }, player: { x: 40, z: 0 }, following: true, playerMoving: true, deltaSeconds: 0.016 })).toMatchObject({ state: "teleporting" });
+    expect(resolveCompanionRuntime({ pet: { x: 0, z: 0 }, player: { x: 3, z: 0 }, following: true, playerMoving: true, deltaSeconds: 0.1 }).state).toBe("following");
+    expect(resolveCompanionRuntime({ pet: { x: 0, z: 0 }, player: { x: 3, z: 0 }, following: false, playerMoving: true, deltaSeconds: 0.1 }).state).toBe("resting");
   });
 });
