@@ -109,10 +109,11 @@
 - [x] เพิ่ม Field Guide และ first-run contextual hints สำหรับ Player ID, expedition, Home, companion, cache/offline และ provenance integrity
 - [x] เพิ่ม integrity verdict, quarantine banner และ recovery messaging ที่กักเฉพาะ item instance ผิดปกติ
 - [x] บันทึก integrity event อย่างสม่ำเสมอเมื่อ local/runtime scan พบ duplicate instance, missing provenance หรือ invalid inventory shape
-- [ ] บังคับ quarantine ระดับ item instance กับ action equip/use/trade/dismantle และ presentation ใน inventory แทนการเตือนอย่างเดียว
+- [x] บังคับ quarantine ระดับ item instance กับ action equip/use/trade/dismantle และ presentation ใน inventory แทนการเตือนอย่างเดียว
 - [x] ปรับ sync/save flow ให้แยก safe inventory จาก suspect items หรือ persist quarantine ต่อ instance แทนการปฏิเสธ payload ทั้งชุด
 - [x] ปรับ direct map route ให้ fallback ไปหน้า Maps เมื่อออฟไลน์และ map module ยังไม่เคย cache โดยคง loading gate และ Thai recovery message
 - [x] เพิ่ม data-driven fog, lighting, terrain landmark และ ambient hazard signal ให้ MAP_002–MAP_010 โดยไม่อ้างว่าเป็น monster action set สมบูรณ์
 - [x] เพิ่ม LoadingGate variants ตาม Lobby, Home, Map Observatory และ biome พร้อม cache/offline/reduced-motion presentation ที่ตรวจได้
 - [x] ยกระดับ MAP_002 Ashen Obsidian Plains ด้วย Pollinations asset pack, deterministic Ash Storm encounter, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_003 Bioluminescent Caverns ด้วย Pollinations asset pack, deterministic Spore Bloom encounter, elite/boss telegraph และ reward provenance
+- [x] เพิ่ม Vault sheet ที่ action contract บล็อก quarantined instance และบันทึก local equipment state โดยไม่แก้ provenance

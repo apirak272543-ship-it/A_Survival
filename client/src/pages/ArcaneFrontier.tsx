@@ -51,6 +51,7 @@ import {
 import type { GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
+import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
 import { resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
@@ -76,6 +77,11 @@ function getInitialMapId() {
 function getIntegrityDemoEnabled() {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).get("integrity") === "demo";
+}
+
+function getVaultDemoEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("vault") === "demo";
 }
 
 function getLoadingDemoTransition(): Transition {
@@ -182,6 +188,33 @@ function IntegritySheet({ report, syncAttention, close }: { report: IntegrityRep
   </section></div>;
 }
 
+function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncRequest, toast }: { session: LocalGameSession; quarantinedInstanceIds: Set<string>; close: () => void; onEquip: (instanceId: string) => void; onSyncRequest: () => void; toast: (message: string) => void }) {
+  const [category, setCategory] = useState<"all" | "weapons" | "materials">("all");
+  const [selectedInstanceId, setSelectedInstanceId] = useState(session.inventory[0]?.instanceId ?? "");
+  const visibleItems = session.inventory.filter(instance => {
+    const definition = getItemDefinition(instance.definitionId);
+    return category === "all" || category === "weapons" ? category === "all" || Boolean(definition?.equippable) : definition?.category === "material";
+  });
+  const selected = visibleItems.find(instance => instance.instanceId === selectedInstanceId) ?? visibleItems[0];
+  const definition = selected ? getItemDefinition(selected.definitionId) : undefined;
+  const quarantined = Boolean(selected && quarantinedInstanceIds.has(selected.instanceId));
+  const equipment = session.vaultEquipment ?? {};
+  const equipped = Boolean(selected && Object.values(equipment).includes(selected.instanceId));
+  const actionState = (action: VaultAction) => getVaultActionState(selected, quarantinedInstanceIds, action);
+  const action = (kind: VaultAction) => {
+    const state = actionState(kind);
+    if (!state.allowed) { toast(state.reason ?? "การทำงานนี้ถูกจำกัด"); return; }
+    if (kind === "equip" && selected) onEquip(selected.instanceId);
+  };
+  return <div className="settings-scrim vault-scrim" onPointerDown={close}><section className="vault-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Frontier Vault">
+    <header><div><p className="eyebrow">Frontier vault</p><h3>คลังไอเทม</h3></div><button className="icon-button" onClick={close} aria-label="ปิดคลังไอเทม"><X size={18} /></button></header>
+    <div className="vault-layout"><aside className="vault-nav"><div className="vault-player"><span>{session.playerId.slice(0, 1).toUpperCase()}</span><div><b>{session.playerId}</b><small>LOCAL SAVE · {navigator.onLine ? "ONLINE" : "OFFLINE"}</small></div></div><div className="vault-tabs"><button className={category === "all" ? "active" : ""} onClick={() => setCategory("all")}>ทั้งหมด</button><button className={category === "weapons" ? "active" : ""} onClick={() => setCategory("weapons")}>อาวุธ</button><button className={category === "materials" ? "active" : ""} onClick={() => setCategory("materials")}>วัตถุดิบ</button></div><p>เลือก item instance เพื่อดู provenance และสถานะการใช้งาน</p></aside>
+      <section className="vault-grid-panel"><div className="vault-grid-label"><span>ITEM INSTANCES</span><b>{visibleItems.length}</b></div><div className="vault-grid">{visibleItems.map(instance => { const item = getItemDefinition(instance.definitionId); const isQuarantined = quarantinedInstanceIds.has(instance.instanceId); const isEquipped = Object.values(equipment).includes(instance.instanceId); return <button key={instance.instanceId} className={`vault-item ${instance.instanceId === selected?.instanceId ? "selected" : ""} ${isQuarantined ? "quarantined" : ""}`} onClick={() => setSelectedInstanceId(instance.instanceId)} aria-label={`${item?.name ?? instance.definitionId}${isQuarantined ? ", รอการยืนยันและ actions ถูกจำกัด" : ""}`}><span className="vault-item-tier" style={{ background: TIER_RULES[item?.tier ?? "common"].color }} /><Box size={17} /><b>{item?.name ?? instance.definitionId}</b><small>×{instance.quantity} · +{instance.enhancement}</small>{isEquipped && <em>ติดตั้ง</em>}{isQuarantined && <em className="quarantine-badge"><ShieldAlert size={11} /> รอยืนยัน</em>}</button>; })}</div></section>
+      <section className={`vault-detail ${quarantined ? "quarantined" : ""}`}>{selected && definition ? <><div className="vault-preview"><Box size={38} /><span style={{ background: TIER_RULES[definition.tier].color }} /></div><p className="eyebrow">{definition.category} · {TIER_RULES[definition.tier].label}</p><h4>{definition.name}</h4><p>{definition.effect}</p>{quarantined ? <div className="vault-quarantine"><ShieldAlert size={18} /><div><b>รอการยืนยันข้อมูล</b><p>พบความคลาดเคลื่อนของข้อมูลไอเทมนี้ ระบบได้จำกัดการใช้งานชั่วคราวเพื่อป้องกันความเสียหายต่อไฟล์เซฟของคุณ</p></div></div> : <div className="vault-provenance"><Shield size={16} /><span>Provenance · {selected.provenance.type} · {selected.provenance.eventId.slice(0, 18)}</span></div>}<div className="vault-actions"><button disabled={!actionState("equip").allowed} onClick={() => action("equip")}>{equipped ? "ถอดอาวุธ" : "ติดตั้ง"}</button><button disabled={!actionState("use").allowed} onClick={() => action("use")}>ใช้</button><button disabled={quarantined} onClick={() => action("trade")}>แลกเปลี่ยน</button><button disabled={quarantined} onClick={() => action("dismantle")}>ย่อยสลาย</button></div>{quarantined && <button className="vault-verify" onClick={onSyncRequest}>ตรวจสอบและซิงก์ใหม่</button>}</> : <p>ไม่มี item instance ในหมวดนี้</p>}</section>
+    </div>
+  </section></div>;
+}
+
 export default function ArcaneFrontier() {
   const directEntryRef = useRef<Screen>(getInitialScreen());
   const directMapRef = useRef(getInitialMapId());
@@ -195,6 +228,7 @@ export default function ArcaneFrontier() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showIntegrity, setShowIntegrity] = useState(getIntegrityDemoEnabled);
+  const [showVault, setShowVault] = useState(getVaultDemoEnabled);
   const [syncAttention, setSyncAttention] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic>("identity");
   const [contextHint, setContextHint] = useState<{ topic: HelpTopic; text: string } | null>(null);
@@ -464,6 +498,20 @@ export default function ArcaneFrontier() {
     return { following: bonus.following, lootRadius: bonus.lootRadius, resourceYieldMultiplier: bonus.resourceYieldMultiplier, damageMitigation: bonus.damageMitigation };
   }, [safeHome]);
   const openHelp = (topic: HelpTopic) => { setHelpTopic(topic); setShowHelp(true); };
+  const equipVaultInstance = (instanceId: string) => {
+    if (!session) return;
+    const target = session.inventory.find(instance => instance.instanceId === instanceId);
+    if (!target) return;
+    const nextEquipment = toggleVaultEquipment(session.vaultEquipment ?? {}, target, quarantinedInstanceIds);
+    updateSession({ vaultEquipment: nextEquipment });
+    setToast(Object.values(nextEquipment).includes(instanceId) ? "ติดตั้ง item instance ในช่องอุปกรณ์แล้ว" : "ถอด item instance ออกจากช่องอุปกรณ์แล้ว");
+  };
+  const requestVaultSync = () => {
+    if (!session) return;
+    syncSession(session);
+    setSyncAttention(true);
+    setToast("ส่งคำขอตรวจสอบแล้ว · item จะปลดล็อกเมื่อ integrity verdict ผ่านเท่านั้น");
+  };
 
   return <main className="arcane-app">
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
@@ -472,6 +520,7 @@ export default function ArcaneFrontier() {
     {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />}
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
+    {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} toast={message => setToast(message)} />}
     {contextHint && <button className="context-help-hint" onClick={() => { openHelp(contextHint.topic); setContextHint(null); }}><CircleHelp size={15} /><span>{contextHint.text}</span><X size={13} /></button>}
     {hasIntegrityAttention && integrityReport && <button className="integrity-banner" onClick={() => setShowIntegrity(true)}><ShieldAlert size={16} /><span>{integrityBannerCopy}</span><b>ดูรายละเอียด</b></button>}
 
@@ -492,7 +541,7 @@ export default function ArcaneFrontier() {
     {screen === "lobby" && session && <section className="lobby-screen">
       <header className="lobby-header"><div className="brand-lockup compact"><ArcaneMark /><span>ARCANE FRONTIER</span></div><div className="lobby-header-right"><span className="currency"><Gem size={15} /> {session.currency.toLocaleString()}</span><button className="icon-button" onClick={() => openHelp("identity")} aria-label="เปิดคู่มือ"><CircleHelp size={18} /></button><button className="icon-button" onClick={() => setShowSettings(true)}><Settings2 size={18} /></button><button className="player-chip"><span className="player-avatar">{session.playerId.slice(0, 1).toUpperCase()}</span>{session.playerId}</button></div></header>
       <div className="lobby-grid">
-        <aside className="lobby-rail left-rail"><button onClick={() => transitionTo("home", { title: "Aether Homestead", accent: "#7ee787" })}><Home size={18} /><span>HOME</span></button><button onClick={() => setToast("Inventory preview is synced to your local save") }><Backpack size={18} /><span>VAULT</span></button><button onClick={() => setToast("Cosmetic studio is ready for catalog items") }><Sparkles size={18} /><span>STYLE</span></button><button onClick={() => setToast("Shop rotations will use weekly event data") }><Gem size={18} /><span>SHOP</span></button></aside>
+        <aside className="lobby-rail left-rail"><button onClick={() => transitionTo("home", { title: "Aether Homestead", accent: "#7ee787" })}><Home size={18} /><span>HOME</span></button><button onClick={() => setShowVault(true)}><Backpack size={18} /><span>VAULT</span></button><button onClick={() => setToast("Cosmetic studio is ready for catalog items") }><Sparkles size={18} /><span>STYLE</span></button><button onClick={() => setToast("Shop rotations will use weekly event data") }><Gem size={18} /><span>SHOP</span></button></aside>
         <section className="lobby-character"><div className="lobby-haze" /><div className="character-pedestal"><div className="character-runes"><i /><i /><i /></div><img className="lobby-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Survivor loadout" /></div><div className="loadout-caption"><span className="tier-dot" style={{ background: TIER_RULES[primaryWeapon?.tier ?? "common"].color }} /><div><b>{primaryWeapon?.name ?? "Aether Blade"}</b><small>+{session.inventory[0]?.enhancement ?? 0} · {TIER_RULES[primaryWeapon?.tier ?? "common"].label}</small></div></div></section>
         <aside className="lobby-rail right-rail"><section className="weekly-card" style={{ "--event-accent": event.accent } as React.CSSProperties}><div><p className="eyebrow">Weekly event</p><h3>{event.title}</h3><p>{event.subtitle}</p></div><div className="weekly-footer"><span><TimerReset size={14} /> 5d 14h</span><button onClick={() => setToast(event.objective)}><BellRing size={15} /></button></div></section><section className="status-card"><p className="eyebrow">Loadout integrity</p><button className={`status-line integrity-status ${hasIntegrityAttention ? "attention" : ""}`} onClick={() => setShowIntegrity(true)}><Shield size={16} /><span>Instance scan</span><b>{hasIntegrityAttention ? "REVIEW" : "VALID"}</b></button><div className="status-line"><PawPrint size={16} /><span>{session.home.petName}</span><b>LV. 01</b></div></section></aside>
       </div>

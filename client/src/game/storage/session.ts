@@ -1,6 +1,7 @@
 import { createStarterInstance, validateItemInstances, type ItemInstance } from "@/game/data/catalog";
 import { loadOfflineProfile, queueSessionPendingActions, saveOfflineProfile, type OfflineProfileRecord } from "./indexedDb";
 import type { HomeAction, HomeState } from "@/game/home/homeSystemV2";
+import type { VaultEquipment } from "@/game/integrity/vaultActions";
 
 const SESSION_KEY = "arcane-frontier.session.v1";
 const SETTINGS_KEY = "arcane-frontier.settings.v1";
@@ -22,6 +23,7 @@ export type LocalGameSession = {
   health: number;
   currency: number;
   inventory: ItemInstance[];
+  vaultEquipment: VaultEquipment;
   home: HomeState;
   pendingActions: HomeAction[];
 };
@@ -60,6 +62,7 @@ export function createSession(playerId: string): LocalGameSession {
     health: 100,
     currency: 240,
     inventory,
+    vaultEquipment: {},
     home: {
       structures: [],
       plots: [
