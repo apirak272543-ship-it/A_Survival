@@ -20,6 +20,7 @@ import { MAP003_EMPRESS_SHRINE, MAP003_LYRA_CAMP, initialMap003Encounter, resolv
 import { MAP004_ARCHON_DAIS, MAP004_ZEPHYR_CAMP, initialMap004Encounter, resolveMap004Encounter } from "@/game/map004/encounter";
 import { MAP005_HYDRA_NEST, MAP005_VANE_SHELTER, initialMap005Encounter, resolveMap005Encounter } from "@/game/map005/encounter";
 import { MAP006_COLOSSUS_CORE, MAP006_STABILIZER, initialMap006Encounter, resolveMap006Encounter } from "@/game/map006/encounter";
+import { MAP007_STEAM_VENT, MAP007_TERROR_RIFT, initialMap007Encounter, resolveMap007Encounter } from "@/game/map007/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
 export type GameSnapshot = {
@@ -125,6 +126,14 @@ const map006Asset = {
   sand: "/manus-storage/magnetite-sand_cff4f19d.jpg",
 };
 
+const map007Asset = {
+  frost: "/manus-storage/scout-frost_9dca1a23.jpg",
+  weaver: "/manus-storage/frostbite-weaver_10752103.jpg",
+  elite: "/manus-storage/cryo-beast_c26d6444.jpg",
+  boss: "/manus-storage/glacial-terror_c5edf25c.jpg",
+  crystal: "/manus-storage/cryo-crystal_bdf10c85.jpg",
+};
+
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
   const result = new StandardMaterial(name, scene);
   const texture = new Texture(url, scene, true, false);
@@ -150,6 +159,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap004 = options.mapId === "map-004-crystalline-spires";
   const isMap005 = options.mapId === "map-005-corrosive-acid-swamps";
   const isMap006 = options.mapId === "map-006-magnetic-dunes";
+  const isMap007 = options.mapId === "map-007-frozen-obsidian-crevasses";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
@@ -248,7 +258,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   petArt.billboardMode = 7;
   petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
 
-  const enemyMaterial = isMap006
+  const enemyMaterial = isMap007
+    ? assetMaterial(scene, "frostbite-weaver-material", map007Asset.weaver, 0.72)
+    : isMap006
     ? assetMaterial(scene, "magnetic-hover-ray-material", map006Asset.ray, 0.7)
     : isMap005
     ? assetMaterial(scene, "acid-slime-material", map005Asset.slime, 0.68)
@@ -266,11 +278,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     enemy.billboardMode = 7;
     enemy.material = enemyMaterial;
     enemy.metadata = { health: 30, alive: true, encounterName: regularMonster };
-    if ((isMap002 || isMap006) && index > 4) enemy.setEnabled(false);
+    if ((isMap002 || isMap006 || isMap007) && index > 4) enemy.setEnabled(false);
     return enemy;
   });
 
-  const resourceMaterial = isMap006
+  const resourceMaterial = isMap007
+    ? assetMaterial(scene, "cryo-crystal-material", map007Asset.crystal, 0.88)
+    : isMap006
     ? assetMaterial(scene, "magnetite-sand-material", map006Asset.sand, 0.86)
     : isMap005
     ? assetMaterial(scene, "toxic-lily-material", map005Asset.lily, 0.86)
@@ -283,7 +297,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`${isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
+    const resource = MeshBuilder.CreatePlane(`${isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.billboardMode = 7;
     resource.material = resourceMaterial;
@@ -293,7 +307,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const boss = MeshBuilder.CreatePlane(`${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, { width: 5.8, height: 5.8 }, scene);
   boss.position = new Vector3(0, 2.8, -18);
   boss.billboardMode = 7;
-  boss.material = isMap006
+  boss.material = isMap007
+    ? assetMaterial(scene, "glacial-terror-material", map007Asset.boss, 0.97)
+    : isMap006
     ? assetMaterial(scene, "lodestone-colossus-material", map006Asset.boss, 0.96)
     : isMap005
     ? assetMaterial(scene, "toxic-hydra-material", map005Asset.boss, 0.96)
@@ -415,6 +431,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   colossusCore.material = assetMaterial(scene, "lodestone-core-material", map006Asset.sand, 0.82);
   colossusCore.setEnabled(isMap006);
 
+  const scoutFrost = MeshBuilder.CreatePlane("scout-frost-steam-vent", { width: 2.8, height: 2.8 }, scene);
+  scoutFrost.position = new Vector3(MAP007_STEAM_VENT.x, 1.4, MAP007_STEAM_VENT.z);
+  scoutFrost.billboardMode = 7;
+  scoutFrost.material = assetMaterial(scene, "scout-frost-material", map007Asset.frost, 0.6);
+  scoutFrost.setEnabled(isMap007);
+  const map007Elite = MeshBuilder.CreatePlane("cryo-beast-elite", { width: 4.3, height: 4.3 }, scene);
+  map007Elite.position = new Vector3(-18, 2.1, 24);
+  map007Elite.billboardMode = 7;
+  map007Elite.material = assetMaterial(scene, "cryo-beast-material", map007Asset.elite, 0.74);
+  map007Elite.setEnabled(false);
+  const terrorRift = MeshBuilder.CreatePlane("glacial-terror-rift", { width: 2.65, height: 2.65 }, scene);
+  terrorRift.position = new Vector3(MAP007_TERROR_RIFT.x, 1.4, MAP007_TERROR_RIFT.z);
+  terrorRift.billboardMode = 7;
+  terrorRift.material = assetMaterial(scene, "glacial-terror-rift-material", map007Asset.crystal, 0.84);
+  terrorRift.setEnabled(isMap007);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -438,6 +470,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map006Memory = initialMap006Encounter();
   let map006HarvestedMagnetite = 0;
   let map006DefeatedRays = 0;
+  let map007Memory = initialMap007Encounter();
+  let map007HarvestedCrystals = 0;
+  let map007DefeatedWeavers = 0;
   let enemySpeedMultiplier = 1;
   let playerSpeedMultiplier = 1;
   let pendingMapInteraction = false;
@@ -447,6 +482,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map004Warning: string | undefined;
   let map005Warning: string | undefined;
   let map006Warning: string | undefined;
+  let map007Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -483,6 +519,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap006) {
             map006HarvestedMagnetite += 1;
             options.onReward?.({ definitionId: "material-006", displayName: "Magnetite Sand", eventId: `map006-magnetite-sand-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap007) {
+            map007HarvestedCrystals += 1;
+            options.onReward?.({ definitionId: "material-007", displayName: "Cryo Crystal", eventId: `map007-cryo-crystal-${resource.name}`, provenanceType: "harvest" });
           }
         }
       });
@@ -545,6 +585,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap004) map004DefeatedGnats += 1;
           if (isMap005) map005DefeatedSlimes += 1;
           if (isMap006) map006DefeatedRays += 1;
+          if (isMap007) map007DefeatedWeavers += 1;
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
@@ -675,7 +716,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map006Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
     }
 
-    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : lighting.phase === "night";
+    if (isMap007) {
+      const encounter = resolveMap007Encounter(map007Memory, { x: player.position.x, z: player.position.z, health, harvestedCrystals: map007HarvestedCrystals, defeatedWeavers: map007DefeatedWeavers, interacted: pendingMapInteraction, now: performance.now() });
+      map007Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map007Warning = encounter.warning;
+      if (encounter.coldDamagePerSecond > 0) health = Math.max(0, health - encounter.coldDamagePerSecond * dt);
+      map007Elite.setEnabled(encounter.activateElite);
+      if (encounter.spawnWeavers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnWeavers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Frostbite Weaver · Blizzard" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP007_STEAM_VENT.x + 1.5, 0, MAP007_STEAM_VENT.z + 1.2); }
+      scoutFrost.setEnabled(isMap007 && (Vector3.Distance(player.position, scoutFrost.position) < 12 || encounter.sheltered));
+      const blizzardPulse = encounter.blizzardActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
+      terrorRift.scaling.setAll(encounter.memory.state === "boss-telegraph" ? blizzardPulse + 0.12 : blizzardPulse);
+      map007Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : isMap007 ? map007Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -687,10 +743,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0),
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0) + (isMap007 && map007Elite.isEnabled() ? 1 : 0) + (isMap007 && bossActive ? 1 : 0),
         phase: lighting.phase,
-        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : "exploring",
-        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
+        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : "exploring",
+        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();

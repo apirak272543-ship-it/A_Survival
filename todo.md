@@ -120,3 +120,4 @@
 - [x] ยกระดับ MAP_004 Crystalline Spires ด้วย Pollinations asset pack, deterministic Reflection Laser Field, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_005 Corrosive Acid Swamps ด้วย Pollinations asset pack, deterministic Acid Drizzle/shelter loop, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_006 Magnetic Dunes ด้วย Pollinations asset pack, deterministic Magnetic Storm/safe-zone loop, elite/boss telegraph และ reward provenance โดยไม่แก้ inventory/equipment จริง
+- [x] ยกระดับ MAP_007 Frozen Obsidian Crevasses ด้วย Pollinations asset pack, deterministic Blizzard/steam-vent shelter loop, elite/boss telegraph และ reward provenance
