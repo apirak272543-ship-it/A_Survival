@@ -119,3 +119,4 @@
 - [x] เพิ่ม Vault sheet ที่ action contract บล็อก quarantined instance และบันทึก local equipment state โดยไม่แก้ provenance
 - [x] ยกระดับ MAP_004 Crystalline Spires ด้วย Pollinations asset pack, deterministic Reflection Laser Field, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_005 Corrosive Acid Swamps ด้วย Pollinations asset pack, deterministic Acid Drizzle/shelter loop, elite/boss telegraph และ reward provenance
+- [x] ยกระดับ MAP_006 Magnetic Dunes ด้วย Pollinations asset pack, deterministic Magnetic Storm/safe-zone loop, elite/boss telegraph และ reward provenance โดยไม่แก้ inventory/equipment จริง
