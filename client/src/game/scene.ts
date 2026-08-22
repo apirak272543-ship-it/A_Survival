@@ -15,6 +15,7 @@ import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
 import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
+import { MAP002_JAX_CAMP, MAP002_PYROCLASTIC_ALTAR, initialMap002Encounter, resolveMap002Encounter } from "@/game/map002/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
 export type GameSnapshot = {
@@ -80,6 +81,14 @@ const map001Asset = {
   companion: "/manus-storage/arcane-cyber-fox_d0832d7b.jpg",
 };
 
+const map002Asset = {
+  jax: "/manus-storage/scavenger-jax_5e8c7328.jpg",
+  crawler: "/manus-storage/ash-crawler-v2_63661c7a.jpg",
+  elite: "/manus-storage/obsidian-shell-golem_6ec8be90.jpg",
+  boss: "/manus-storage/pyroclastic-behemoth_2fdfe2eb.jpg",
+  ore: "/manus-storage/ember-ore-v2_8fe7e31d.jpg",
+};
+
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
   const result = new StandardMaterial(name, scene);
   const texture = new Texture(url, scene, true, false);
@@ -100,6 +109,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const regularMonster = mapDefinition?.content.monsters.find(monster => monster.role === "regular")?.name ?? "Glass Stalker";
   const eventBoss = mapDefinition?.eventBossName ?? mapDefinition?.content.monsters.find(monster => monster.role === "event-boss")?.name ?? "Void Reaper";
   const isMap001 = options.mapId === "obsidian-frontier";
+  const isMap002 = options.mapId === "map-002-ashen-obsidian-plains";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
@@ -198,7 +208,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   petArt.billboardMode = 7;
   petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
 
-  const enemyMaterial = assetMaterial(scene, "glass-stalker-material", map001Asset.stalker, 0.62);
+  const enemyMaterial = isMap002 ? assetMaterial(scene, "ash-crawler-material", map002Asset.crawler, 0.62) : assetMaterial(scene, "glass-stalker-material", map001Asset.stalker, 0.62);
   const enemies = Array.from({ length: 7 }, (_, index) => {
     const enemy = MeshBuilder.CreatePlane(`${regularMonster.toLowerCase().replaceAll(" ", "-")}-${index}`, { width: 2.5, height: 2.5 }, scene);
     const angle = (Math.PI * 2 * index) / 7;
@@ -206,13 +216,14 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     enemy.billboardMode = 7;
     enemy.material = enemyMaterial;
     enemy.metadata = { health: 30, alive: true, encounterName: regularMonster };
+    if (isMap002 && index > 4) enemy.setEnabled(false);
     return enemy;
   });
 
-  const resourceMaterial = assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
+  const resourceMaterial = isMap002 ? assetMaterial(scene, "ember-ore-material", map002Asset.ore, 0.82) : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`ley-crystal-${index}`, { width: 1.35, height: 1.35 }, scene);
+    const resource = MeshBuilder.CreatePlane(`${isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.billboardMode = 7;
     resource.material = resourceMaterial;
@@ -222,7 +233,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const boss = MeshBuilder.CreatePlane(`${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, { width: 5.8, height: 5.8 }, scene);
   boss.position = new Vector3(0, 2.8, -18);
   boss.billboardMode = 7;
-  boss.material = assetMaterial(scene, "void-reaper-boss-material", map001Asset.boss, 0.92);
+  boss.material = isMap002 ? assetMaterial(scene, "pyroclastic-behemoth-material", map002Asset.boss, 0.92) : assetMaterial(scene, "void-reaper-boss-material", map001Asset.boss, 0.92);
   boss.setEnabled(false);
 
   const koral = MeshBuilder.CreatePlane("commander-koral-safe-zone", { width: 2.2, height: 2.2 }, scene);
@@ -250,6 +261,24 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   distressPod.material = assetMaterial(scene, "frontier-alloy-distress-marker", map001Asset.alloy, 0.52);
   distressPod.setEnabled(isMap001);
 
+  const jax = MeshBuilder.CreatePlane("scavenger-jax-camp", { width: 2.8, height: 2.8 }, scene);
+  jax.position = new Vector3(MAP002_JAX_CAMP.x, 1.4, MAP002_JAX_CAMP.z);
+  jax.billboardMode = 7;
+  jax.material = assetMaterial(scene, "scavenger-jax-material", map002Asset.jax, 0.5);
+  jax.setEnabled(isMap002);
+
+  const map002Elite = MeshBuilder.CreatePlane("obsidian-shell-golem-elite", { width: 4.3, height: 4.3 }, scene);
+  map002Elite.position = new Vector3(25, 2.1, 5);
+  map002Elite.billboardMode = 7;
+  map002Elite.material = assetMaterial(scene, "obsidian-shell-golem-material", map002Asset.elite, 0.68);
+  map002Elite.setEnabled(false);
+
+  const pyroclasticAltar = MeshBuilder.CreatePlane("pyroclastic-altar", { width: 2.6, height: 2.6 }, scene);
+  pyroclasticAltar.position = new Vector3(MAP002_PYROCLASTIC_ALTAR.x, 1.35, MAP002_PYROCLASTIC_ALTAR.z);
+  pyroclasticAltar.billboardMode = 7;
+  pyroclasticAltar.material = assetMaterial(scene, "pyroclastic-altar-material", map002Asset.ore, 0.72);
+  pyroclasticAltar.setEnabled(isMap002);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -258,8 +287,12 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let lastEmit = 0;
   let lastDamage = 0;
   let map001Memory = initialMap001Encounter();
+  let map002Memory = initialMap002Encounter();
+  let map002HarvestedResources = 0;
+  let map002DefeatedAshCrawlers = 0;
   let pendingMapInteraction = false;
   let map001Warning: string | undefined;
+  let map002Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -276,6 +309,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           collected += 1;
           if (isMap001) {
             options.onReward?.({ definitionId: "material-003", displayName: "Ley Crystal", eventId: `map001-ley-crystal-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap002) {
+            map002HarvestedResources += 1;
+            options.onReward?.({ definitionId: "material-007", displayName: "Ember Ore", eventId: `map002-ember-ore-${resource.name}`, provenanceType: "harvest" });
           }
         }
       });
@@ -332,6 +369,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           enemy.metadata.alive = false;
           enemy.setEnabled(false);
           collected += 2;
+          if (isMap002) map002DefeatedAshCrawlers += 1;
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
@@ -371,7 +409,29 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       distressPod.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 150) * 0.18);
     }
 
-    const bossActive = isMap001 ? map001Memory.state === "boss-active" : lighting.phase === "night";
+    if (isMap002) {
+      const encounter = resolveMap002Encounter(map002Memory, { x: player.position.x, z: player.position.z, health, harvestedResources: map002HarvestedResources, defeatedAshCrawlers: map002DefeatedAshCrawlers, interacted: pendingMapInteraction, now: performance.now() });
+      map002Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map002Warning = encounter.warning;
+      map002Elite.setEnabled(encounter.activateElite);
+      if (encounter.spawnAshCrawlers > 0) {
+        enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnAshCrawlers).forEach((enemy, index) => {
+          enemy.setEnabled(true);
+          enemy.metadata = { health: 36, alive: true, encounterName: "Ash Crawler · Ash Storm" };
+          enemy.position = new Vector3(8 + index * 2.2, 1.25, 9 - index * 2);
+        });
+      }
+      if (encounter.event === "safe-reset") {
+        health = 100;
+        player.position.set(MAP002_JAX_CAMP.x + 1.6, 0, MAP002_JAX_CAMP.z + 1.2);
+      }
+      const altarPulse = encounter.stormActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 170) * 0.15 : 1;
+      pyroclasticAltar.scaling.setAll(altarPulse);
+      map002Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 240) * 0.07);
+    }
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -383,10 +443,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0),
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0),
         phase: lighting.phase,
-        mapState: isMap001 ? map001Memory.state : "exploring",
-      warning: isMap001 ? map001Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
+        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : "exploring",
+        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();
