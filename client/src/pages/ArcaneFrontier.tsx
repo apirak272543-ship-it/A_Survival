@@ -51,8 +51,9 @@ import {
 import type { GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
+import { resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 
-type Screen = "landing" | "identity" | "lobby" | "maps" | "home" | "game";
+type Screen = DirectRouteScreen;
 type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
 const SCREEN_HINTS: Partial<Record<Screen, { topic: HelpTopic; text: string }>> = {
   identity: { topic: "identity", text: "Player ID ไม่ใช่รหัสผ่าน · เซฟเริ่มบนอุปกรณ์นี้ทันที" },
@@ -63,14 +64,12 @@ const SCREEN_HINTS: Partial<Record<Screen, { topic: HelpTopic; text: string }>> 
 
 function getInitialScreen(): Screen {
   if (typeof window === "undefined") return "landing";
-  const requested = new URLSearchParams(window.location.search).get("demo");
-  return requested === "lobby" || requested === "maps" || requested === "home" || requested === "game" || requested === "identity" ? requested : "landing";
+  return resolveDirectRoute(window.location.search);
 }
 
 function getInitialMapId() {
   if (typeof window === "undefined") return "obsidian-frontier";
-  const requestedMap = new URLSearchParams(window.location.search).get("map");
-  return requestedMap && MAP_REGISTRY.some(map => map.id === requestedMap) ? requestedMap : "obsidian-frontier";
+  return resolveDirectMapId(window.location.search, MAP_REGISTRY.map(map => map.id));
 }
 
 function getIntegrityDemoEnabled() {
@@ -322,10 +321,19 @@ export default function ArcaneFrontier() {
     setTransition({ destination, mapId: options?.mapId, title, accent, progress: 0, phase: "กำลังปรับเส้นทางพลังงาน" });
     const delay = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
     void (async () => {
+      let resolvedDestination = destination;
+      let resolvedMapId = options?.mapId;
       if (map) {
         try {
-          await prepareMapModule(map, update => setTransition(current => current ? { ...current, progress: update.progress, phase: update.phase, cached: update.cached, offline: update.offline } : current));
-          setCachedMapIds(current => new Set(Array.from(current).concat(map.id)));
+          const result = await prepareMapModule(map, update => setTransition(current => current ? { ...current, progress: update.progress, phase: update.phase, cached: update.cached, offline: update.offline } : current));
+          if (result.ready) {
+            setCachedMapIds(current => new Set(Array.from(current).concat(map.id)));
+          } else {
+            resolvedDestination = "maps";
+            resolvedMapId = undefined;
+            setTransition(current => current ? { ...current, destination: "maps", mapId: undefined, title: "Map Observatory", accent: "#00f3ff", progress: 82, phase: "ออฟไลน์: เลือกแผนที่ที่ดาวน์โหลดแล้ว", cached: false, offline: true } : current);
+            setToast("แผนที่นี้ยังไม่ได้ดาวน์โหลด · นำคุณไปยังแผนที่ที่พร้อมเล่นออฟไลน์");
+          }
         } catch {
           setTransition(current => current ? { ...current, progress: 82, phase: "ใช้โมดูลที่มีในเครื่อง", offline: navigator.onLine === false } : current);
         }
@@ -338,8 +346,8 @@ export default function ArcaneFrontier() {
       await delay(180);
       setTransition(current => current ? { ...current, progress: 100, phase: "พร้อมเดินทาง" } : current);
       await delay(260);
-      if (options?.mapId) setSelectedMapId(options.mapId);
-      setScreen(destination);
+      if (resolvedMapId) setSelectedMapId(resolvedMapId);
+      setScreen(resolvedDestination);
       setTransition(null);
     })();
   }, []);

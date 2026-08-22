@@ -104,10 +104,11 @@
 - [ ] ผูก loading progress กับการเตรียม map/module/cache จริง และแสดง biome transition effects ที่ต่างกันอย่างชัดเจน
 - [ ] เพิ่มการทดสอบและเอกสารยืนยันว่าแต่ละ map prototype เปิดเล่นด้วย content identity ของตน ไม่ใช่เพียง HUD/key art overlay
 - [ ] ทำ loading variants แยกตามปลายทาง/biome/home/lobby พร้อม motion และ visual treatment เฉพาะ ไม่ใช้ shell เดียวที่ต่างเพียง accent/text
-- [ ] ครอบคลุม direct route/query entry ด้วย loading pipeline เดียวกัน หรือบันทึกขอบเขตของ entry ที่ตั้งใจข้าม loading gate ให้ชัดเจน
+- [x] ครอบคลุม direct route/query entry ด้วย loading pipeline เดียวกัน หรือบันทึกขอบเขตของ entry ที่ตั้งใจข้าม loading gate ให้ชัดเจน
 - [ ] เพิ่มการทดสอบ/เอกสารเส้นทางหลักที่ยืนยันว่ามี loading gate แม้เป็น cached path และใช้ destination-themed presentation
 - [x] เพิ่ม Field Guide และ first-run contextual hints สำหรับ Player ID, expedition, Home, companion, cache/offline และ provenance integrity
 - [x] เพิ่ม integrity verdict, quarantine banner และ recovery messaging ที่กักเฉพาะ item instance ผิดปกติ
 - [x] บันทึก integrity event อย่างสม่ำเสมอเมื่อ local/runtime scan พบ duplicate instance, missing provenance หรือ invalid inventory shape
 - [ ] บังคับ quarantine ระดับ item instance กับ action equip/use/trade/dismantle และ presentation ใน inventory แทนการเตือนอย่างเดียว
 - [x] ปรับ sync/save flow ให้แยก safe inventory จาก suspect items หรือ persist quarantine ต่อ instance แทนการปฏิเสธ payload ทั้งชุด
+- [x] ปรับ direct map route ให้ fallback ไปหน้า Maps เมื่อออฟไลน์และ map module ยังไม่เคย cache โดยคง loading gate และ Thai recovery message

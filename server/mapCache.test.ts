@@ -45,12 +45,23 @@ describe("map cache preparation", () => {
     expect(second).toContain("ยืนยัน key art จาก cache");
   });
 
-  it("keeps map metadata usable offline without requesting a missing key art", async () => {
+  it("does not create a new map module offline when it was never cached", async () => {
     installCacheHarness(false);
     const phases: string[] = [];
     const result = await prepareMapModule(MAP_REGISTRY[1]!, update => phases.push(update.phase));
     expect(result.offline).toBe(true);
-    expect(phases).toContain("ออฟไลน์: ใช้ metadata ที่มี");
+    expect(result.ready).toBe(false);
+    expect(phases).toContain("ออฟไลน์: แผนที่ยังไม่พร้อม");
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("opens a previously cached map offline without fetching", async () => {
+    installCacheHarness(true);
+    const map = MAP_REGISTRY[2]!;
+    await prepareMapModule(map);
+    Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true });
+    const result = await prepareMapModule(map);
+    expect(result).toMatchObject({ cached: true, offline: true, ready: true });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });
