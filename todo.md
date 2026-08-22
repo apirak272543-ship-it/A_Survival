@@ -122,3 +122,4 @@
 - [x] ยกระดับ MAP_006 Magnetic Dunes ด้วย Pollinations asset pack, deterministic Magnetic Storm/safe-zone loop, elite/boss telegraph และ reward provenance โดยไม่แก้ inventory/equipment จริง
 - [x] ยกระดับ MAP_007 Frozen Obsidian Crevasses ด้วย Pollinations asset pack, deterministic Blizzard/steam-vent shelter loop, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_008 Ancient Obsidian Ruins ด้วย Pollinations asset pack, deterministic Defense Sweep/Rune Terminal shelter loop, elite/boss telegraph และ reward provenance
+- [x] ยกระดับ MAP_009 Verdant Alien Rainforest ด้วย Pollinations asset pack, deterministic Toxic Downpour/canopy shelter loop, elite/boss telegraph และ reward provenance

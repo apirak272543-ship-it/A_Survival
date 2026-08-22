@@ -22,6 +22,7 @@ import { MAP005_HYDRA_NEST, MAP005_VANE_SHELTER, initialMap005Encounter, resolve
 import { MAP006_COLOSSUS_CORE, MAP006_STABILIZER, initialMap006Encounter, resolveMap006Encounter } from "@/game/map006/encounter";
 import { MAP007_STEAM_VENT, MAP007_TERROR_RIFT, initialMap007Encounter, resolveMap007Encounter } from "@/game/map007/encounter";
 import { MAP008_MATRIX_CORE, MAP008_RUNE_TERMINAL, initialMap008Encounter, resolveMap008Encounter } from "@/game/map008/encounter";
+import { MAP009_CANOPY_HAVEN, MAP009_HIVE_ROOT, initialMap009Encounter, resolveMap009Encounter } from "@/game/map009/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
 export type GameSnapshot = {
@@ -143,6 +144,14 @@ const map008Asset = {
   relic: "/manus-storage/ancient-relic_4bed6a8a.jpg",
 };
 
+const map009Asset = {
+  iris: "/manus-storage/botanist-iris_6ee1f067.jpg",
+  stalker: "/manus-storage/vine-stalker_5d03728e.jpg",
+  elite: "/manus-storage/thornback-behemoth_1319f41f.jpg",
+  boss: "/manus-storage/verdant-hive-mind_f4e78c03.jpg",
+  bloom: "/manus-storage/alien-bloom_eb6b9201.jpg",
+};
+
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
   const result = new StandardMaterial(name, scene);
   const texture = new Texture(url, scene, true, false);
@@ -170,6 +179,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap006 = options.mapId === "map-006-magnetic-dunes";
   const isMap007 = options.mapId === "map-007-frozen-obsidian-crevasses";
   const isMap008 = options.mapId === "map-008-ancient-obsidian-ruins";
+  const isMap009 = options.mapId === "map-009-overgrown-obsidian-jungle";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
@@ -268,7 +278,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   petArt.billboardMode = 7;
   petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
 
-  const enemyMaterial = isMap008
+  const enemyMaterial = isMap009
+    ? assetMaterial(scene, "vine-stalker-material", map009Asset.stalker, 0.74)
+    : isMap008
     ? assetMaterial(scene, "sentinel-drone-material", map008Asset.drone, 0.74)
     : isMap007
     ? assetMaterial(scene, "frostbite-weaver-material", map007Asset.weaver, 0.72)
@@ -290,11 +302,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     enemy.billboardMode = 7;
     enemy.material = enemyMaterial;
     enemy.metadata = { health: 30, alive: true, encounterName: regularMonster };
-    if ((isMap002 || isMap006 || isMap007 || isMap008) && index > 4) enemy.setEnabled(false);
+    if ((isMap002 || isMap006 || isMap007 || isMap008 || isMap009) && index > 4) enemy.setEnabled(false);
     return enemy;
   });
 
-  const resourceMaterial = isMap008
+  const resourceMaterial = isMap009
+    ? assetMaterial(scene, "alien-bloom-material", map009Asset.bloom, 0.86)
+    : isMap008
     ? assetMaterial(scene, "ancient-relic-material", map008Asset.relic, 0.86)
     : isMap007
     ? assetMaterial(scene, "cryo-crystal-material", map007Asset.crystal, 0.88)
@@ -311,7 +325,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`${isMap008 ? "ancient-relic" : isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
+    const resource = MeshBuilder.CreatePlane(`${isMap009 ? "alien-bloom" : isMap008 ? "ancient-relic" : isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.billboardMode = 7;
     resource.material = resourceMaterial;
@@ -321,7 +335,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const boss = MeshBuilder.CreatePlane(`${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, { width: 5.8, height: 5.8 }, scene);
   boss.position = new Vector3(0, 2.8, -18);
   boss.billboardMode = 7;
-  boss.material = isMap008
+  boss.material = isMap009
+    ? assetMaterial(scene, "verdant-hive-mind-material", map009Asset.boss, 0.98)
+    : isMap008
     ? assetMaterial(scene, "matrix-overlord-material", map008Asset.boss, 0.98)
     : isMap007
     ? assetMaterial(scene, "glacial-terror-material", map007Asset.boss, 0.97)
@@ -479,6 +495,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   matrixCore.material = assetMaterial(scene, "matrix-core-material", map008Asset.relic, 0.84);
   matrixCore.setEnabled(isMap008);
 
+  const iris = MeshBuilder.CreatePlane("botanist-iris-canopy-haven", { width: 2.8, height: 2.8 }, scene);
+  iris.position = new Vector3(MAP009_CANOPY_HAVEN.x, 1.4, MAP009_CANOPY_HAVEN.z);
+  iris.billboardMode = 7;
+  iris.material = assetMaterial(scene, "botanist-iris-material", map009Asset.iris, 0.6);
+  iris.setEnabled(isMap009);
+  const map009Elite = MeshBuilder.CreatePlane("thornback-behemoth-elite", { width: 4.3, height: 4.3 }, scene);
+  map009Elite.position = new Vector3(-18, 2.1, 24);
+  map009Elite.billboardMode = 7;
+  map009Elite.material = assetMaterial(scene, "thornback-behemoth-material", map009Asset.elite, 0.74);
+  map009Elite.setEnabled(false);
+  const hiveRoot = MeshBuilder.CreatePlane("verdant-hive-root", { width: 2.65, height: 2.65 }, scene);
+  hiveRoot.position = new Vector3(MAP009_HIVE_ROOT.x, 1.4, MAP009_HIVE_ROOT.z);
+  hiveRoot.billboardMode = 7;
+  hiveRoot.material = assetMaterial(scene, "verdant-hive-root-material", map009Asset.bloom, 0.84);
+  hiveRoot.setEnabled(isMap009);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -508,6 +540,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map008Memory = initialMap008Encounter();
   let map008HarvestedRelics = 0;
   let map008DefeatedDrones = 0;
+  let map009Memory = initialMap009Encounter();
+  let map009HarvestedBlooms = 0;
+  let map009DefeatedStalkers = 0;
   let enemySpeedMultiplier = 1;
   let playerSpeedMultiplier = 1;
   let pendingMapInteraction = false;
@@ -519,6 +554,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map006Warning: string | undefined;
   let map007Warning: string | undefined;
   let map008Warning: string | undefined;
+  let map009Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -563,6 +599,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap008) {
             map008HarvestedRelics += 1;
             options.onReward?.({ definitionId: "material-008", displayName: "Ancient Relic", eventId: `map008-ancient-relic-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap009) {
+            map009HarvestedBlooms += 1;
+            options.onReward?.({ definitionId: "material-009", displayName: "Alien Bloom", eventId: `map009-alien-bloom-${resource.name}`, provenanceType: "harvest" });
           }
         }
       });
@@ -627,6 +667,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap006) map006DefeatedRays += 1;
           if (isMap007) map007DefeatedWeavers += 1;
           if (isMap008) map008DefeatedDrones += 1;
+          if (isMap009) map009DefeatedStalkers += 1;
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
@@ -787,7 +828,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map008Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
     }
 
-    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : isMap007 ? map007Memory.state === "boss-active" : isMap008 ? map008Memory.state === "boss-active" : lighting.phase === "night";
+    if (isMap009) {
+      const encounter = resolveMap009Encounter(map009Memory, { x: player.position.x, z: player.position.z, health, harvestedBlooms: map009HarvestedBlooms, defeatedStalkers: map009DefeatedStalkers, interacted: pendingMapInteraction, now: performance.now() });
+      map009Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map009Warning = encounter.warning;
+      if (encounter.toxinDamagePerSecond > 0) health = Math.max(0, health - encounter.toxinDamagePerSecond * dt);
+      map009Elite.setEnabled(encounter.activateElite);
+      if (encounter.spawnStalkers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnStalkers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Vine Stalker · Toxic Downpour" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP009_CANOPY_HAVEN.x + 1.5, 0, MAP009_CANOPY_HAVEN.z + 1.2); }
+      iris.setEnabled(isMap009 && (Vector3.Distance(player.position, iris.position) < 12 || encounter.sheltered));
+      const downpourPulse = encounter.downpourActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
+      hiveRoot.scaling.setAll(encounter.memory.state === "boss-telegraph" ? downpourPulse + 0.12 : downpourPulse);
+      map009Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : isMap007 ? map007Memory.state === "boss-active" : isMap008 ? map008Memory.state === "boss-active" : isMap009 ? map009Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -799,10 +855,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0) + (isMap007 && map007Elite.isEnabled() ? 1 : 0) + (isMap007 && bossActive ? 1 : 0) + (isMap008 && map008Elite.isEnabled() ? 1 : 0) + (isMap008 && bossActive ? 1 : 0),
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0) + (isMap007 && map007Elite.isEnabled() ? 1 : 0) + (isMap007 && bossActive ? 1 : 0) + (isMap008 && map008Elite.isEnabled() ? 1 : 0) + (isMap008 && bossActive ? 1 : 0) + (isMap009 && map009Elite.isEnabled() ? 1 : 0) + (isMap009 && bossActive ? 1 : 0),
         phase: lighting.phase,
-        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : isMap008 ? map008Memory.state : "exploring",
-        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : isMap008 ? map008Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
+        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : isMap008 ? map008Memory.state : isMap009 ? map009Memory.state : "exploring",
+        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : isMap008 ? map008Warning : isMap009 ? map009Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();
