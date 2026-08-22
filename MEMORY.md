@@ -1,3 +1,22 @@
-# A_Survival — บันทึกการเริ่มต้น
+# Working Memory
 
-Repository `apirak272543-ship-it/A_Survival` ถูกสร้างเป็น private repository แยกจาก AP Service เมื่อวันที่ 21 สิงหาคม 2026 ผู้ใช้กำหนดให้รุ่นแรกเป็น Local LAN Multiplayer ผ่าน Wi‑Fi เดียวกัน พร้อม Local Player Profile แยกต่ออุปกรณ์ และ UI ที่ต้องยืนยันการเชื่อมต่อจากทั้งสองฝ่ายก่อนปรับข้อมูลเพื่อเข้าเล่นร่วมกัน
+## Decisions made
+
+- The application is a browser-first, PWA-ready landscape mobile game that may later be opened inside an APK wrapper.
+- Visual direction comes from Gemini's **Ethereal Arcane-Cyber / Bioluminescent High-Fantasy** blueprint: deep void base, luminous cyan, arcane violet, hazard amber and corrupted crimson.
+- Camera target is a 45° isometric top-down MOBA view with 50° FOV and mobile safe margins.
+- The entry flow is Player ID without password or signup, then Lobby, home world or map selection, followed by an on-demand scene transition.
+- The prototype distinguishes the personal home world from expedition worlds and begins with one playable expedition biome.
+- User asked for 1–1.5 km map scale. The implementation represents a 1,200 m nominal world and uses modular/sector logic to keep the demo suitable for mobile web.
+- The player can equip any weapon; weapon category determines the trade-offs and status effects rather than a character class.
+- Characters, weapons, item art and UI must follow an anime fantasy-sci-fi language, with high-impact VFX and no generic geometric 3D character presentation. Gemini API is responsible for visual and UI design decisions.
+- The in-game settings surface must include graphics, effect, audio, reduced-motion and touch-control preferences.
+- Players may own multiple items and multiple instances of the same definition. Weapons/equipment do not stack: each instance has quantity one, its own ID, provenance and enhancement record. Anti-cheat must flag impossible stacking/provenance rather than flagging legitimate ownership of multiple instances.
+
+## Security note
+
+An ID-only identity system cannot by itself prevent another person from entering a known ID. Device binding and server-side provenance validation will be built for the prototype, but a production game that protects valuable inventory must add a recovery/ownership mechanism and server-authoritative validation.
+
+## Visual blueprint summary from Gemini
+
+Gemini proposed a holographic map carousel, a centered 3D character Lobby with side drawers, a left virtual stick, right MOBA action cluster, circular minimap and center-bottom quick slots. The art language uses obsidian surfaces, neon ley-line conduits, bioluminescent fog, xenobotanical flora, pulse runes and distorted energy shields.
