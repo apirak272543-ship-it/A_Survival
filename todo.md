@@ -112,3 +112,4 @@
 - [ ] บังคับ quarantine ระดับ item instance กับ action equip/use/trade/dismantle และ presentation ใน inventory แทนการเตือนอย่างเดียว
 - [x] ปรับ sync/save flow ให้แยก safe inventory จาก suspect items หรือ persist quarantine ต่อ instance แทนการปฏิเสธ payload ทั้งชุด
 - [x] ปรับ direct map route ให้ fallback ไปหน้า Maps เมื่อออฟไลน์และ map module ยังไม่เคย cache โดยคง loading gate และ Thai recovery message
+- [x] เพิ่ม data-driven fog, lighting, terrain landmark และ ambient hazard signal ให้ MAP_002–MAP_010 โดยไม่อ้างว่าเป็น monster action set สมบูรณ์

@@ -13,6 +13,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
+import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
@@ -99,6 +100,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const regularMonster = mapDefinition?.content.monsters.find(monster => monster.role === "regular")?.name ?? "Glass Stalker";
   const eventBoss = mapDefinition?.eventBossName ?? mapDefinition?.content.monsters.find(monster => monster.role === "event-boss")?.name ?? "Void Reaper";
   const isMap001 = options.mapId === "obsidian-frontier";
+  const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
   const camera = new ArcRotateCamera("arcane-isometric-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
@@ -112,10 +114,18 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   camera.inputs.clear();
 
   const skyLight = new HemisphericLight("arcane-sky", new Vector3(0.3, 1, 0.2), scene);
-  skyLight.intensity = 0.88;
+  skyLight.intensity = sceneTreatment ? Math.min(0.9, sceneTreatment.lightIntensity + 0.15) : 0.88;
   const keyLight = new DirectionalLight("arcane-key", new Vector3(-0.6, -1, -0.35), scene);
   keyLight.position = new Vector3(18, 28, 12);
-  keyLight.intensity = 1.25;
+  keyLight.intensity = sceneTreatment?.lightIntensity ?? 1.25;
+  if (sceneTreatment) {
+    scene.fogMode = Scene.FOGMODE_EXP2;
+    scene.fogColor = Color3.FromHexString(sceneTreatment.fogColor);
+    scene.fogDensity = sceneTreatment.fogDensity * 0.11;
+    scene.clearColor = Color4.FromColor3(Color3.FromHexString(sceneTreatment.skyColor));
+    skyLight.diffuse = Color3.FromHexString(sceneTreatment.lightColor);
+    keyLight.diffuse = Color3.FromHexString(sceneTreatment.lightColor);
+  }
   const glow = new GlowLayer("arcane-glow", scene, { blurKernelSize: 32 });
   glow.intensity = 0.82;
 
@@ -125,6 +135,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     : material(scene, "obsidian-ground", "#101824", 0.1);
   terrainMaterial.alpha = mapDefinition?.keyArt ? 0.28 : 1;
   ground.material = terrainMaterial;
+  if (sceneTreatment) {
+    const terrainVeil = MeshBuilder.CreateGround("biome-terrain-veil", { width: worldRadius * 2.14, height: worldRadius * 2.14 }, scene);
+    terrainVeil.position.y = 0.012;
+    const veilMaterial = material(scene, "biome-terrain-veil-material", sceneTreatment.terrainColor, 0.22);
+    veilMaterial.alpha = 0.42;
+    terrainVeil.material = veilMaterial;
+  }
 
   const gridMaterial = material(scene, "ley-grid", mapAccent, 0.95);
   gridMaterial.alpha = 0.32;
@@ -157,6 +174,14 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     rune.position = pylon.position.add(new Vector3(0, 1.1, 0));
     rune.rotation.x = Math.PI / 2;
     rune.material = runeMaterial;
+  }
+
+  if (sceneTreatment && mapDefinition?.keyArt) {
+    const landmark = MeshBuilder.CreatePlane(`${mapDefinition.id}-landmark-art`, { width: 7.2, height: 5.4 }, scene);
+    landmark.position = new Vector3(-9, 3.1, -23);
+    landmark.billboardMode = 7;
+    landmark.material = assetMaterial(scene, `${mapDefinition.id}-landmark-art-material`, mapDefinition.keyArt, 0.5);
+    landmark.metadata = { sceneIdentity: true, kind: sceneTreatment.landmarkKind, label: sceneTreatment.landmarkLabel };
   }
 
   const player = new TransformNode("anime-survivor", scene);
@@ -316,10 +341,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     });
 
     const lighting = getWorldLighting(options.mapId);
-    const sky = Color3.FromHexString(lighting.sky);
+    const sky = Color3.FromHexString(sceneTreatment?.skyColor ?? lighting.sky);
     scene.clearColor = new Color4(sky.r, sky.g, sky.b, 1);
-    skyLight.diffuse = Color3.FromHexString(lighting.ambient);
-    keyLight.diffuse = Color3.FromHexString(lighting.directional);
+    skyLight.diffuse = Color3.FromHexString(sceneTreatment?.lightColor ?? lighting.ambient);
+    keyLight.diffuse = Color3.FromHexString(sceneTreatment?.lightColor ?? lighting.directional);
     glow.intensity = options.reducedMotion ? 0.45 : 0.65 + lighting.motionIntensity * 0.32;
     if (isMap001) {
       const encounter = resolveMap001Encounter(map001Memory, { x: player.position.x, z: player.position.z, health, phase: lighting.phase, interacted: pendingMapInteraction, now: performance.now() });
@@ -361,7 +386,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0),
         phase: lighting.phase,
         mapState: isMap001 ? map001Memory.state : "exploring",
-        warning: map001Warning,
+      warning: isMap001 ? map001Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();
