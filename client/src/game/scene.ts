@@ -17,6 +17,7 @@ import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
 import { MAP002_JAX_CAMP, MAP002_PYROCLASTIC_ALTAR, initialMap002Encounter, resolveMap002Encounter } from "@/game/map002/encounter";
 import { MAP003_EMPRESS_SHRINE, MAP003_LYRA_CAMP, initialMap003Encounter, resolveMap003Encounter } from "@/game/map003/encounter";
+import { MAP004_ARCHON_DAIS, MAP004_ZEPHYR_CAMP, initialMap004Encounter, resolveMap004Encounter } from "@/game/map004/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
 
 export type GameSnapshot = {
@@ -98,6 +99,14 @@ const map003Asset = {
   crystal: "/manus-storage/glow-crystal_7882072b.jpg",
 };
 
+const map004Asset = {
+  zephyr: "/manus-storage/cartographer-zephyr_0edb606a.jpg",
+  gnat: "/manus-storage/shard-gnat_00c26a5d.jpg",
+  elite: "/manus-storage/prism-golem_716fbfa6.jpg",
+  boss: "/manus-storage/resonance-archon_97fdc4b6.jpg",
+  shard: "/manus-storage/resonance-shard_0bc60214.jpg",
+};
+
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
   const result = new StandardMaterial(name, scene);
   const texture = new Texture(url, scene, true, false);
@@ -120,6 +129,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap001 = options.mapId === "obsidian-frontier";
   const isMap002 = options.mapId === "map-002-ashen-obsidian-plains";
   const isMap003 = options.mapId === "map-003-bioluminescent-caverns";
+  const isMap004 = options.mapId === "map-004-crystalline-spires";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
@@ -218,7 +228,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   petArt.billboardMode = 7;
   petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
 
-  const enemyMaterial = isMap003
+  const enemyMaterial = isMap004
+    ? assetMaterial(scene, "shard-gnat-material", map004Asset.gnat, 0.68)
+    : isMap003
     ? assetMaterial(scene, "glow-spore-beetle-material", map003Asset.beetle, 0.67)
     : isMap002
       ? assetMaterial(scene, "ash-crawler-material", map002Asset.crawler, 0.62)
@@ -234,14 +246,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     return enemy;
   });
 
-  const resourceMaterial = isMap003
+  const resourceMaterial = isMap004
+    ? assetMaterial(scene, "resonance-shard-material", map004Asset.shard, 0.86)
+    : isMap003
     ? assetMaterial(scene, "glow-crystal-material", map003Asset.crystal, 0.85)
     : isMap002
       ? assetMaterial(scene, "ember-ore-material", map002Asset.ore, 0.82)
       : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`${isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
+    const resource = MeshBuilder.CreatePlane(`${isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.billboardMode = 7;
     resource.material = resourceMaterial;
@@ -251,7 +265,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const boss = MeshBuilder.CreatePlane(`${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, { width: 5.8, height: 5.8 }, scene);
   boss.position = new Vector3(0, 2.8, -18);
   boss.billboardMode = 7;
-  boss.material = isMap003
+  boss.material = isMap004
+    ? assetMaterial(scene, "resonance-archon-material", map004Asset.boss, 0.96)
+    : isMap003
     ? assetMaterial(scene, "mycelium-empress-material", map003Asset.boss, 0.95)
     : isMap002
       ? assetMaterial(scene, "pyroclastic-behemoth-material", map002Asset.boss, 0.92)
@@ -319,6 +335,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   myceliumShrine.material = assetMaterial(scene, "mycelium-shrine-material", map003Asset.crystal, 0.8);
   myceliumShrine.setEnabled(isMap003);
 
+  const zephyr = MeshBuilder.CreatePlane("cartographer-zephyr-camp", { width: 2.8, height: 2.8 }, scene);
+  zephyr.position = new Vector3(MAP004_ZEPHYR_CAMP.x, 1.4, MAP004_ZEPHYR_CAMP.z);
+  zephyr.billboardMode = 7;
+  zephyr.material = assetMaterial(scene, "cartographer-zephyr-material", map004Asset.zephyr, 0.58);
+  zephyr.setEnabled(isMap004);
+  const map004Elite = MeshBuilder.CreatePlane("prism-golem-elite", { width: 4.3, height: 4.3 }, scene);
+  map004Elite.position = new Vector3(-18, 2.1, 24);
+  map004Elite.billboardMode = 7;
+  map004Elite.material = assetMaterial(scene, "prism-golem-material", map004Asset.elite, 0.74);
+  map004Elite.setEnabled(false);
+  const resonanceDais = MeshBuilder.CreatePlane("resonance-archon-dais", { width: 2.65, height: 2.65 }, scene);
+  resonanceDais.position = new Vector3(MAP004_ARCHON_DAIS.x, 1.4, MAP004_ARCHON_DAIS.z);
+  resonanceDais.billboardMode = 7;
+  resonanceDais.material = assetMaterial(scene, "resonance-dais-material", map004Asset.shard, 0.82);
+  resonanceDais.setEnabled(isMap004);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -333,11 +365,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map003Memory = initialMap003Encounter();
   let map003HarvestedCrystals = 0;
   let map003DefeatedBeetles = 0;
+  let map004Memory = initialMap004Encounter();
+  let map004HarvestedShards = 0;
+  let map004DefeatedGnats = 0;
   let enemySpeedMultiplier = 1;
+  let playerSpeedMultiplier = 1;
   let pendingMapInteraction = false;
   let map001Warning: string | undefined;
   let map002Warning: string | undefined;
   let map003Warning: string | undefined;
+  let map004Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -363,6 +400,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
             map003HarvestedCrystals += 1;
             options.onReward?.({ definitionId: "material-003", displayName: "Glow Crystal", eventId: `map003-glow-crystal-${resource.name}`, provenanceType: "harvest" });
           }
+          if (isMap004) {
+            map004HarvestedShards += 1;
+            options.onReward?.({ definitionId: "material-003", displayName: "Resonance Shard", eventId: `map004-resonance-shard-${resource.name}`, provenanceType: "harvest" });
+          }
         }
       });
     }
@@ -383,7 +424,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const isMoving = movement.lengthSquared() > 0.01;
     if (isMoving) {
       movement.normalize();
-      const speed = dashPulse > 0 ? 18 : 7.8;
+      const speed = (dashPulse > 0 ? 18 : 7.8) * playerSpeedMultiplier;
       player.position.addInPlace(movement.scale(speed * dt));
       player.position.x = Math.max(-worldRadius, Math.min(worldRadius, player.position.x));
       player.position.z = Math.max(-worldRadius, Math.min(worldRadius, player.position.z));
@@ -420,6 +461,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           collected += 2;
           if (isMap002) map002DefeatedAshCrawlers += 1;
           if (isMap003) map003DefeatedBeetles += 1;
+          if (isMap004) map004DefeatedGnats += 1;
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
@@ -506,7 +548,22 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map003Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 220) * 0.08);
     }
 
-    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : lighting.phase === "night";
+    if (isMap004) {
+      const encounter = resolveMap004Encounter(map004Memory, { x: player.position.x, z: player.position.z, health, harvestedShards: map004HarvestedShards, defeatedGnats: map004DefeatedGnats, interacted: pendingMapInteraction, now: performance.now() });
+      map004Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map004Warning = encounter.warning;
+      playerSpeedMultiplier = encounter.playerSpeedMultiplier;
+      map004Elite.setEnabled(encounter.activateElite);
+      if (encounter.laserDamagePerSecond > 0) health = Math.max(0, health - encounter.laserDamagePerSecond * dt);
+      if (encounter.spawnGnats > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnGnats).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 38, alive: true, encounterName: "Shard Gnat · Reflection Field" }; enemy.position = new Vector3(13 + index * 2.4, 1.25, 10 - index * 2); });
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP004_ZEPHYR_CAMP.x + 1.5, 0, MAP004_ZEPHYR_CAMP.z + 1.2); }
+      const laserPulse = encounter.laserActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 135) * 0.16 : 1;
+      resonanceDais.scaling.setAll(laserPulse);
+      map004Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 210) * 0.08);
+    } else playerSpeedMultiplier = 1;
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -518,10 +575,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0),
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0),
         phase: lighting.phase,
-        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : "exploring",
-        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
+        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : "exploring",
+        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();

@@ -117,3 +117,4 @@
 - [x] ยกระดับ MAP_002 Ashen Obsidian Plains ด้วย Pollinations asset pack, deterministic Ash Storm encounter, elite/boss telegraph และ reward provenance
 - [x] ยกระดับ MAP_003 Bioluminescent Caverns ด้วย Pollinations asset pack, deterministic Spore Bloom encounter, elite/boss telegraph และ reward provenance
 - [x] เพิ่ม Vault sheet ที่ action contract บล็อก quarantined instance และบันทึก local equipment state โดยไม่แก้ provenance
+- [x] ยกระดับ MAP_004 Crystalline Spires ด้วย Pollinations asset pack, deterministic Reflection Laser Field, elite/boss telegraph และ reward provenance
