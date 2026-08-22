@@ -115,3 +115,4 @@
 - [x] เพิ่ม data-driven fog, lighting, terrain landmark และ ambient hazard signal ให้ MAP_002–MAP_010 โดยไม่อ้างว่าเป็น monster action set สมบูรณ์
 - [x] เพิ่ม LoadingGate variants ตาม Lobby, Home, Map Observatory และ biome พร้อม cache/offline/reduced-motion presentation ที่ตรวจได้
 - [x] ยกระดับ MAP_002 Ashen Obsidian Plains ด้วย Pollinations asset pack, deterministic Ash Storm encounter, elite/boss telegraph และ reward provenance
+- [x] ยกระดับ MAP_003 Bioluminescent Caverns ด้วย Pollinations asset pack, deterministic Spore Bloom encounter, elite/boss telegraph และ reward provenance
