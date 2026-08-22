@@ -50,6 +50,25 @@ export const appRouter = router({
       const bundle = await gameDb.getGameProfileBundle(normalizePlayerId(input.playerId));
       return bundle ?? null;
     }),
+    reportIntegrity: publicProcedure.input(z.object({
+      playerId: playerIdSchema,
+      reportId: z.string().min(8).max(256),
+      quarantinedInstanceIds: z.array(z.string().min(1).max(160)).max(100),
+      codes: z.array(z.string().min(1).max(64)).max(16),
+    })).mutation(async ({ input }) => {
+      const playerId = normalizePlayerId(input.playerId);
+      const result = await gameDb.recordIntegrityLog({
+        playerId,
+        severity: "warning",
+        code: "CLIENT_RUNTIME_INTEGRITY_SCAN",
+        details: {
+          reportId: input.reportId,
+          quarantinedInstanceIds: input.quarantinedInstanceIds,
+          codes: input.codes,
+        },
+      });
+      return { accepted: Boolean(result) };
+    }),
     sync: publicProcedure.input(z.object({
       playerId: playerIdSchema,
       payload: z.record(z.string(), z.unknown()),
@@ -68,18 +87,29 @@ export const appRouter = router({
           code: "SYNC_PAYLOAD_INVALID",
           details: { issues: inspection.issues.slice(0, 12) },
         });
-        return { accepted: false as const, issues: inspection.issues, bundle: null };
+        return { accepted: false as const, issues: inspection.issues, quarantinedInstanceIds: inspection.quarantinedInstanceIds, bundle: null };
+      }
+      const payload = inspection.quarantinedInstanceIds.length > 0
+        ? { ...input.payload, inventory: inspection.safeInventory, quarantinedInstanceIds: inspection.quarantinedInstanceIds }
+        : input.payload;
+      if (inspection.quarantinedInstanceIds.length > 0) {
+        await gameDb.recordIntegrityLog({
+          playerId,
+          severity: "warning",
+          code: "SYNC_ITEMS_QUARANTINED",
+          details: { issues: inspection.issues.slice(0, 12), quarantinedInstanceIds: inspection.quarantinedInstanceIds },
+        });
       }
       const bundle = await gameDb.writeGameSave({
         playerId,
-        payload: input.payload,
+        payload,
         checksum: input.checksum,
         clientUpdatedAt: new Date(input.clientUpdatedAt),
         health: input.health,
         currency: input.currency,
         lastMapId: input.lastMapId,
       });
-      return { accepted: Boolean(bundle), issues: [] as string[], bundle: bundle ?? null };
+      return { accepted: Boolean(bundle), issues: inspection.issues, quarantinedInstanceIds: inspection.quarantinedInstanceIds, bundle: bundle ?? null };
     }),
     syncBatch: publicProcedure.input(z.object({
       playerId: playerIdSchema,

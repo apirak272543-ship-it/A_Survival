@@ -3,6 +3,7 @@ import {
   Backpack,
   BellRing,
   Box,
+  CircleHelp,
   ChevronLeft,
   Compass,
   Crosshair,
@@ -19,6 +20,7 @@ import {
   Play,
   Settings2,
   Shield,
+  ShieldAlert,
   Sparkles,
   Sword,
   TimerReset,
@@ -47,9 +49,17 @@ import {
   type LocalGameSession,
 } from "@/game/storage/session";
 import type { GameSnapshot } from "@/game/scene";
+import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
+import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 
 type Screen = "landing" | "identity" | "lobby" | "maps" | "home" | "game";
 type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
+const SCREEN_HINTS: Partial<Record<Screen, { topic: HelpTopic; text: string }>> = {
+  identity: { topic: "identity", text: "Player ID ไม่ใช่รหัสผ่าน · เซฟเริ่มบนอุปกรณ์นี้ทันที" },
+  maps: { topic: "offline", text: "ครั้งแรกเตรียม map module และ key art · รอบถัดไปใช้ cache ได้" },
+  home: { topic: "home", text: "เลือกเมล็ดที่ตรงสีดิน แล้วปลูก/เก็บเกี่ยวได้แม้ออฟไลน์" },
+  game: { topic: "expedition", text: "จอยซ้ายเดิน · ปุ่มขวาโจมตี, dash และเก็บทรัพยากร" },
+};
 
 function getInitialScreen(): Screen {
   if (typeof window === "undefined") return "landing";
@@ -61,6 +71,11 @@ function getInitialMapId() {
   if (typeof window === "undefined") return "obsidian-frontier";
   const requestedMap = new URLSearchParams(window.location.search).get("map");
   return requestedMap && MAP_REGISTRY.some(map => map.id === requestedMap) ? requestedMap : "obsidian-frontier";
+}
+
+function getIntegrityDemoEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("integrity") === "demo";
 }
 
 function dispatchControl(detail: unknown) {
@@ -132,15 +147,41 @@ function SettingsSheet({ settings, setSettings, close }: { settings: GameSetting
   </section></div>;
 }
 
+function HelpSheet({ topic, setTopic, close }: { topic: HelpTopic; setTopic: (topic: HelpTopic) => void; close: () => void }) {
+  const article = getHelpArticle(topic);
+  return <div className="settings-scrim help-scrim" onPointerDown={close}><section className="settings-sheet help-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="คู่มือ Arcane Frontier">
+    <header><div><p className="eyebrow">Frontier field guide</p><h3>คู่มือการเอาชีวิตรอด</h3></div><button className="icon-button" onClick={close} aria-label="ปิดคู่มือ"><X size={18} /></button></header>
+    <div className="help-layout"><nav aria-label="หัวข้อคู่มือ">{HELP_ARTICLES.map(item => <button key={item.id} className={item.id === topic ? "active" : ""} onClick={() => setTopic(item.id)}>{item.eyebrow}</button>)}</nav><article><p className="eyebrow">{article.eyebrow}</p><h4>{article.title}</h4><p>{article.body}</p><ul>{article.tips.map(tip => <li key={tip}>{tip}</li>)}</ul></article></div>
+  </section></div>;
+}
+
+function IntegritySheet({ report, syncAttention, close }: { report: IntegrityReport; syncAttention: boolean; close: () => void }) {
+  const quarantined = report.quarantinedInstanceIds.length;
+  return <div className="settings-scrim help-scrim" onPointerDown={close}><section className="settings-sheet help-sheet integrity-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="สถานะความสอดคล้องของคลังไอเทม">
+    <header><div><p className="eyebrow">Integrity relay</p><h3>ตรวจสอบคลังไอเทม</h3></div><button className="icon-button" onClick={close} aria-label="ปิดสถานะ integrity"><X size={18} /></button></header>
+    <div className="integrity-sheet-content"><div className={`integrity-verdict ${report.status}`}><ShieldAlert size={21} /><div><b>{report.status === "clear" && !syncAttention ? "คลังไอเทมพร้อมใช้งาน" : "มีรายการรอตรวจสอบ"}</b><p>{report.status === "clear" ? (syncAttention ? "มี action ออฟไลน์บางรายการที่ต้องซิงก์ใหม่" : "ไม่พบ item instance ที่ผิดกติกาในเซฟปัจจุบัน") : integrityStatusCopy(report)}</p></div></div>
+      {quarantined > 0 && <section className="integrity-explainer"><h4>สิ่งที่ระบบทำตอนนี้</h4><p>ระบบพักการสวมใส่ ย่อย หรือแลกเปลี่ยนเฉพาะ {quarantined} item instance ที่ข้อมูลไม่ตรงกันเท่านั้น รายการอื่นยังเล่นและใช้งานต่อได้ตามปกติ</p><ul><li>เชื่อมต่ออินเทอร์เน็ตแล้วกลับ Lobby เพื่อซิงก์ข้อมูลอีกครั้ง</li><li>หากสถานะยังอยู่ ให้เก็บ item instance นี้ไว้เพื่อให้ server ตรวจประวัติได้</li><li>ต้นแบบนี้เป็นระบบป้องกันข้อมูลเสียหายเบื้องต้น ไม่ใช่ anti-cheat แบบ server-authoritative</li></ul></section>}
+      {report.findings.length > 0 && <div className="integrity-findings">{report.findings.slice(0, 4).map((item, index) => <div key={`${item.code}-${item.instanceId ?? "global"}-${index}`}><span>{item.severity.toUpperCase()}</span><p>{item.message}</p></div>)}</div>}
+    </div>
+  </section></div>;
+}
+
 export default function ArcaneFrontier() {
   const directEntryRef = useRef<Screen>(getInitialScreen());
   const directMapRef = useRef(getInitialMapId());
+  const integrityDemoRef = useRef(getIntegrityDemoEnabled());
+  const lastIntegrityReportRef = useRef<string | null>(null);
   const [screen, setScreen] = useState<Screen>("landing");
   const [transition, setTransition] = useState<Transition>(null);
   const [session, setSession] = useState<LocalGameSession | null>(null);
   const [playerId, setPlayerId] = useState("");
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showIntegrity, setShowIntegrity] = useState(getIntegrityDemoEnabled);
+  const [syncAttention, setSyncAttention] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<HelpTopic>("identity");
+  const [contextHint, setContextHint] = useState<{ topic: HelpTopic; text: string } | null>(null);
   const [selectedMapId, setSelectedMapId] = useState(getInitialMapId);
   const [cachedMapIds, setCachedMapIds] = useState<Set<string>>(() => new Set());
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
@@ -150,6 +191,7 @@ export default function ArcaneFrontier() {
   const openProfileMutation = trpc.game.openProfile.useMutation();
   const syncMutation = trpc.game.sync.useMutation();
   const syncBatchMutation = trpc.game.syncBatch.useMutation();
+  const reportIntegrityMutation = trpc.game.reportIntegrity.useMutation();
 
   useEffect(() => {
     let active = true;
@@ -168,6 +210,19 @@ export default function ArcaneFrontier() {
   }, []);
 
   useEffect(() => saveSettings(settings), [settings]);
+
+  useEffect(() => {
+    const hint = SCREEN_HINTS[screen];
+    if (!hint) return;
+    const hintKey = `arcane-frontier.hint.${session?.playerId ?? "new"}.${screen}`;
+    try {
+      if (localStorage.getItem(hintKey)) return;
+      localStorage.setItem(hintKey, "seen");
+    } catch { /* private browsing can still show the hint for this session */ }
+    setContextHint(hint);
+    const timeout = window.setTimeout(() => setContextHint(null), 4600);
+    return () => window.clearTimeout(timeout);
+  }, [screen, session?.playerId]);
 
   useEffect(() => {
     if (screen !== "maps") return;
@@ -201,7 +256,10 @@ export default function ArcaneFrontier() {
         onSuccess: result => {
           if (result.acceptedTxIds.length > 0) void markTransactionsSynced(result.acceptedTxIds);
           void reconcileOfflineVectorClock(candidate.playerId, result.serverClock);
-          if (result.rejectedTxIds.length > 0) setToast("มี action ออฟไลน์บางรายการรอตรวจสอบก่อนซิงก์");
+          if (result.rejectedTxIds.length > 0) {
+            setSyncAttention(true);
+            setToast("มี action ออฟไลน์บางรายการรอตรวจสอบก่อนซิงก์");
+          } else setSyncAttention(false);
         },
         onError: () => setToast("คิวออฟไลน์ถูกเก็บไว้แล้ว · จะลองซิงก์ใหม่เมื่อพร้อม"),
       });
@@ -231,7 +289,11 @@ export default function ArcaneFrontier() {
     }, {
       onError: () => setToast("บันทึกในเครื่องแล้ว · จะซิงก์อีกครั้งเมื่อเชื่อมต่อได้"),
       onSuccess: result => {
-        if (!result.accepted) setToast("ตรวจพบข้อมูลคลังไอเทมที่ต้องตรวจสอบก่อนซิงก์");
+        if (!result.accepted || result.quarantinedInstanceIds.length > 0) {
+          setSyncAttention(true);
+          setToast(result.quarantinedInstanceIds.length > 0 ? `แยก ${result.quarantinedInstanceIds.length} item instance รอตรวจสอบก่อนซิงก์` : "ตรวจพบข้อมูลคลังไอเทมที่ต้องตรวจสอบก่อนซิงก์");
+          setShowIntegrity(true);
+        } else setSyncAttention(false);
       },
     });
   }, [flushPendingTransactions, syncMutation]);
@@ -338,22 +400,55 @@ export default function ArcaneFrontier() {
     });
   }, [selectedMapId]);
 
-  const primaryWeapon = session ? getItemDefinition(session.inventory[0]?.definitionId ?? "sword-001") : ALL_ITEMS[0];
-  const homeSeeds = session?.inventory.filter(item => getItemDefinition(item.definitionId)?.category === "seed") ?? [];
-  const homeObjects = session?.inventory.filter(item => ["structure", "furniture", "decoration"].includes(getItemDefinition(item.definitionId)?.category ?? "")) ?? [];
+  const integrityReport = useMemo(() => {
+    if (!session) return null;
+    const attachedItems = [
+      ...session.home.structures.flatMap(structure => structure.item ? [structure.item] : []),
+      ...Object.values(session.home.petEquipment ?? {}).filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    ];
+    const inventory = integrityDemoRef.current && session.inventory[0] ? [...session.inventory, { ...session.inventory[0] }, ...attachedItems] : [...session.inventory, ...attachedItems];
+    return inspectInventoryIntegrity(inventory);
+  }, [session]);
+  const hasIntegrityAttention = Boolean(syncAttention || integrityReport?.status === "attention");
+  const quarantinedInstanceIds = new Set(integrityReport?.quarantinedInstanceIds ?? []);
+  const integrityReportId = useMemo(() => integrityReport?.status === "attention" && session ? `${session.playerId}:${integrityReport.quarantinedInstanceIds.slice().sort().join(".")}:${integrityReport.findings.map(item => item.code).sort().join(".")}` : null, [integrityReport, session]);
+  useEffect(() => {
+    if (!session || !integrityReport || !integrityReportId || integrityDemoRef.current || (typeof navigator !== "undefined" && !navigator.onLine) || lastIntegrityReportRef.current === integrityReportId) return;
+    lastIntegrityReportRef.current = integrityReportId;
+    reportIntegrityMutation.mutate({
+      playerId: session.playerId,
+      reportId: integrityReportId,
+      quarantinedInstanceIds: integrityReport.quarantinedInstanceIds,
+      codes: Array.from(new Set(integrityReport.findings.map(item => item.code))),
+    });
+  }, [integrityReport, integrityReportId, reportIntegrityMutation, session]);
+  const safeHome = useMemo(() => {
+    if (!session) return undefined;
+    const safePetEquipment = Object.fromEntries(Object.entries(session.home.petEquipment ?? {}).filter(([, item]) => item && !quarantinedInstanceIds.has(item.instanceId)));
+    return { ...session.home, petEquipment: safePetEquipment };
+  }, [session, integrityReport]);
+  const primaryWeapon = session ? getItemDefinition(session.inventory.find(item => !quarantinedInstanceIds.has(item.instanceId))?.definitionId ?? "sword-001") : ALL_ITEMS[0];
+  const integrityBannerCopy = syncAttention && integrityReport?.status === "clear" ? "มี action ออฟไลน์บางรายการที่รอตรวจสอบก่อนซิงก์" : integrityReport ? integrityStatusCopy(integrityReport) : "";
+  const homeSeeds = session?.inventory.filter(item => !quarantinedInstanceIds.has(item.instanceId) && getItemDefinition(item.definitionId)?.category === "seed") ?? [];
+  const homeObjects = session?.inventory.filter(item => !quarantinedInstanceIds.has(item.instanceId) && ["structure", "furniture", "decoration"].includes(getItemDefinition(item.definitionId)?.category ?? "")) ?? [];
   const selectedHomeSeed = homeSeeds.find(item => item.instanceId === selectedHomeSeedId) ?? homeSeeds[0];
   const selectedHomeObject = homeObjects.find(item => item.instanceId === selectedHomeObjectId) ?? homeObjects[0];
   const companionConfig = useMemo(() => {
-    if (!session) return undefined;
-    const bonus = getPetBonus(session.home);
+    if (!safeHome) return undefined;
+    const bonus = getPetBonus(safeHome);
     return { following: bonus.following, lootRadius: bonus.lootRadius, resourceYieldMultiplier: bonus.resourceYieldMultiplier, damageMitigation: bonus.damageMitigation };
-  }, [session]);
+  }, [safeHome]);
+  const openHelp = (topic: HelpTopic) => { setHelpTopic(topic); setShowHelp(true); };
 
   return <main className="arcane-app">
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
     {transition && <LoadingGate transition={transition} />}
     {toast && <button className="game-toast" onClick={() => setToast(null)}>{toast}</button>}
     {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />}
+    {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
+    {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
+    {contextHint && <button className="context-help-hint" onClick={() => { openHelp(contextHint.topic); setContextHint(null); }}><CircleHelp size={15} /><span>{contextHint.text}</span><X size={13} /></button>}
+    {hasIntegrityAttention && integrityReport && <button className="integrity-banner" onClick={() => setShowIntegrity(true)}><ShieldAlert size={16} /><span>{integrityBannerCopy}</span><b>ดูรายละเอียด</b></button>}
 
     {screen === "landing" && <section className="landing-screen">
       <div className="landing-void" /><div className="landing-runes rune-a" /><div className="landing-runes rune-b" />
@@ -370,17 +465,17 @@ export default function ArcaneFrontier() {
     </section>}
 
     {screen === "lobby" && session && <section className="lobby-screen">
-      <header className="lobby-header"><div className="brand-lockup compact"><ArcaneMark /><span>ARCANE FRONTIER</span></div><div className="lobby-header-right"><span className="currency"><Gem size={15} /> {session.currency.toLocaleString()}</span><button className="icon-button" onClick={() => setShowSettings(true)}><Settings2 size={18} /></button><button className="player-chip"><span className="player-avatar">{session.playerId.slice(0, 1).toUpperCase()}</span>{session.playerId}</button></div></header>
+      <header className="lobby-header"><div className="brand-lockup compact"><ArcaneMark /><span>ARCANE FRONTIER</span></div><div className="lobby-header-right"><span className="currency"><Gem size={15} /> {session.currency.toLocaleString()}</span><button className="icon-button" onClick={() => openHelp("identity")} aria-label="เปิดคู่มือ"><CircleHelp size={18} /></button><button className="icon-button" onClick={() => setShowSettings(true)}><Settings2 size={18} /></button><button className="player-chip"><span className="player-avatar">{session.playerId.slice(0, 1).toUpperCase()}</span>{session.playerId}</button></div></header>
       <div className="lobby-grid">
         <aside className="lobby-rail left-rail"><button onClick={() => transitionTo("home", { title: "Aether Homestead", accent: "#7ee787" })}><Home size={18} /><span>HOME</span></button><button onClick={() => setToast("Inventory preview is synced to your local save") }><Backpack size={18} /><span>VAULT</span></button><button onClick={() => setToast("Cosmetic studio is ready for catalog items") }><Sparkles size={18} /><span>STYLE</span></button><button onClick={() => setToast("Shop rotations will use weekly event data") }><Gem size={18} /><span>SHOP</span></button></aside>
         <section className="lobby-character"><div className="lobby-haze" /><div className="character-pedestal"><div className="character-runes"><i /><i /><i /></div><img className="lobby-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Survivor loadout" /></div><div className="loadout-caption"><span className="tier-dot" style={{ background: TIER_RULES[primaryWeapon?.tier ?? "common"].color }} /><div><b>{primaryWeapon?.name ?? "Aether Blade"}</b><small>+{session.inventory[0]?.enhancement ?? 0} · {TIER_RULES[primaryWeapon?.tier ?? "common"].label}</small></div></div></section>
-        <aside className="lobby-rail right-rail"><section className="weekly-card" style={{ "--event-accent": event.accent } as React.CSSProperties}><div><p className="eyebrow">Weekly event</p><h3>{event.title}</h3><p>{event.subtitle}</p></div><div className="weekly-footer"><span><TimerReset size={14} /> 5d 14h</span><button onClick={() => setToast(event.objective)}><BellRing size={15} /></button></div></section><section className="status-card"><p className="eyebrow">Loadout integrity</p><div className="status-line"><Shield size={16} /><span>Instance scan</span><b>VALID</b></div><div className="status-line"><PawPrint size={16} /><span>{session.home.petName}</span><b>LV. 01</b></div></section></aside>
+        <aside className="lobby-rail right-rail"><section className="weekly-card" style={{ "--event-accent": event.accent } as React.CSSProperties}><div><p className="eyebrow">Weekly event</p><h3>{event.title}</h3><p>{event.subtitle}</p></div><div className="weekly-footer"><span><TimerReset size={14} /> 5d 14h</span><button onClick={() => setToast(event.objective)}><BellRing size={15} /></button></div></section><section className="status-card"><p className="eyebrow">Loadout integrity</p><button className={`status-line integrity-status ${hasIntegrityAttention ? "attention" : ""}`} onClick={() => setShowIntegrity(true)}><Shield size={16} /><span>Instance scan</span><b>{hasIntegrityAttention ? "REVIEW" : "VALID"}</b></button><div className="status-line"><PawPrint size={16} /><span>{session.home.petName}</span><b>LV. 01</b></div></section></aside>
       </div>
       <footer className="lobby-footer"><div className="version-stamp">{formatVersionLabel()}</div><div className="event-objective"><Flame size={15} /><span>{event.objective}</span></div><button className="deploy-button" onClick={() => transitionTo("maps", { title: "Map Observatory", accent: "#00f3ff" })}><Compass size={19} /> DEPLOY <span>เลือกแผนที่</span></button></footer>
     </section>}
 
     {screen === "maps" && session && <section className="map-screen">
-      <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Map observatory</p><h2>Choose an expedition</h2></div><span className="map-count"><MapIcon size={16} /> {MAP_REGISTRY.length} sectors indexed</span></header>
+      <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Map observatory</p><h2>Choose an expedition</h2></div><button className="map-count help-trigger" onClick={() => openHelp("offline")}><CircleHelp size={16} /> Cache & offline</button></header>
       <div className="map-cards">{MAP_REGISTRY.slice(0, 10).map((map, index) => {
         const cached = cachedMapIds.has(map.id);
         return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{map.keyArt ? <img src={map.keyArt} alt="" /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">{String(index + 1).padStart(2, "0")}</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">{map.status === "prototype" ? "EXPEDITION PROTOTYPE · PLAYABLE" : "MODULE IN PLANNING"}</small></div><div className="map-meta"><span>RADIUS {map.radiusMeters}m</span><span>THREAT {"◆".repeat(map.threat)}</span></div><button disabled={map.status !== "prototype"} onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{map.status !== "prototype" ? "Module in planning" : cached ? <><Play size={15} fill="currentColor" /> Enter cached sector</> : <><Download size={15} /> Prepare expedition</>}</button></div></article>;
@@ -391,19 +486,20 @@ export default function ArcaneFrontier() {
     {screen === "home" && session && <section className="home-screen">
       <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Personal instance</p><h2>Aether Homestead</h2></div><span className="map-count"><PawPrint size={16} /> {session.home.petName}</span></header>
       <div className="home-layout home-loop">
-        <section className="home-garden"><div className="section-title"><div><p className="eyebrow">Garden grid</p><h3>Plant · Grow · Harvest</h3></div><button className="minor-button" onClick={() => setToast("เลือกเมล็ดที่ตรงกับสีดิน · พืชโตด้วยเวลาแม้ออฟไลน์ · เก็บก่อนเหี่ยว")}>How it works</button></div><div className="seed-selector">{homeSeeds.length === 0 ? <span>ไม่มีเมล็ดในคลัง</span> : homeSeeds.map(seed => { const definition = getItemDefinition(seed.definitionId); return <button key={seed.instanceId} className={seed.instanceId === selectedHomeSeed?.instanceId ? "active" : ""} onClick={() => setSelectedHomeSeedId(seed.instanceId)}><Flower2 size={13} /><span>{definition?.name}</span><small>{SOILS.find(soil => soil.id === definition?.soilId)?.name}</small></button>; })}</div><div className="plot-grid">{session.home.plots.map(plot => {
+        <section className="home-garden"><div className="section-title"><div><p className="eyebrow">Garden grid</p><h3>Plant · Grow · Harvest</h3></div><button className="minor-button" onClick={() => openHelp("home")}>How it works</button></div><div className="seed-selector">{homeSeeds.length === 0 ? <span>ไม่มีเมล็ดในคลัง</span> : homeSeeds.map(seed => { const definition = getItemDefinition(seed.definitionId); return <button key={seed.instanceId} className={seed.instanceId === selectedHomeSeed?.instanceId ? "active" : ""} onClick={() => setSelectedHomeSeedId(seed.instanceId)}><Flower2 size={13} /><span>{definition?.name}</span><small>{SOILS.find(soil => soil.id === definition?.soilId)?.name}</small></button>; })}</div><div className="plot-grid">{session.home.plots.map(plot => {
           const stage = getCropStage(plot); const compatibleSeed = selectedHomeSeed && getItemDefinition(selectedHomeSeed.definitionId)?.soilId === plot.soilId ? selectedHomeSeed : undefined;
           const soil = SOILS.find(candidate => candidate.id === plot.soilId);
           return <article key={plot.id} className={`plot-card ${stage ?? "empty"}`} style={{ "--soil": soil?.color ?? "#456c9c" } as React.CSSProperties}><span className="plot-aura" /><div><small>{soil?.name}</small><b>{stage === "mature" ? "Ready to harvest" : stage === "withered" ? "Withered crop" : stage ? stage.toUpperCase() : "Empty plot"}</b><em>{plot.seedDefinitionId ? getItemDefinition(plot.seedDefinitionId)?.name : "รอเมล็ดที่เข้ากัน"}</em></div>{stage === "mature" ? <button onClick={() => { const result = harvestCrop(session.home, session.inventory, plot.id); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); setToast("เก็บเกี่ยวสำเร็จ · ผลผลิตเข้าคลังและรอซิงก์"); }}><Wheat size={15} /> Harvest</button> : stage === "withered" ? <button onClick={() => setToast("พืชเหี่ยวแล้ว · เตรียมแปลงใหม่จากเมล็ดชุดต่อไป")}>Clear</button> : !stage ? <button disabled={!compatibleSeed} onClick={() => { if (!compatibleSeed) return setToast("ไม่มีเมล็ดที่เข้ากับดินแปลงนี้"); const result = plantSeed(session.home, session.inventory, plot.id, compatibleSeed.instanceId); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); setToast("ปลูกแล้ว · เวลาเติบโตยังเดินต่อแม้ออฟไลน์"); }}><Flower2 size={15} /> {compatibleSeed ? "Plant" : "Need seed"}</button> : <span className="plot-wait">Growing offline</span>}</article>;
         })}</div><div className="soil-list compact">{SOILS.map(soil => <button key={soil.id} className="soil-tile" style={{ "--soil": soil.color } as React.CSSProperties} onClick={() => setToast(`${soil.name}: ${soil.description}`)}><span className="soil-orb" /><div><b>{soil.name}</b><small>{soil.compatiblePlantTags.join(" · ")}</small></div></button>)}</div></section>
         <section className="home-build"><div className="section-title"><div><p className="eyebrow">Modular build</p><h3>Place · Rotate · Move · Recall</h3></div><Box size={22} /></div><div className="object-selector">{homeObjects.length === 0 ? <span>ไม่มีชิ้นส่วน Home ในคลัง</span> : homeObjects.map(item => { const definition = getItemDefinition(item.definitionId); return <button key={item.instanceId} className={item.instanceId === selectedHomeObject?.instanceId ? "active" : ""} onClick={() => setSelectedHomeObjectId(item.instanceId)}><Box size={13} /><span>{definition?.name}</span><small>{definition?.category}</small></button>; })}</div><div className="build-preview"><div className="build-platform"><i /><i /><i /><i /></div><p>ทุกชิ้นเป็น item instance เดียวกันทั้งตอนวาง หมุน ย้าย และเก็บคืน จึงไม่มีการสร้างไอเทมใหม่จากการย้ายบ้าน</p><button className="minor-button" onClick={() => { const item = selectedHomeObject; if (!item) return setToast("ไม่มี structure, furniture หรือ decoration ในคลัง"); const slots = [[0, 0], [3, 0], [6, 0], [0, 3], [3, 3], [6, 3]]; for (const [x, z] of slots) { const result = placeHomeObject({ home: session.home, inventory: session.inventory, instanceId: item.instanceId, x, z }); if (result.ok) { updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); return setToast("วางชิ้นส่วน Home แล้ว · หมุน ย้าย หรือเก็บคืนได้ตลอดเวลา"); } } setToast("ไม่มีช่องว่างที่วางได้ใน Home grid"); }}><Pickaxe size={15} /> Place selected object</button></div><div className="structure-list">{session.home.structures.length === 0 ? <p>ยังไม่มีโครงสร้างที่วางไว้</p> : session.home.structures.map(structure => <div key={structure.id}><span><b>{getItemDefinition(structure.definitionId)?.name}</b><small>GRID {structure.x},{structure.z} · {structure.rotation}°</small></span><button onClick={() => { const result = rotateStructure(session.home, structure.id); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }}><TimerReset size={14} /></button><button onClick={() => { const candidates = [[3, 6], [6, 6], [9, 6], [0, 6]]; for (const [x, z] of candidates) { const result = moveStructure(session.home, structure.id, x, z); if (result.ok) { updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); return; } } setToast("ไม่พบตำแหน่งว่างที่ย้ายได้"); }}><Compass size={14} /></button><button onClick={() => { const result = recallStructure(session.home, session.inventory, structure.id); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); }}><Backpack size={14} /></button></div>)}</div></section>
-        <section className="pet-card">{(() => { const bonus = getPetBonus(session.home); return <><PawPrint size={32} /><p className="eyebrow">Companion</p><h3>{session.home.petName}</h3><p>{bonus.following ? "ติดตามผู้เล่นอยู่ · ช่วยสแกนทรัพยากรและเตือนภัย" : "สั่งให้อยู่เฝ้า Home · กด Follow เพื่อเรียกกลับมาร่วมสำรวจ"}</p><div className="pet-bonus"><span>SCOUT +{bonus.scoutRadiusMeters}m</span><span>HARVEST +{bonus.harvestBonusPercent}%</span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }}>{bonus.following ? "Stay" : "Follow"}</button></div><div className="pet-slots">{(["collar", "core"] as const).map(slot => { const equipped = session.home.petEquipment?.[slot]; const compatible = session.inventory.find(item => slot === "collar" ? getItemDefinition(item.definitionId)?.category === "decoration" : getItemDefinition(item.definitionId)?.category === "material"); return <div key={slot}><span><small>{slot === "collar" ? "COLLAR" : "CORE"}</small><b>{equipped ? getItemDefinition(equipped.definitionId)?.name : "Empty"}</b></span><button onClick={() => { const result = transferPetEquipment(session.home, session.inventory, slot, equipped ? null : compatible?.instanceId ?? null); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); }}>{equipped ? "Unequip" : compatible ? "Equip" : "No item"}</button></div>; })}</div><span>2 equipment slots · synced as offline actions</span></>; })()}</section>
+        <section className="pet-card">{(() => { const bonus = getPetBonus(safeHome ?? session.home); return <><PawPrint size={32} /><p className="eyebrow">Companion</p><h3>{session.home.petName}</h3><p>{bonus.following ? "ติดตามผู้เล่นอยู่ · ช่วยสแกนทรัพยากรและเตือนภัย" : "สั่งให้อยู่เฝ้า Home · กด Follow เพื่อเรียกกลับมาร่วมสำรวจ"}</p><div className="pet-bonus"><span>SCOUT +{bonus.scoutRadiusMeters}m</span><span>HARVEST +{bonus.harvestBonusPercent}%</span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }}>{bonus.following ? "Stay" : "Follow"}</button></div><div className="pet-slots">{(["collar", "core"] as const).map(slot => { const equipped = session.home.petEquipment?.[slot]; const quarantined = Boolean(equipped && quarantinedInstanceIds.has(equipped.instanceId)); const compatible = session.inventory.find(item => !quarantinedInstanceIds.has(item.instanceId) && (slot === "collar" ? getItemDefinition(item.definitionId)?.category === "decoration" : getItemDefinition(item.definitionId)?.category === "material")); return <div key={slot}><span><small>{slot === "collar" ? "COLLAR" : "CORE"}</small><b>{quarantined ? "Pending verification" : equipped ? getItemDefinition(equipped.definitionId)?.name : "Empty"}</b></span><button disabled={quarantined} onClick={() => { const result = transferPetEquipment(session.home, session.inventory, slot, equipped ? null : compatible?.instanceId ?? null); if (!result.ok) return setToast(result.reason); updateSession({ home: result.home, inventory: result.inventory, pendingActions: session.pendingActions.concat(result.action) }); }}>{quarantined ? "Locked" : equipped ? "Unequip" : compatible ? "Equip" : "No item"}</button></div>; })}</div><span>2 equipment slots · synced as offline actions</span></>; })()}</section>
       </div>
     </section>}
 
     {screen === "game" && session && <section className="game-screen"><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} />
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div></div>
       <div className="companion-hud"><img src="/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg" alt="Arcane Cyber Fox" /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
+      <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ANOMALY DETECTED · {activeMap.eventBossName ?? "Unknown anomaly"} may emerge</span></div>
       {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>

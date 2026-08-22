@@ -7,10 +7,13 @@ describe("game sync integrity", () => {
     expect(normalizePlayerId(" Nova Rider ")).toBe("nova-rider");
   });
 
-  it("accepts a valid starter inventory and blocks an invalid equippable stack", () => {
+  it("accepts a valid starter inventory and quarantines an invalid equippable stack from the safe payload", () => {
     const starter = createStarterInstance("sword-001", 1);
     expect(inspectSyncPayload({ inventory: [starter] }).accepted).toBe(true);
-    expect(inspectSyncPayload({ inventory: [{ ...starter, quantity: 2 }] }).accepted).toBe(false);
+    const inspection = inspectSyncPayload({ inventory: [{ ...starter, quantity: 2 }] });
+    expect(inspection.accepted).toBe(true);
+    expect(inspection.safeInventory).toEqual([]);
+    expect(inspection.quarantinedInstanceIds).toEqual([starter.instanceId]);
   });
 
   it("blocks payloads with no inventory relationship", () => {
