@@ -103,7 +103,7 @@
 - [ ] ทำให้ MAP_001–MAP_010 มี scene content เฉพาะแผนที่จริง: enemy/resource visuals, encounter props, ambience และ boss presentation ที่สอดคล้องกับ biome ในฉาก
 - [ ] ผูก loading progress กับการเตรียม map/module/cache จริง และแสดง biome transition effects ที่ต่างกันอย่างชัดเจน
 - [ ] เพิ่มการทดสอบและเอกสารยืนยันว่าแต่ละ map prototype เปิดเล่นด้วย content identity ของตน ไม่ใช่เพียง HUD/key art overlay
-- [ ] ทำ loading variants แยกตามปลายทาง/biome/home/lobby พร้อม motion และ visual treatment เฉพาะ ไม่ใช้ shell เดียวที่ต่างเพียง accent/text
+- [x] ทำ loading variants แยกตามปลายทาง/biome/home/lobby พร้อม motion และ visual treatment เฉพาะ ไม่ใช้ shell เดียวที่ต่างเพียง accent/text
 - [x] ครอบคลุม direct route/query entry ด้วย loading pipeline เดียวกัน หรือบันทึกขอบเขตของ entry ที่ตั้งใจข้าม loading gate ให้ชัดเจน
 - [ ] เพิ่มการทดสอบ/เอกสารเส้นทางหลักที่ยืนยันว่ามี loading gate แม้เป็น cached path และใช้ destination-themed presentation
 - [x] เพิ่ม Field Guide และ first-run contextual hints สำหรับ Player ID, expedition, Home, companion, cache/offline และ provenance integrity
@@ -113,3 +113,4 @@
 - [x] ปรับ sync/save flow ให้แยก safe inventory จาก suspect items หรือ persist quarantine ต่อ instance แทนการปฏิเสธ payload ทั้งชุด
 - [x] ปรับ direct map route ให้ fallback ไปหน้า Maps เมื่อออฟไลน์และ map module ยังไม่เคย cache โดยคง loading gate และ Thai recovery message
 - [x] เพิ่ม data-driven fog, lighting, terrain landmark และ ambient hazard signal ให้ MAP_002–MAP_010 โดยไม่อ้างว่าเป็น monster action set สมบูรณ์
+- [x] เพิ่ม LoadingGate variants ตาม Lobby, Home, Map Observatory และ biome พร้อม cache/offline/reduced-motion presentation ที่ตรวจได้

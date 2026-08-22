@@ -52,6 +52,7 @@ import type { GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
+import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
 type Screen = DirectRouteScreen;
 type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
@@ -77,6 +78,18 @@ function getIntegrityDemoEnabled() {
   return new URLSearchParams(window.location.search).get("integrity") === "demo";
 }
 
+function getLoadingDemoTransition(): Transition {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const demo = params.get("loading");
+  const map = MAP_REGISTRY.find(candidate => candidate.id === params.get("map")) ?? MAP_REGISTRY[4];
+  if (demo === "biome" && map) return { destination: "game", mapId: map.id, title: map.name, accent: map.accent, progress: 64, phase: "กำลังตรวจ asset ของ biome", cached: false, offline: false };
+  if (demo === "home") return { destination: "home", title: "Aether Homestead", accent: "#ffb703", progress: 68, phase: "เตรียมระบบฐานที่มั่น", cached: true, offline: false };
+  if (demo === "maps") return { destination: "maps", title: "Map Observatory", accent: "#9d4edd", progress: 42, phase: "กำลังอ่านพิกัดที่บันทึกไว้", cached: true, offline: true };
+  if (demo === "lobby") return { destination: "lobby", title: "Frontier Lobby", accent: "#00f0ff", progress: 56, phase: "ตรวจสถานะ Player ID", cached: false, offline: false };
+  return null;
+}
+
 function dispatchControl(detail: unknown) {
   window.dispatchEvent(new CustomEvent("arcane-control", { detail }));
 }
@@ -85,20 +98,24 @@ function ArcaneMark() {
   return <div className="arcane-mark" aria-hidden="true"><span /><i /><b /></div>;
 }
 
-function LoadingGate({ transition }: { transition: NonNullable<Transition> }) {
-  const keyArt = transition.mapId ? MAP_REGISTRY.find(map => map.id === transition.mapId)?.keyArt : null;
+function LoadingGate({ transition, reducedMotion }: { transition: NonNullable<Transition>; reducedMotion: boolean }) {
+  const variant = resolveLoadingVariant(transition.destination, transition.mapId);
+  const connectionMode = transition.offline ? "offline" : transition.cached ? "cached" : "online";
+  const statusCopy = transition.offline ? "โหมดออฟไลน์: กำลังโหลดข้อมูลจากหน่วยความจำสำรองในเครื่อง..." : transition.cached ? "พบข้อมูลในแคช: กำลังเข้าสู่พื้นที่อย่างรวดเร็ว..." : transition.phase === "กำลังปรับเส้นทางพลังงาน" ? variant.statusLabel : transition.phase;
   return (
-    <div className="loading-gate" data-destination={transition.mapId ? "map" : transition.destination} style={{ "--biome-accent": transition.accent } as React.CSSProperties}>
-      {keyArt && <img className="loading-keyart" src={keyArt} alt="" aria-hidden="true" />}
+    <div className="loading-gate" data-destination-type={variant.kind} data-loading-state={transition.progress >= 100 ? "complete" : transition.progress > 0 ? "loading" : "preparing"} data-connection-mode={connectionMode} data-reduced-motion={reducedMotion ? "true" : "false"} style={{ "--biome-accent": transition.accent } as React.CSSProperties}>
+      {variant.keyArt && <img className="loading-keyart" src={variant.keyArt} alt="" aria-hidden="true" />}
+      <div className="loading-variant-texture" aria-hidden="true" />
       <div className="loading-stars" />
       <div className="loading-orbit orbit-one" />
       <div className="loading-orbit orbit-two" />
       <div className="loading-center">
         <ArcaneMark />
-        <p className="eyebrow">Frontier relay</p>
+        <p className="eyebrow">{variant.eyebrow}</p>
         <h2>{transition.title}</h2>
-        <p>{transition.phase}</p>
-        <div className="load-track"><span style={{ width: `${transition.progress}%` }} /></div>
+        <p>{statusCopy}</p>
+        <div className="loading-telemetry"><span>{variant.metric}</span><span>{connectionMode.toUpperCase()}</span></div>
+        <div className="load-track" role="progressbar" aria-label="ความคืบหน้าการโหลด" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(transition.progress)}><span style={{ width: `${transition.progress}%` }} /></div>
         <small>{Math.round(transition.progress)}% · {transition.offline ? "offline route" : transition.cached ? "cached route" : "cache preparation"}</small>
       </div>
     </div>
@@ -171,7 +188,7 @@ export default function ArcaneFrontier() {
   const integrityDemoRef = useRef(getIntegrityDemoEnabled());
   const lastIntegrityReportRef = useRef<string | null>(null);
   const [screen, setScreen] = useState<Screen>("landing");
-  const [transition, setTransition] = useState<Transition>(null);
+  const [transition, setTransition] = useState<Transition>(getLoadingDemoTransition);
   const [session, setSession] = useState<LocalGameSession | null>(null);
   const [playerId, setPlayerId] = useState("");
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
@@ -450,7 +467,7 @@ export default function ArcaneFrontier() {
 
   return <main className="arcane-app">
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
-    {transition && <LoadingGate transition={transition} />}
+    {transition && <LoadingGate transition={transition} reducedMotion={settings.reducedMotion} />}
     {toast && <button className="game-toast" onClick={() => setToast(null)}>{toast}</button>}
     {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />}
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
