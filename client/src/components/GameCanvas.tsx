@@ -42,5 +42,22 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
     };
   }, [mapId, onSnapshot, onReward, companion, reducedMotion]);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 h-full w-full outline-none" style={{ touchAction: "none" }} />;
+  return (
+    <div className="game-viewport">
+      <canvas ref={canvasRef} className="fixed inset-0 h-full w-full outline-none" style={{ touchAction: "none" }} />
+      <button
+        className="fullscreen-toggle"
+        onClick={() => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        }}
+        aria-label="Toggle fullscreen"
+      >
+        ⛶
+      </button>
+    </div>
+  );
 }
