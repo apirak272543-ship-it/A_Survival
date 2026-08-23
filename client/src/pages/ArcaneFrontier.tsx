@@ -277,7 +277,7 @@ export default function ArcaneFrontier() {
   useEffect(() => {
     if (screen !== "maps") return;
     let active = true;
-    void getCachedMapIds(MAP_REGISTRY.slice(0, 10).map(map => map.id)).then(ids => {
+    void getCachedMapIds(MAP_REGISTRY.slice(0, 15).map(map => map.id)).then(ids => {
       if (active) setCachedMapIds(new Set(ids));
     });
     return () => { active = false; };
@@ -550,11 +550,11 @@ export default function ArcaneFrontier() {
 
     {screen === "maps" && session && <section className="map-screen">
       <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Map observatory</p><h2>Choose an expedition</h2></div><button className="map-count help-trigger" onClick={() => openHelp("offline")}><CircleHelp size={16} /> Cache & offline</button></header>
-      <div className="map-cards">{MAP_REGISTRY.slice(0, 10).map((map, index) => {
+      <div className="map-cards">{MAP_REGISTRY.slice(0, 15).map((map, index) => {
         const cached = cachedMapIds.has(map.id);
         return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{map.keyArt ? <img src={map.keyArt} alt="" /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">{String(index + 1).padStart(2, "0")}</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">{map.status === "prototype" ? "EXPEDITION PROTOTYPE · PLAYABLE" : "MODULE IN PLANNING"}</small></div><div className="map-meta"><span>RADIUS {map.radiusMeters}m</span><span>THREAT {"◆".repeat(map.threat)}</span></div><button disabled={map.status !== "prototype"} onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{map.status !== "prototype" ? "Module in planning" : cached ? <><Play size={15} fill="currentColor" /> Enter cached sector</> : <><Download size={15} /> Prepare expedition</>}</button></div></article>;
       })}</div>
-      <p className="map-footnote">MAP_001–MAP_010 เปิดเป็น expedition prototype แล้ว: ใช้วงจรต่อสู้/เก็บทรัพยากรร่วมกัน แต่แต่ละ module มี key art, ambience, NPC, landmark, regular threat และ event boss ของตนเอง · การดาวน์โหลดครั้งแรกจะเก็บ cache ไว้ในเบราว์เซอร์</p>
+      <p className="map-footnote">MAP_001–MAP_015 เปิดเป็น expedition prototype แล้ว: ใช้วงจรต่อสู้/เก็บทรัพยากรร่วมกัน แต่แต่ละ module มี key art, ambience, NPC, landmark, regular threat และ event boss ของตนเอง · การดาวน์โหลดครั้งแรกจะเก็บ cache ไว้ในเบราว์เซอร์</p>
     </section>}
 
     {screen === "home" && session && <section className="home-screen">

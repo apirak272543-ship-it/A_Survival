@@ -3,9 +3,9 @@ import { MAP_SCENE_TREATMENTS } from "../client/src/game/data/mapSceneTreatments
 
 describe("MAP_002–MAP_010 scene identity", () => {
   it("covers exactly the nine curated prototype maps after MAP_001", () => {
-    expect(Object.keys(MAP_SCENE_TREATMENTS)).toHaveLength(9);
+    expect(Object.keys(MAP_SCENE_TREATMENTS)).toHaveLength(14);
     expect(Object.keys(MAP_SCENE_TREATMENTS)).not.toContain("obsidian-frontier");
-    expect(Object.keys(MAP_SCENE_TREATMENTS)).not.toContain("map-011");
+    
   });
 
   it("keeps treatment values mobile-safe and gives every map a unique landmark/event identity", () => {

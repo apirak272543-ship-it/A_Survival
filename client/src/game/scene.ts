@@ -24,7 +24,13 @@ import { MAP007_STEAM_VENT, MAP007_TERROR_RIFT, initialMap007Encounter, resolveM
 import { MAP008_MATRIX_CORE, MAP008_RUNE_TERMINAL, initialMap008Encounter, resolveMap008Encounter } from "@/game/map008/encounter";
 import { MAP009_CANOPY_HAVEN, MAP009_HIVE_ROOT, initialMap009Encounter, resolveMap009Encounter } from "@/game/map009/encounter";
 import { MAP010_SINGULARITY_GATE, MAP010_STABLE_PYLON, initialMap010Encounter, resolveMap010Encounter } from "@/game/map010/encounter";
+import { MAP011_SMELTER_ARCH, MAP011_FORGE_CAMP, initialMap011Encounter, resolveMap011Encounter } from "@/game/map011/encounter";
+import { MAP012_WIND_MONOLITH, MAP012_SCOUT_OVERLOOK, initialMap012Encounter, resolveMap012Encounter } from "@/game/map012/encounter";
+import { MAP013_SULFUR_FALLS, MAP013_THERON_BOARDWALK, initialMap013Encounter, resolveMap013Encounter } from "@/game/map013/encounter";
+import { MAP014_CITADEL_GATE, MAP014_WARDEN_POST, initialMap014Encounter, resolveMap014Encounter } from "@/game/map014/encounter";
+import { MAP015_PRIMAL_ANVIL, MAP015_FORGE_SHRINE, initialMap015Encounter, resolveMap015Encounter } from "@/game/map015/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
+import { getGameAssetUrl } from "@/game/assets/pollinations";
 
 export type GameSnapshot = {
   health: number;
@@ -161,6 +167,46 @@ const map010Asset = {
   essence: "/manus-storage/void-essence-final_17daa419.jpg",
 };
 
+const map011Asset = {
+  npc: getGameAssetUrl("portrait of a rugged obsidian forgemaster with glowing ember eyes and heavy leather apron, dark fantasy sci-fi game art, no text no ui", { seed: 11021 }),
+  regular: getGameAssetUrl("small obsidian lava crawler with glowing orange cracks, dark fantasy sci-fi game monster, no text no ui", { seed: 11022 }),
+  elite: getGameAssetUrl("hulking pyroclast brute made of jagged obsidian and molten rock, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11023 }),
+  boss: getGameAssetUrl("towering ignis colossus of black glass and lava with a molten crown, dark fantasy sci-fi game boss, no text no ui", { seed: 11024 }),
+  resource: getGameAssetUrl("glowing orange cinder bloom flower growing from black basalt, dark fantasy sci-fi game resource, no text no ui", { seed: 11025 }),
+};
+
+const map012Asset = {
+  npc: getGameAssetUrl("portrait of a wind-scarred scout with a hood and brass goggles, dark fantasy sci-fi game art, no text no ui", { seed: 11026 }),
+  regular: getGameAssetUrl("lean spire stalker with razor glass wings and obsidian limbs, dark fantasy sci-fi game monster, no text no ui", { seed: 11027 }),
+  elite: getGameAssetUrl("gale-talon alpha with jagged black feathers and a purple wind aura, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11028 }),
+  boss: getGameAssetUrl("gale-terror zephyr a massive storm bird of obsidian and violet lightning, dark fantasy sci-fi game boss, no text no ui", { seed: 11029 }),
+  resource: getGameAssetUrl("shard of razor glass with purple internal glow on dark rock, dark fantasy sci-fi game resource, no text no ui", { seed: 11030 }),
+};
+
+const map013Asset = {
+  npc: getGameAssetUrl("portrait of a masked alchemist with green sulfur stains and brass filters, dark fantasy sci-fi game art, no text no ui", { seed: 11031 }),
+  regular: getGameAssetUrl("mire leaper a bloated frog-like creature with sulfur pustules, dark fantasy sci-fi game monster, no text no ui", { seed: 11032 }),
+  elite: getGameAssetUrl("corrosive aberration a dripping mass of acid and black chitin, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11033 }),
+  boss: getGameAssetUrl("bile-mother vile a massive sulfur hydra with glowing yellow boils, dark fantasy sci-fi game boss, no text no ui", { seed: 11034 }),
+  resource: getGameAssetUrl("yellow sulfur crust crystal on black mire stone, dark fantasy sci-fi game resource, no text no ui", { seed: 11035 }),
+};
+
+const map014Asset = {
+  npc: getGameAssetUrl("portrait of a stern warden in cracked basalt armor, dark fantasy sci-fi game art, no text no ui", { seed: 11036 }),
+  regular: getGameAssetUrl("bastion hound a muscular obsidian canine with magma veins, dark fantasy sci-fi game monster, no text no ui", { seed: 11037 }),
+  elite: getGameAssetUrl("magma drake sentinel a wingless drake of black rock and fire, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11038 }),
+  boss: getGameAssetUrl("trench-lord baelrok a colossal armored magma titan with a broken bridge for a crown, dark fantasy sci-fi game boss, no text no ui", { seed: 11039 }),
+  resource: getGameAssetUrl("chunk of hardened magma with cooling orange cracks, dark fantasy sci-fi game resource, no text no ui", { seed: 11040 }),
+};
+
+const map015Asset = {
+  npc: getGameAssetUrl("portrait of a serene forge avatar with glowing white tattoos and obsidian robes, dark fantasy sci-fi game art, no text no ui", { seed: 11041 }),
+  regular: getGameAssetUrl("crucible myrmidon a soldier of living obsidian with a furnace core, dark fantasy sci-fi game monster, no text no ui", { seed: 11042 }),
+  elite: getGameAssetUrl("dread infernal goliath a massive horned demon of black glass and red fire, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11043 }),
+  boss: getGameAssetUrl("the crucible overlord a god-like obsidian titan with a burning anvil heart, dark fantasy sci-fi game boss, no text no ui", { seed: 11044 }),
+  resource: getGameAssetUrl("primal core ember a perfect sphere of white-hot obsidian, dark fantasy sci-fi game resource, no text no ui", { seed: 11045 }),
+};
+
 function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
   const result = new StandardMaterial(name, scene);
   const texture = new Texture(url, scene, true, false);
@@ -190,6 +236,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap008 = options.mapId === "map-008-ancient-obsidian-ruins";
   const isMap009 = options.mapId === "map-009-overgrown-obsidian-jungle";
   const isMap010 = options.mapId === "map-010-void-infused-rift";
+  const isMap011 = options.mapId === "map-011-cinder-caldera";
+  const isMap012 = options.mapId === "map-012-obsidian-spire-shelf";
+  const isMap013 = options.mapId === "map-013-brimstone-mire";
+  const isMap014 = options.mapId === "map-014-magma-trench-bastion";
+  const isMap015 = options.mapId === "map-015-heart-of-the-crucible";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const worldMetersPerUnit = 10;
   const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
@@ -290,6 +341,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
 
   const enemyMaterial = isMap010
     ? assetMaterial(scene, "void-larva-material", map010Asset.larva, 0.76)
+    : isMap011
+    ? assetMaterial(scene, "cinder-crawler-material", map011Asset.regular, 0.72)
+    : isMap012
+    ? assetMaterial(scene, "spire-stalker-material", map012Asset.regular, 0.72)
+    : isMap013
+    ? assetMaterial(scene, "mire-leaper-material", map013Asset.regular, 0.72)
+    : isMap014
+    ? assetMaterial(scene, "bastion-hound-material", map014Asset.regular, 0.72)
+    : isMap015
+    ? assetMaterial(scene, "crucible-myrmidon-material", map015Asset.regular, 0.72)
     : isMap009
     ? assetMaterial(scene, "vine-stalker-material", map009Asset.stalker, 0.74)
     : isMap008
@@ -320,6 +381,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
 
   const resourceMaterial = isMap010
     ? assetMaterial(scene, "void-essence-material", map010Asset.essence, 0.88)
+    : isMap011
+    ? assetMaterial(scene, "cinder-bloom-material", map011Asset.resource, 0.82)
+    : isMap012
+    ? assetMaterial(scene, "razor-glass-material", map012Asset.resource, 0.82)
+    : isMap013
+    ? assetMaterial(scene, "sulfur-crust-material", map013Asset.resource, 0.82)
+    : isMap014
+    ? assetMaterial(scene, "hardened-magma-material", map014Asset.resource, 0.82)
+    : isMap015
+    ? assetMaterial(scene, "primal-ember-material", map015Asset.resource, 0.82)
     : isMap009
     ? assetMaterial(scene, "alien-bloom-material", map009Asset.bloom, 0.86)
     : isMap008
@@ -339,7 +410,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`${isMap010 ? "void-essence" : isMap009 ? "alien-bloom" : isMap008 ? "ancient-relic" : isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
+    const resource = MeshBuilder.CreatePlane(`${isMap010 ? "void-essence" : isMap011 ? "cinder-bloom" : isMap012 ? "razor-glass" : isMap013 ? "sulfur-crust" : isMap014 ? "hardened-magma" : isMap015 ? "primal-ember" : isMap009 ? "alien-bloom" : isMap008 ? "ancient-relic" : isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.billboardMode = 7;
     resource.material = resourceMaterial;
@@ -351,6 +422,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   boss.billboardMode = 7;
   boss.material = isMap010
     ? assetMaterial(scene, "void-singularity-material", map010Asset.boss, 0.98)
+    : isMap011
+    ? assetMaterial(scene, "ignis-colossus-material", map011Asset.boss, 0.96)
+    : isMap012
+    ? assetMaterial(scene, "gale-terror-zephyr-material", map012Asset.boss, 0.96)
+    : isMap013
+    ? assetMaterial(scene, "bile-mother-vile-material", map013Asset.boss, 0.96)
+    : isMap014
+    ? assetMaterial(scene, "trench-lord-baelrok-material", map014Asset.boss, 0.96)
+    : isMap015
+    ? assetMaterial(scene, "crucible-overlord-material", map015Asset.boss, 0.96)
     : isMap009
     ? assetMaterial(scene, "verdant-hive-mind-material", map009Asset.boss, 0.98)
     : isMap008
@@ -543,6 +624,86 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   singularityGate.material = assetMaterial(scene, "void-singularity-gate-material", map010Asset.essence, 0.86);
   singularityGate.setEnabled(isMap010);
 
+  const forgemasterVael = MeshBuilder.CreatePlane("forgemaster-vael-camp", { width: 2.8, height: 2.8 }, scene);
+  forgemasterVael.position = new Vector3(MAP011_FORGE_CAMP.x, 1.4, MAP011_FORGE_CAMP.z);
+  forgemasterVael.billboardMode = 7;
+  forgemasterVael.material = assetMaterial(scene, "forgemaster-vael-material", map011Asset.npc, 0.58);
+  forgemasterVael.setEnabled(isMap011);
+  const map011Elite = MeshBuilder.CreatePlane("pyroclast-brute-elite", { width: 4.3, height: 4.3 }, scene);
+  map011Elite.position = new Vector3(-18, 2.1, 24);
+  map011Elite.billboardMode = 7;
+  map011Elite.material = assetMaterial(scene, "pyroclast-brute-material", map011Asset.elite, 0.74);
+  map011Elite.setEnabled(false);
+  const smelterArch = MeshBuilder.CreatePlane("shattered-smelter-arch", { width: 2.65, height: 2.65 }, scene);
+  smelterArch.position = new Vector3(MAP011_SMELTER_ARCH.x, 1.4, MAP011_SMELTER_ARCH.z);
+  smelterArch.billboardMode = 7;
+  smelterArch.material = assetMaterial(scene, "smelter-arch-material", map011Asset.resource, 0.82);
+  smelterArch.setEnabled(isMap011);
+
+  const scoutKaelen = MeshBuilder.CreatePlane("scout-kaelen-overlook", { width: 2.8, height: 2.8 }, scene);
+  scoutKaelen.position = new Vector3(MAP012_SCOUT_OVERLOOK.x, 1.4, MAP012_SCOUT_OVERLOOK.z);
+  scoutKaelen.billboardMode = 7;
+  scoutKaelen.material = assetMaterial(scene, "scout-kaelen-material", map012Asset.npc, 0.58);
+  scoutKaelen.setEnabled(isMap012);
+  const map012Elite = MeshBuilder.CreatePlane("gale-talon-alpha-elite", { width: 4.3, height: 4.3 }, scene);
+  map012Elite.position = new Vector3(-18, 2.1, 24);
+  map012Elite.billboardMode = 7;
+  map012Elite.material = assetMaterial(scene, "gale-talon-alpha-material", map012Asset.elite, 0.74);
+  map012Elite.setEnabled(false);
+  const windMonolith = MeshBuilder.CreatePlane("wind-monolith", { width: 2.65, height: 2.65 }, scene);
+  windMonolith.position = new Vector3(MAP012_WIND_MONOLITH.x, 1.4, MAP012_WIND_MONOLITH.z);
+  windMonolith.billboardMode = 7;
+  windMonolith.material = assetMaterial(scene, "wind-monolith-material", map012Asset.resource, 0.82);
+  windMonolith.setEnabled(isMap012);
+
+  const alchemistTheron = MeshBuilder.CreatePlane("alchemist-theron-boardwalk", { width: 2.8, height: 2.8 }, scene);
+  alchemistTheron.position = new Vector3(MAP013_THERON_BOARDWALK.x, 1.4, MAP013_THERON_BOARDWALK.z);
+  alchemistTheron.billboardMode = 7;
+  alchemistTheron.material = assetMaterial(scene, "alchemist-theron-material", map013Asset.npc, 0.58);
+  alchemistTheron.setEnabled(isMap013);
+  const map013Elite = MeshBuilder.CreatePlane("corrosive-aberration-elite", { width: 4.3, height: 4.3 }, scene);
+  map013Elite.position = new Vector3(-18, 2.1, 24);
+  map013Elite.billboardMode = 7;
+  map013Elite.material = assetMaterial(scene, "corrosive-aberration-material", map013Asset.elite, 0.74);
+  map013Elite.setEnabled(false);
+  const sulfurFalls = MeshBuilder.CreatePlane("sulfur-falls", { width: 2.65, height: 2.65 }, scene);
+  sulfurFalls.position = new Vector3(MAP013_SULFUR_FALLS.x, 1.4, MAP013_SULFUR_FALLS.z);
+  sulfurFalls.billboardMode = 7;
+  sulfurFalls.material = assetMaterial(scene, "sulfur-falls-material", map013Asset.resource, 0.82);
+  sulfurFalls.setEnabled(isMap013);
+
+  const wardenSonya = MeshBuilder.CreatePlane("warden-sonya-post", { width: 2.8, height: 2.8 }, scene);
+  wardenSonya.position = new Vector3(MAP014_WARDEN_POST.x, 1.4, MAP014_WARDEN_POST.z);
+  wardenSonya.billboardMode = 7;
+  wardenSonya.material = assetMaterial(scene, "warden-sonya-material", map014Asset.npc, 0.58);
+  wardenSonya.setEnabled(isMap014);
+  const map014Elite = MeshBuilder.CreatePlane("magma-drake-sentinel-elite", { width: 4.3, height: 4.3 }, scene);
+  map014Elite.position = new Vector3(-18, 2.1, 24);
+  map014Elite.billboardMode = 7;
+  map014Elite.material = assetMaterial(scene, "magma-drake-sentinel-material", map014Asset.elite, 0.74);
+  map014Elite.setEnabled(false);
+  const citadelGate = MeshBuilder.CreatePlane("citadel-gate", { width: 2.65, height: 2.65 }, scene);
+  citadelGate.position = new Vector3(MAP014_CITADEL_GATE.x, 1.4, MAP014_CITADEL_GATE.z);
+  citadelGate.billboardMode = 7;
+  citadelGate.material = assetMaterial(scene, "citadel-gate-material", map014Asset.resource, 0.82);
+  citadelGate.setEnabled(isMap014);
+
+  const forgeAvatar = MeshBuilder.CreatePlane("forge-avatar-shrine", { width: 2.8, height: 2.8 }, scene);
+  forgeAvatar.position = new Vector3(MAP015_FORGE_SHRINE.x, 1.4, MAP015_FORGE_SHRINE.z);
+  forgeAvatar.billboardMode = 7;
+  forgeAvatar.material = assetMaterial(scene, "forge-avatar-material", map015Asset.npc, 0.58);
+  forgeAvatar.setEnabled(isMap015);
+  const map015Elite = MeshBuilder.CreatePlane("dread-infernal-goliath-elite", { width: 4.3, height: 4.3 }, scene);
+  map015Elite.position = new Vector3(-18, 2.1, 24);
+  map015Elite.billboardMode = 7;
+  map015Elite.material = assetMaterial(scene, "dread-infernal-goliath-material", map015Asset.elite, 0.74);
+  map015Elite.setEnabled(false);
+  const primalAnvil = MeshBuilder.CreatePlane("primal-anvil", { width: 2.65, height: 2.65 }, scene);
+  primalAnvil.position = new Vector3(MAP015_PRIMAL_ANVIL.x, 1.4, MAP015_PRIMAL_ANVIL.z);
+  primalAnvil.billboardMode = 7;
+  primalAnvil.material = assetMaterial(scene, "primal-anvil-material", map015Asset.resource, 0.82);
+  primalAnvil.setEnabled(isMap015);
+
   let move = { x: 0, y: 0 };
   let health = 100;
   let collected = 0;
@@ -578,6 +739,21 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map010Memory = initialMap010Encounter();
   let map010HarvestedEssence = 0;
   let map010DefeatedLarvae = 0;
+  let map011Memory = initialMap011Encounter();
+  let map011HarvestedBloom = 0;
+  let map011DefeatedCrawlers = 0;
+  let map012Memory = initialMap012Encounter();
+  let map012HarvestedGlass = 0;
+  let map012DefeatedStalkers = 0;
+  let map013Memory = initialMap013Encounter();
+  let map013HarvestedCrust = 0;
+  let map013DefeatedLeapers = 0;
+  let map014Memory = initialMap014Encounter();
+  let map014HarvestedMagma = 0;
+  let map014DefeatedHounds = 0;
+  let map015Memory = initialMap015Encounter();
+  let map015HarvestedEmber = 0;
+  let map015DefeatedMyrmidons = 0;
   let enemySpeedMultiplier = 1;
   let playerSpeedMultiplier = 1;
   let pendingMapInteraction = false;
@@ -591,6 +767,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map008Warning: string | undefined;
   let map009Warning: string | undefined;
   let map010Warning: string | undefined;
+  let map011Warning: string | undefined;
+  let map012Warning: string | undefined;
+  let map013Warning: string | undefined;
+  let map014Warning: string | undefined;
+  let map015Warning: string | undefined;
 
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
@@ -643,6 +824,26 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap010) {
             map010HarvestedEssence += 1;
             options.onReward?.({ definitionId: "material-010", displayName: "Void Essence", eventId: `map010-void-essence-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap011) {
+            map011HarvestedBloom += 1;
+            options.onReward?.({ definitionId: "material-011", displayName: "Cinder Bloom", eventId: `map011-cinder-bloom-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap012) {
+            map012HarvestedGlass += 1;
+            options.onReward?.({ definitionId: "material-012", displayName: "Razor Glass", eventId: `map012-razor-glass-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap013) {
+            map013HarvestedCrust += 1;
+            options.onReward?.({ definitionId: "material-013", displayName: "Sulfur Crust", eventId: `map013-sulfur-crust-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap014) {
+            map014HarvestedMagma += 1;
+            options.onReward?.({ definitionId: "material-014", displayName: "Hardened Magma", eventId: `map014-hardened-magma-${resource.name}`, provenanceType: "harvest" });
+          }
+          if (isMap015) {
+            map015HarvestedEmber += 1;
+            options.onReward?.({ definitionId: "material-015", displayName: "Primal Ember", eventId: `map015-primal-ember-${resource.name}`, provenanceType: "harvest" });
           }
         }
       });
@@ -709,6 +910,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
           if (isMap008) map008DefeatedDrones += 1;
           if (isMap009) map009DefeatedStalkers += 1;
           if (isMap010) map010DefeatedLarvae += 1;
+          if (isMap011) map011DefeatedCrawlers += 1;
+          if (isMap012) map012DefeatedStalkers += 1;
+          if (isMap013) map013DefeatedLeapers += 1;
+          if (isMap014) map014DefeatedHounds += 1;
+          if (isMap015) map015DefeatedMyrmidons += 1;
         }
       }
       if (distance < 1.7 && performance.now() - lastDamage > 800) {
@@ -898,7 +1104,77 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map010Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
     }
 
-    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : isMap007 ? map007Memory.state === "boss-active" : isMap008 ? map008Memory.state === "boss-active" : isMap009 ? map009Memory.state === "boss-active" : isMap010 ? map010Memory.state === "boss-active" : lighting.phase === "night";
+    if (isMap011) {
+      const encounter = resolveMap011Encounter(map011Memory, { x: player.position.x, z: player.position.z, health, harvestedBloom: map011HarvestedBloom, defeatedCrawlers: map011DefeatedCrawlers, interacted: pendingMapInteraction, now: performance.now() });
+      map011Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map011Warning = encounter.warning;
+      if (encounter.ventDamagePerSecond > 0) health = Math.max(0, health - encounter.ventDamagePerSecond * dt);
+      map011Elite.setEnabled(encounter.activateElite);
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP011_FORGE_CAMP.x + 1.5, 0, MAP011_FORGE_CAMP.z + 1.2); }
+      forgemasterVael.setEnabled(isMap011 && (Vector3.Distance(player.position, forgemasterVael.position) < 12 || encounter.sheltered));
+      const ventPulse = encounter.ventActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 150) * 0.14 : 1;
+      smelterArch.scaling.setAll(encounter.memory.state === "boss-telegraph" ? ventPulse + 0.12 : ventPulse);
+      map011Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    if (isMap012) {
+      const encounter = resolveMap012Encounter(map012Memory, { x: player.position.x, z: player.position.z, health, harvestedGlass: map012HarvestedGlass, defeatedStalkers: map012DefeatedStalkers, interacted: pendingMapInteraction, now: performance.now() });
+      map012Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map012Warning = encounter.warning;
+      if (encounter.ashDamagePerSecond > 0) health = Math.max(0, health - encounter.ashDamagePerSecond * dt);
+      map012Elite.setEnabled(encounter.activateElite);
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP012_SCOUT_OVERLOOK.x + 1.5, 0, MAP012_SCOUT_OVERLOOK.z + 1.2); }
+      scoutKaelen.setEnabled(isMap012 && (Vector3.Distance(player.position, scoutKaelen.position) < 12 || encounter.sheltered));
+      const galePulse = encounter.galeActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 140) * 0.15 : 1;
+      windMonolith.scaling.setAll(encounter.memory.state === "boss-telegraph" ? galePulse + 0.12 : galePulse);
+      map012Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    if (isMap013) {
+      const encounter = resolveMap013Encounter(map013Memory, { x: player.position.x, z: player.position.z, health, harvestedCrust: map013HarvestedCrust, defeatedLeapers: map013DefeatedLeapers, interacted: pendingMapInteraction, now: performance.now() });
+      map013Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map013Warning = encounter.warning;
+      if (encounter.corrodeDamagePerSecond > 0) health = Math.max(0, health - encounter.corrodeDamagePerSecond * dt);
+      map013Elite.setEnabled(encounter.activateElite);
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP013_THERON_BOARDWALK.x + 1.5, 0, MAP013_THERON_BOARDWALK.z + 1.2); }
+      alchemistTheron.setEnabled(isMap013 && (Vector3.Distance(player.position, alchemistTheron.position) < 12 || encounter.sheltered));
+      const geyserPulse = encounter.geyserActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
+      sulfurFalls.scaling.setAll(encounter.memory.state === "boss-telegraph" ? geyserPulse + 0.12 : geyserPulse);
+      map013Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    if (isMap014) {
+      const encounter = resolveMap014Encounter(map014Memory, { x: player.position.x, z: player.position.z, health, harvestedMagma: map014HarvestedMagma, defeatedHounds: map014DefeatedHounds, interacted: pendingMapInteraction, now: performance.now() });
+      map014Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map014Warning = encounter.warning;
+      if (encounter.trenchDamagePerSecond > 0) health = Math.max(0, health - encounter.trenchDamagePerSecond * dt);
+      map014Elite.setEnabled(encounter.activateElite);
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP014_WARDEN_POST.x + 1.5, 0, MAP014_WARDEN_POST.z + 1.2); }
+      wardenSonya.setEnabled(isMap014 && (Vector3.Distance(player.position, wardenSonya.position) < 12 || encounter.sheltered));
+      const tremorPulse = encounter.tremorActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 135) * 0.15 : 1;
+      citadelGate.scaling.setAll(encounter.memory.state === "boss-telegraph" ? tremorPulse + 0.12 : tremorPulse);
+      map014Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    if (isMap015) {
+      const encounter = resolveMap015Encounter(map015Memory, { x: player.position.x, z: player.position.z, health, harvestedEmber: map015HarvestedEmber, defeatedMyrmidons: map015DefeatedMyrmidons, interacted: pendingMapInteraction, now: performance.now() });
+      map015Memory = encounter.memory;
+      pendingMapInteraction = false;
+      map015Warning = encounter.warning;
+      if (encounter.staminaDrainPerSecond > 0) health = Math.max(0, health - encounter.staminaDrainPerSecond * dt);
+      map015Elite.setEnabled(encounter.activateElite);
+      if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP015_FORGE_SHRINE.x + 1.5, 0, MAP015_FORGE_SHRINE.z + 1.2); }
+      forgeAvatar.setEnabled(isMap015 && (Vector3.Distance(player.position, forgeAvatar.position) < 12 || encounter.sheltered));
+      const corePulse = encounter.pulseActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 125) * 0.16 : 1;
+      primalAnvil.scaling.setAll(encounter.memory.state === "boss-telegraph" ? corePulse + 0.13 : corePulse);
+      map015Elite.scaling.setAll(options.reducedMotion ? 1 : 1 + Math.sin(performance.now() / 215) * 0.08);
+    }
+
+    const bossActive = isMap001 ? map001Memory.state === "boss-active" : isMap002 ? map002Memory.state === "boss-active" : isMap003 ? map003Memory.state === "boss-active" : isMap004 ? map004Memory.state === "boss-active" : isMap005 ? map005Memory.state === "boss-active" : isMap006 ? map006Memory.state === "boss-active" : isMap007 ? map007Memory.state === "boss-active" : isMap008 ? map008Memory.state === "boss-active" : isMap009 ? map009Memory.state === "boss-active" : isMap010 ? map010Memory.state === "boss-active" : isMap011 ? map011Memory.state === "boss-active" : isMap012 ? map012Memory.state === "boss-active" : isMap013 ? map013Memory.state === "boss-active" : isMap014 ? map014Memory.state === "boss-active" : isMap015 ? map015Memory.state === "boss-active" : lighting.phase === "night";
     boss.setEnabled(bossActive);
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
@@ -910,10 +1186,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       options.onSnapshot?.({
         health,
         resources: collected,
-        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0) + (isMap007 && map007Elite.isEnabled() ? 1 : 0) + (isMap007 && bossActive ? 1 : 0) + (isMap008 && map008Elite.isEnabled() ? 1 : 0) + (isMap008 && bossActive ? 1 : 0) + (isMap009 && map009Elite.isEnabled() ? 1 : 0) + (isMap009 && bossActive ? 1 : 0) + (isMap010 && map010Elite.isEnabled() ? 1 : 0) + (isMap010 && bossActive ? 1 : 0),
+        enemies: enemies.filter(enemy => enemy.metadata?.alive).length + (isMap001 && elite.metadata?.alive ? 1 : 0) + (isMap002 && map002Elite.isEnabled() ? 1 : 0) + (isMap003 && map003Elite.isEnabled() ? 1 : 0) + (isMap004 && map004Elite.isEnabled() ? 1 : 0) + (isMap005 && map005Elite.isEnabled() ? 1 : 0) + (isMap005 && bossActive ? 1 : 0) + (isMap006 && map006Elite.isEnabled() ? 1 : 0) + (isMap006 && bossActive ? 1 : 0) + (isMap007 && map007Elite.isEnabled() ? 1 : 0) + (isMap007 && bossActive ? 1 : 0) + (isMap008 && map008Elite.isEnabled() ? 1 : 0) + (isMap008 && bossActive ? 1 : 0) + (isMap009 && map009Elite.isEnabled() ? 1 : 0) + (isMap009 && bossActive ? 1 : 0) + (isMap010 && map010Elite.isEnabled() ? 1 : 0) + (isMap010 && bossActive ? 1 : 0) + (isMap011 && map011Elite.isEnabled() ? 1 : 0) + (isMap011 && bossActive ? 1 : 0) + (isMap012 && map012Elite.isEnabled() ? 1 : 0) + (isMap012 && bossActive ? 1 : 0) + (isMap013 && map013Elite.isEnabled() ? 1 : 0) + (isMap013 && bossActive ? 1 : 0) + (isMap014 && map014Elite.isEnabled() ? 1 : 0) + (isMap014 && bossActive ? 1 : 0) + (isMap015 && map015Elite.isEnabled() ? 1 : 0) + (isMap015 && bossActive ? 1 : 0),
         phase: lighting.phase,
-        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : isMap008 ? map008Memory.state : isMap009 ? map009Memory.state : isMap010 ? map010Memory.state : "exploring",
-        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : isMap008 ? map008Warning : isMap009 ? map009Warning : isMap010 ? map010Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
+        mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : isMap008 ? map008Memory.state : isMap009 ? map009Memory.state : isMap010 ? map010Memory.state : isMap011 ? map011Memory.state : isMap012 ? map012Memory.state : isMap013 ? map013Memory.state : isMap014 ? map014Memory.state : isMap015 ? map015Memory.state : "exploring",
+        warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : isMap008 ? map008Warning : isMap009 ? map009Warning : isMap010 ? map010Warning : isMap011 ? map011Warning : isMap012 ? map012Warning : isMap013 ? map013Warning : isMap014 ? map014Warning : isMap015 ? map015Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
       });
       lastEmit = performance.now();
