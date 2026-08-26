@@ -9,6 +9,7 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
 import { getItemDefinition, type ItemInstance } from "@/game/data/catalog";
@@ -41,6 +42,7 @@ import { breakBlockAt, getAdjacentSupportModule, getWorldBlockAt, normalizeWorld
 import { getWorldFarmCropStage, getWorldFarmPlant, normalizeWorldFarmState, planHarvestWorldPlant, planPlantWorldSeed, type WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { STORAGE_CHEST_ID, STORAGE_CHEST_MODULE_ID } from "@/game/systems/worldStorageSystem";
 import type { WorldPlantEffect } from "@/game/tools/plantCatalogGenerator";
+import type { CameraMode, ViewDistanceBlocks } from "@/game/systems/cameraModes";
 
 export type GameSnapshot = {
   health: number;
@@ -118,6 +120,8 @@ type GameOptions = {
   companion?: CompanionConfig;
   reducedMotion?: boolean;
   renderDistance?: RenderDistancePreset;
+  cameraMode?: CameraMode;
+  viewDistanceBlocks?: ViewDistanceBlocks;
 };
 
 type ArcaneControl =
@@ -125,7 +129,9 @@ type ArcaneControl =
   | { type: "attack" }
   | { type: "interact" }
   | { type: "dash" }
-  | { type: "use-item"; slot: number; itemInstanceId?: string; itemDefinitionId?: string };
+  | { type: "use-item"; slot: number; itemInstanceId?: string; itemDefinitionId?: string }
+  | { type: "set-camera-mode"; mode: CameraMode }
+  | { type: "set-view-distance"; blocks: ViewDistanceBlocks };
 
 function material(scene: Scene, name: string, color: string, glow = 0) {
   const result = new StandardMaterial(name, scene);
@@ -133,6 +139,17 @@ function material(scene: Scene, name: string, color: string, glow = 0) {
   result.emissiveColor = Color3.FromHexString(color).scale(glow);
   result.specularColor = Color3.Black();
   return result;
+}
+
+function renderPresetForViewDistance(blocks: ViewDistanceBlocks): RenderDistancePreset {
+  return blocks <= 15 ? "near" : blocks >= 40 ? "far" : "balanced";
+}
+
+function effectiveRenderDistancePreset(globalPreset: RenderDistancePreset | undefined, viewDistanceBlocks: ViewDistanceBlocks): RenderDistancePreset {
+  const viewPreset = renderPresetForViewDistance(viewDistanceBlocks);
+  if (globalPreset === "near" || viewPreset === "near") return "near";
+  if (globalPreset === "far" && viewPreset === "far") return "far";
+  return "balanced";
 }
 
 export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement, options: GameOptions): Promise<GameHandle> {
@@ -158,7 +175,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap015 = options.mapId === "map-015-heart-of-the-crucible";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
   const visualProfile = getBiomeVisualProfile(options.mapId);
-  const renderDistance = getRenderDistanceConfig(options.renderDistance);
+  let activeViewDistanceBlocks: ViewDistanceBlocks = options.viewDistanceBlocks ?? 20;
+  let renderDistance = getRenderDistanceConfig(effectiveRenderDistancePreset(options.renderDistance, activeViewDistanceBlocks));
   const worldMetersPerUnit = 1;
   const worldRadius = Math.max(500, Math.round(mapDefinition?.radiusMeters ?? 500));
   const camera = new ArcRotateCamera("arcane-isometric-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
@@ -170,6 +188,12 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   scene.activeCamera = camera;
   camera.attachControl(canvas, false);
   camera.inputs.clear();
+  const firstPersonCamera = new UniversalCamera("arcane-first-person-camera", new Vector3(0, 1.5, 0), scene);
+  firstPersonCamera.minZ = 0.05;
+  firstPersonCamera.maxZ = worldRadius * 3;
+  firstPersonCamera.fov = 0.92;
+  firstPersonCamera.inputs.clear();
+  let activeCameraMode: CameraMode = options.cameraMode ?? "overhead";
   let cameraPan = { x: 0, z: 0 };
   let panning = false;
   let lastPanPoint: { x: number; y: number } | null = null;
@@ -264,6 +288,24 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const petArt = await loadPackModel(scene, "companion", { name: "arcane-cyber-fox-pack-model", scale: 1.12 });
   petArt.parent = pet;
   petArt.position.y = 0.02;
+
+  const applyCameraMode = (mode: CameraMode) => {
+    activeCameraMode = mode;
+    heroArt.setEnabled(mode !== "first-person");
+    if (mode === "first-person") {
+      camera.detachControl();
+      scene.activeCamera = firstPersonCamera;
+      firstPersonCamera.position.set(player.position.x, player.position.y + 1.5, player.position.z);
+      return;
+    }
+    if (scene.activeCamera === firstPersonCamera) camera.attachControl(canvas, false);
+    scene.activeCamera = camera;
+    camera.alpha = mode === "side" ? Math.PI / 2 : -Math.PI / 4;
+    camera.beta = mode === "side" ? Math.PI / 3.15 : Math.PI / 3.65;
+    camera.radius = mode === "side" ? 18 : 26;
+    camera.target.set(player.position.x, mode === "side" ? 0.85 : 0.5, player.position.z);
+  };
+  applyCameraMode(activeCameraMode);
 
   let worldBlockOverrides = normalizeWorldBlockOverrides(options.worldBlockOverrides);
   let activeBlockTool: BlockTool = "hand";
@@ -744,6 +786,12 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const control = (event as CustomEvent<ArcaneControl>).detail;
     if (!control) return;
     if (control.type === "move") move = { x: control.x, y: control.y };
+    if (control.type === "set-camera-mode") applyCameraMode(control.mode);
+    if (control.type === "set-view-distance") {
+      activeViewDistanceBlocks = control.blocks;
+      renderDistance = getRenderDistanceConfig(effectiveRenderDistancePreset(options.renderDistance, activeViewDistanceBlocks));
+      updateTerrainVisibility(player.position, performance.now());
+    }
     if (control.type === "attack") {
       const result = spendStamina(stamina, "attack");
       if (result.accepted) {
@@ -900,8 +948,14 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     }
     updateTerrainVisibility(player.position, performance.now());
     syncWorldFarmVisuals(Date.now());
-    const cameraTarget = new Vector3(player.position.x + cameraPan.x, 0.5, player.position.z + cameraPan.z);
-    camera.target = Vector3.Lerp(camera.target, cameraTarget, Math.min(1, dt * 5.4));
+    if (activeCameraMode === "first-person") {
+      firstPersonCamera.position.set(player.position.x, player.position.y + 1.5, player.position.z);
+      const forward = new Vector3(Math.sin(player.rotation.y), 0.05, Math.cos(player.rotation.y));
+      firstPersonCamera.setTarget(player.position.add(new Vector3(forward.x * 4, 1.5 + forward.y * 4, forward.z * 4)));
+    } else {
+      const cameraTarget = new Vector3(player.position.x + cameraPan.x, activeCameraMode === "side" ? 0.85 : 0.5, player.position.z + cameraPan.z);
+      camera.target = Vector3.Lerp(camera.target, cameraTarget, Math.min(1, dt * 5.4));
+    }
     dashPulse = Math.max(0, dashPulse - dt);
     attackPulse = Math.max(0, attackPulse - dt);
     const heroScale = 1.08 * (1 + Math.sin((0.32 - attackPulse) * 18) * attackPulse * 0.24);

@@ -57,6 +57,7 @@ import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game
 import { consumeOneFromStack, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 import { CHEST_SLOT_LIMIT, CARRY_SLOT_LIMIT, STORAGE_CHEST_ID, createEmptyWorldStorage, depositIntoChest, getWorldStorageSlots, withdrawFromChest as withdrawItemFromChest, type WorldStorageById } from "@/game/systems/worldStorageSystem";
 import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { CAMERA_MODE_OPTIONS, DEFAULT_IN_MAP_SETTINGS, TARGET_FPS_OPTIONS, VIEW_DISTANCE_BLOCKS, normalizeInMapSettings, type InMapSettings } from "@/game/systems/cameraModes";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
@@ -163,17 +164,31 @@ function TouchStick() {
 
 function SettingsSheet({ settings, setSettings, close }: { settings: GameSettings; setSettings: (settings: GameSettings) => void; close: () => void }) {
   const update = <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => setSettings({ ...settings, [key]: value });
-  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet" onPointerDown={event => event.stopPropagation()}>
-    <header><div><p className="eyebrow">Frontier settings</p><h3>Graphics & Audio</h3></div><button className="icon-button" onClick={close}><X size={18} /></button></header>
+  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="ตั้งค่าตัวเกมภาพรวม">
+    <header><div><p className="eyebrow">Global settings · App-wide</p><h3>ตั้งค่าตัวเกมภาพรวม</h3></div><button className="icon-button" onClick={close} aria-label="ปิดตั้งค่า"><X size={18} /></button></header>
     <div className="setting-stack">
-      <label><span>Render distance</span><select value={settings.renderDistance} onChange={event => update("renderDistance", event.target.value as GameSettings["renderDistance"])}><option value="near">Near · battery saver</option><option value="balanced">Balanced · recommended</option><option value="far">Far · stronger devices</option></select></label>
-      <label><span>Graphics quality</span><select value={settings.quality} onChange={event => update("quality", event.target.value as GameSettings["quality"])}><option value="low">Low · battery saver</option><option value="medium">Medium · balanced</option><option value="high">High · full effects</option></select></label>
-      <label><span>Effect density</span><select value={settings.effectIntensity} onChange={event => update("effectIntensity", event.target.value as GameSettings["effectIntensity"])}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-      <label><span>Music <b>{settings.musicVolume}%</b></span><input type="range" min="0" max="100" value={settings.musicVolume} onChange={event => update("musicVolume", Number(event.target.value))} /></label>
-      <label><span>Sound effects <b>{settings.sfxVolume}%</b></span><input type="range" min="0" max="100" value={settings.sfxVolume} onChange={event => update("sfxVolume", Number(event.target.value))} /></label>
-      <label><span>Touch control size <b>{Math.round(settings.touchScale * 100)}%</b></span><input type="range" min="0.8" max="1.25" step="0.05" value={settings.touchScale} onChange={event => update("touchScale", Number(event.target.value))} /></label>
-      <label><span>Touch control opacity <b>{Math.round(settings.touchOpacity * 100)}%</b></span><input type="range" min="0.45" max="1" step="0.05" value={settings.touchOpacity} onChange={event => update("touchOpacity", Number(event.target.value))} /></label>
-      <label className="toggle-row"><span>Reduced motion</span><input type="checkbox" checked={settings.reducedMotion} onChange={event => update("reducedMotion", event.target.checked)} /></label>
+      <label><span>ระยะเรนเดอร์ภาพรวม</span><select value={settings.renderDistance} onChange={event => update("renderDistance", event.target.value as GameSettings["renderDistance"])}><option value="near">ใกล้ · ประหยัดแบต</option><option value="balanced">กลาง · แนะนำ</option><option value="far">ไกล · ใช้กับเครื่องแรงกว่า</option></select></label>
+      <label><span>คุณภาพภาพ</span><select value={settings.quality} onChange={event => update("quality", event.target.value as GameSettings["quality"])}><option value="low">ต่ำ · ประหยัดแบต</option><option value="medium">กลาง · สมดุล</option><option value="high">สูง · เอฟเฟกต์เต็ม</option></select></label>
+      <label><span>ความหนาแน่นเอฟเฟกต์</span><select value={settings.effectIntensity} onChange={event => update("effectIntensity", event.target.value as GameSettings["effectIntensity"])}><option value="low">ต่ำ</option><option value="medium">กลาง</option><option value="high">สูง</option></select></label>
+      <label><span>เพลง <b>{settings.musicVolume}%</b></span><input type="range" min="0" max="100" value={settings.musicVolume} onChange={event => update("musicVolume", Number(event.target.value))} /></label>
+      <label><span>เสียงเอฟเฟกต์ <b>{settings.sfxVolume}%</b></span><input type="range" min="0" max="100" value={settings.sfxVolume} onChange={event => update("sfxVolume", Number(event.target.value))} /></label>
+      <label><span>ขนาดปุ่มสัมผัส <b>{Math.round(settings.touchScale * 100)}%</b></span><input type="range" min="0.8" max="1.25" step="0.05" value={settings.touchScale} onChange={event => update("touchScale", Number(event.target.value))} /></label>
+      <label><span>ความทึบปุ่มสัมผัส <b>{Math.round(settings.touchOpacity * 100)}%</b></span><input type="range" min="0.45" max="1" step="0.05" value={settings.touchOpacity} onChange={event => update("touchOpacity", Number(event.target.value))} /></label>
+      <label className="toggle-row"><span>ลดการเคลื่อนไหว</span><input type="checkbox" checked={settings.reducedMotion} onChange={event => update("reducedMotion", event.target.checked)} /></label>
+      <p className="settings-note">เมนูนี้ใช้กับภาพ เสียง และการควบคุมของแอปโดยรวม ส่วนมุมมอง ระยะ 5–50 บล็อก และเป้าหมาย FPS อยู่ในตั้งค่าภายในแผนที่เมื่อกำลังเล่น</p>
+    </div>
+  </section></div>;
+}
+
+function InMapSettingsSheet({ settings, setSettings, close }: { settings: InMapSettings; setSettings: (settings: InMapSettings) => void; close: () => void }) {
+  const update = <K extends keyof InMapSettings>(key: K, value: InMapSettings[K]) => setSettings({ ...settings, [key]: value });
+  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet in-map-settings-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="ตั้งค่าภายในแผนที่">
+    <header><div><p className="eyebrow">In-map settings · Obsidian Frontier</p><h3>ตั้งค่าภายในแผนที่</h3></div><button className="icon-button" onClick={close} aria-label="ปิดตั้งค่า"><X size={18} /></button></header>
+    <div className="setting-stack">
+      <label><span>มุมมองการเล่น</span><select value={settings.cameraMode} onChange={event => update("cameraMode", event.target.value as InMapSettings["cameraMode"])}>{CAMERA_MODE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label} · {option.description}</option>)}</select></label>
+      <label><span>ระยะมองเห็น <b>{settings.viewDistanceBlocks} บล็อก</b></span><select value={settings.viewDistanceBlocks} onChange={event => update("viewDistanceBlocks", Number(event.target.value) as InMapSettings["viewDistanceBlocks"])}>{VIEW_DISTANCE_BLOCKS.map(blocks => <option key={blocks} value={blocks}>{blocks} บล็อก</option>)}</select></label>
+      <label><span>เป้าหมายเฟรมเรต <b>{settings.targetFps} FPS</b></span><select value={settings.targetFps} onChange={event => update("targetFps", Number(event.target.value) as InMapSettings["targetFps"])}>{TARGET_FPS_OPTIONS.map(fps => <option key={fps} value={fps}>{fps} FPS{fps === 120 ? " · ถ้าอุปกรณ์รองรับ" : " · เป้าหมาย ไม่ใช่การรับประกัน"}</option>)}</select></label>
+      <p className="settings-note">มุมมองและระยะนี้บันทึกแยกตามผู้เล่นกับแผนที่ ส่วน FPS เป็นค่าเป้าหมายของเกม ไม่ใช่ผลทดสอบประสิทธิภาพของเครื่อง</p>
     </div>
   </section></div>;
 }
@@ -282,6 +297,7 @@ export default function ArcaneFrontier() {
   const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
   const [worldFarmState, setWorldFarmState] = useState<WorldFarmState>({});
   const [worldStorageById, setWorldStorageById] = useState<WorldStorageById>(createEmptyWorldStorage);
+  const [inMapSettings, setInMapSettings] = useState<InMapSettings>(DEFAULT_IN_MAP_SETTINGS);
   const [worldBlockStateReady, setWorldBlockStateReady] = useState(false);
   const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -324,12 +340,14 @@ export default function ArcaneFrontier() {
       setWorldBlockOverrides(state.worldBlockOverrides);
       setWorldFarmState(state.worldFarmState);
       setWorldStorageById(state.worldStorageById);
+      setInMapSettings(state.inMapSettings);
       setWorldBlockStateReady(true);
     }).catch(() => {
       if (active) {
         setWorldBlockOverrides({});
         setWorldFarmState({});
         setWorldStorageById(createEmptyWorldStorage());
+        setInMapSettings(DEFAULT_IN_MAP_SETTINGS);
         setWorldBlockStateReady(true);
       }
     });
@@ -566,10 +584,10 @@ export default function ArcaneFrontier() {
       updateSession({ pendingActions: session.pendingActions.concat({ id: `block-break-${Date.now()}`, type: "block-break", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, coordinate: event.coordinate }, }) });
     }
     setWorldBlockOverrides(event.overrides);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, worldStorageById, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, worldStorageById, inMapSettings, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     setToast(event.message);
     return true;
-  }, [session, worldFarmState, worldStorageById]);
+  }, [inMapSettings, session, worldFarmState, worldStorageById]);
 
   const blockMessageHandler = useCallback((message: string) => setToast(message), []);
   const farmMessageHandler = useCallback((message: string) => setToast(message), []);
@@ -592,10 +610,10 @@ export default function ArcaneFrontier() {
       if (event.effect?.kind === "repel") setToast(`${event.message} · แรงผลักทำงาน ${event.effect.radius} บล็อกแบบไม่ทำลาย`);
     }
     setWorldFarmState(event.state);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, worldStorageById, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, worldStorageById, inMapSettings, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     if (!event.effect || event.effect.kind !== "repel") setToast(event.message);
     return true;
-  }, [session, worldBlockOverrides, worldStorageById]);
+  }, [inMapSettings, session, worldBlockOverrides, worldStorageById]);
 
   const chestOpenHandler = useCallback((chestId: string) => {
     if (chestId !== STORAGE_CHEST_ID) return;
@@ -606,9 +624,9 @@ export default function ArcaneFrontier() {
   const persistStorageTransfer = useCallback((result: ReturnType<typeof depositIntoChest> | ReturnType<typeof withdrawItemFromChest>) => {
     if (!session || !result.ok) return;
     setWorldStorageById(result.storage);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById: result.storage, updatedAt: Date.now() }).catch(() => setToast("บันทึกของในหีบไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById: result.storage, inMapSettings, updatedAt: Date.now() }).catch(() => setToast("บันทึกของในหีบไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     updateSession({ inventory: result.carry, pendingActions: session.pendingActions.concat(result.action) });
-  }, [session, worldBlockOverrides, worldFarmState]);
+  }, [inMapSettings, session, worldBlockOverrides, worldFarmState]);
 
   const depositFromChest = useCallback((itemInstanceId: string) => {
     if (!session) return;
@@ -625,6 +643,13 @@ export default function ArcaneFrontier() {
     persistStorageTransfer(result);
     setToast("นำของออกจากหีบแล้ว · provenance เดิมยังอยู่");
   }, [activeChestId, persistStorageTransfer, session, worldStorageById]);
+
+  const commitInMapSettings = useCallback((next: InMapSettings) => {
+    const normalized = normalizeInMapSettings(next);
+    setInMapSettings(normalized);
+    if (!session) return;
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById, inMapSettings: normalized, updatedAt: Date.now() }).catch(() => setToast("บันทึกตั้งค่าในแผนที่ไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+  }, [session, worldBlockOverrides, worldFarmState, worldStorageById]);
 
   const snapshotHandler = useCallback((next: GameSnapshot) => {
     setGameSnapshot(next);
@@ -715,7 +740,7 @@ export default function ArcaneFrontier() {
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
     {transition && <LoadingGate transition={transition} reducedMotion={settings.reducedMotion} />}
     {toast && <button className="game-toast" onClick={() => setToast(null)}>{toast}</button>}
-    {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />}
+    {showSettings && (screen === "game" ? <InMapSettingsSheet settings={inMapSettings} setSettings={commitInMapSettings} close={() => setShowSettings(false)} /> : <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />)}
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
     {showChest && session && screen === "game" && <ChestSheet session={session} storage={worldStorageById} chestId={activeChestId} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowChest(false)} onDeposit={depositFromChest} onWithdraw={withdrawFromChest} getAssetUrl={getPackIconUrl} />}
@@ -770,7 +795,7 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onChestOpen={chestOpenHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
+    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} cameraMode={inMapSettings.cameraMode} viewDistanceBlocks={inMapSettings.viewDistanceBlocks} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onChestOpen={chestOpenHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src={obsidianCompanionArt ?? "/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg"} alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>

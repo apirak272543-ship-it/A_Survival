@@ -3,6 +3,7 @@ import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
 import { normalizeWorldFarmState, createDefaultWorldFarmState, type WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { createEmptyWorldStorage, normalizeWorldStorage, type WorldStorageById } from "@/game/systems/worldStorageSystem";
+import { DEFAULT_IN_MAP_SETTINGS, normalizeInMapSettings, type InMapSettings } from "@/game/systems/cameraModes";
 
 export const OFFLINE_QUEUE_LIMIT = 1000;
 
@@ -31,11 +32,12 @@ export type OfflineMapState = {
   worldBlockOverrides: Record<string, string | null>;
   worldFarmState: WorldFarmState;
   worldStorageById: WorldStorageById;
+  inMapSettings: InMapSettings;
   updatedAt: number;
 };
 
 export function defaultOfflineMapState(mapId: string, playerId: string): OfflineMapState {
-  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: {}, worldFarmState: createDefaultWorldFarmState(), worldStorageById: createEmptyWorldStorage(), updatedAt: Date.now() };
+  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: {}, worldFarmState: createDefaultWorldFarmState(), worldStorageById: createEmptyWorldStorage(), inMapSettings: DEFAULT_IN_MAP_SETTINGS, updatedAt: Date.now() };
 }
 
 export function normalizeOfflineMapState(candidate: Partial<OfflineMapState>, mapId: string, playerId: string): OfflineMapState {
@@ -51,6 +53,7 @@ export function normalizeOfflineMapState(candidate: Partial<OfflineMapState>, ma
     worldBlockOverrides,
     worldFarmState: normalizeWorldFarmState(candidate.worldFarmState),
     worldStorageById: normalizeWorldStorage(candidate.worldStorageById),
+    inMapSettings: normalizeInMapSettings(candidate.inMapSettings),
     updatedAt: typeof candidate.updatedAt === "number" ? candidate.updatedAt : Date.now(),
   };
 }
