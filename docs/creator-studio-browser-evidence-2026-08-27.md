@@ -35,3 +35,15 @@
 - หลัง browser view พบ validation state เป็น `ผ่าน` และสถานะพื้นที่ทำงานเป็น `ตรวจเบื้องต้นผ่านแล้ว` เมื่อเรียกปุ่มด้วย DOM click
 - เปิด `http://localhost:3000/?route=landing` แล้วพบเฉพาะ `ARCANE FRONTIER`, `Audio`, `Enter the frontier` และคำอธิบายเกมผู้เล่น ไม่พบ `Creator Studio`, pixel canvas, palette หรือ generator controls
 - ข้อสรุปจาก browser หลักฐานรอบนี้: developer creator route แยกจาก root player route ได้จริงใน development preview และไม่เพิ่มเมนู creator ให้ผู้เล่น
+
+## Builder API browser pass
+
+- เปิด Creator Studio หลัง API integration แล้วพบปุ่ม `ส่งเข้า Builder / Registry` เปิดใช้งานและมี source selector เพิ่มขึ้น
+- การเรียก DOM click รอบแรกเขียน JavaScript cast แบบ TypeScript (`as HTMLButtonElement`) จึงเกิด browser syntax error; ไม่ใช่ข้อผิดพลาดของแอปและไม่ได้ถือเป็นผลผ่าน
+- เรียกซ้ำด้วย JavaScript browser syntax ปกติพบปุ่มจริง (`found: true`) และปุ่มยังไม่ disabled หลัง click (`disabledAfterClick: false`); ต้องตรวจ async mutation response ต่อ
+
+## Permission boundary result
+
+- Browser เรียก `ส่งเข้า Builder / Registry` จาก Creator Studio ได้จริง แต่ development session ไม่มี admin authentication จึงแสดงสถานะ `ส่งให้ Builder ไม่สำเร็จ: You do not have required permission (10002)`
+- ผลนี้ยืนยันว่า creator write ไม่เปิดให้ unauthenticated player/browser และ UI แสดง error ที่อ่านได้แทนการทำเหมือน build สำเร็จ
+- Server contract test ยืนยัน admin path แยกต่างหาก ส่วน browser รอบนี้ยังไม่อ้าง admin build success เพราะไม่มี credential/session สำหรับ role นั้น

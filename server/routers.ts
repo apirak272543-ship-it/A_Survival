@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { inspectSyncPayload, normalizePlayerId } from "./gameIntegrity";
+import { creatorRouter } from "./creatorRouter";
 
 const playerIdSchema = z.string().trim().min(3).max(24).regex(/^[a-zA-Z0-9_-]+$/, "Player ID accepts letters, numbers, underscores, and hyphens only");
 const vectorClockSchema = z.record(z.string(), z.number().int().min(0).max(10_000_000));
@@ -29,6 +30,8 @@ export const appRouter = router({
       } as const;
     }),
   }),
+
+  creator: creatorRouter,
 
   game: router({
     openProfile: publicProcedure.input(z.object({

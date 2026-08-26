@@ -114,3 +114,12 @@ Recovery protections ยังอยู่ครบ: branch `local-pre-forensic-
 ข้อค้นพบนี้ปรับสถานะจากข้อความใน audit เดิมที่ระบุว่าไม่มี Texture Pack Builder และ Thai no-code UI ให้เป็น **PARTIAL foundation** ใน `OWNER_REQUIREMENTS_MATRIX.md` เท่านั้น. ยังไม่มี creator tRPC/API, creator-specific authorization, server-side save/register persistence, builder-backed PNG response ใน UI, model attachment/runtime registry หรือการ migrate procedural starter pack ผ่าน Builder แบบ end-to-end. จึงยังไม่ยกระดับเป็น complete creator platform และยังไม่มีการนำ route นี้ไปปนกับ `ArcaneFrontier` player HUD.
 
 Validation หลัง implementation รอบนี้ผ่าน full suite `47` test files / `163` tests และ production build ด้วย `NODE_OPTIONS=--max-old-space-size=1536`. Build ยังคงมี warning เดิมเรื่อง analytics environment placeholders และ Babylon vendor chunk ขนาดใหญ่; warnings เหล่านี้ไม่ถูกตีความเป็น mobile performance acceptance.
+
+
+## 10. Creator API integration update — 27 สิงหาคม 2026
+
+หลังเพิ่ม Creator Studio draft workspace ได้เพิ่ม `server/creatorRouter.ts` และลงทะเบียนเป็น `creator` แยกจาก `game` ใน `server/routers.ts`. Route `creator.texture.validateInput`, `build`, `generate` และ `preview` ใช้ `adminProcedure` และเรียก `texture.pack` ผ่าน `CommonGeneratorRegistry` บน server. ดังนั้น client ไม่ได้ encode PNG หรือคำนวณ manifest/hash เองอีกต่อไป; UI แปลง pixel/layer state เป็น input contract แล้ว server คืน PNG, digest, manifest และ artifact preview.
+
+`server/creatorRouter.test.ts` ยืนยัน admin สามารถ build PNG/manifest, regular user ถูกปฏิเสธด้วย `FORBIDDEN`, unauthenticated caller ถูกปฏิเสธ และ artifact เดิมให้ content hash/output เดิมเมื่อ seed/input เดิม. Focused creator+texture tests ผ่าน `2` files / `8` tests; full regression ผ่าน `48` files / `167` tests; `pnpm check` และ production build ด้วย memory cap ผ่าน.
+
+การเชื่อมนี้เป็น **PARTIAL foundation** ไม่ใช่การประกาศว่า creator platform เสร็จ: role model ปัจจุบันมีเพียง `user/admin`, ยังไม่มี creator-specific permission, durable artifact/manifest storage, persistent registry, export package file จาก API หรือ runtime model/atlas attachment. Browser route ทดสอบได้ถึง template switching, pixel painting, local draft, validation และ player boundary แต่ไม่มี authenticated admin session ใน development จึงไม่อ้าง browser build mutation สำเร็จ. ปุ่ม build จะแสดง error ที่ตรวจสอบได้เมื่อไม่มี admin session และไม่เปิด generator control ใน player route.

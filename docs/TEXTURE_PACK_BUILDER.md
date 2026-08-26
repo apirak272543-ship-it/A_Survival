@@ -14,7 +14,7 @@
 | Common Generator integration | plugin `texture.pack` และ registry lifecycle | มี | deterministic generate/validate/preview/tamper test |
 | Thai no-code UI | `client/src/pages/CreatorStudio.tsx` | มีเป็น draft workspace | browser route evidence |
 | Developer route boundary | `/creator-studio` ใน `client/src/App.tsx` | มีใน development หรือเมื่อ `VITE_CREATOR_STUDIO_ENABLED=true` | root player route ตรวจไม่พบ creator controls |
-| Backend save/export/register API สำหรับ UI | ยังไม่มี creator tRPC router | ยังไม่เสร็จ | ปุ่ม `ส่งเข้า Builder / Registry` ยัง disabled |
+| Creator tRPC/API boundary | `server/creatorRouter.ts` ลงทะเบียน `creator.texture.validateInput`, `build`, `generate`, `preview` ด้วย `adminProcedure` | มี server-side foundation | `creatorRouter.test.ts` และ full suite ผ่าน; ยังไม่มี durable register persistence |
 
 ## Builder contract
 
@@ -34,7 +34,7 @@
 
 หน้า `/creator-studio` มี template สำหรับพืช/ใบไม้, อาวุธ, ไอเทม, พื้น/บล็อก, สกินตัวละคร และ atlas. ผู้ใช้สามารถเลือก palette หรือสี custom, วาด/ลบ pixel, เปิด symmetry, เพิ่ม layer, ปรับ opacity, เปลี่ยน zoom, เลือก skin parts, ดูภาพประกอบ และกรอก metadata/provenance เป็นภาษาที่เข้าใจได้. ชื่อ asset ที่ผู้ใช้กรอกจะสร้าง logical ID แบบ lowercase อัตโนมัติ เพื่อไม่บังคับให้รู้กฎ identifier ของ backend.
 
-แบบร่างบันทึกใน localStorage ของ browser และส่งออกเป็น `.creator-draft.json` เพื่อช่วยรักษางานระหว่าง checkpoint. การบันทึกแบบร่างนี้ยังไม่ใช่การส่งเข้า asset registry และไม่มีสิทธิ์เรียกใช้ใน playable runtime โดยอัตโนมัติ.
+แบบร่างบันทึกใน localStorage ของ browser และส่งออกเป็น `.creator-draft.json` เพื่อช่วยรักษางานระหว่าง checkpoint. เมื่อผู้ใช้กด `ส่งเข้า Builder / Registry` UI จะสร้าง `TexturePackInput` จาก state แล้วเรียก `creator.texture.build` ฝั่ง server; server เป็นผู้ประกอบ PNG และตรวจ manifest/hash/provenance. ผล PNG และ digest จะถูกนำมาแสดงใน preview ของ UI. การ build นี้ยังไม่ใช่ durable register และไม่มีสิทธิ์เรียกใช้ใน playable runtime โดยอัตโนมัติ.
 
 ## Boundary และ performance rule
 
@@ -44,10 +44,10 @@ Generator ถูกวางไว้นอก `client/src/game/` และไ�
 
 | งานถัดไป | เหตุผลที่ยังนับเป็น PARTIAL/PENDING |
 |---|---|
-| creator tRPC/API boundary | ยังไม่มี server route ที่รับ draft แล้วเรียก builder จริง |
+| durable creator persistence/registry | มี creator tRPC/API ที่เรียก Builder จริง แต่ยังไม่บันทึก artifact ลง durable registry หรือ storage |
 | server-side authorization | context มีเพียง user/admin และยังไม่มี creator-specific role/permission contract |
-| save/export/register จาก UI | ปุ่ม UI ถูก disable จน backend validation และ registry wiring พร้อม |
-| real PNG preview จาก builder output | UI แสดง composed pixel preview จาก state; ยังไม่โหลด `pngBase64` จาก server |
+| save/export/register จาก UI | UI เรียก build เพื่อสร้าง PNG/hash ได้แล้ว แต่ durable save/register ยังไม่ทำ และยังต้องมี role/permission contract เฉพาะ creator |
+| real PNG preview จาก builder output | UI แสดง `pngBase64` จาก server หลัง `creator.texture.build` สำเร็จ; ยังไม่มีการเก็บ artifact ถาวร |
 | migration ของ procedural starter pack | starter pack เดิมยังสร้างจาก script เดิมและยังไม่ผ่าน Builder contract แบบ end-to-end |
 | model attachment/runtime asset registry | skin composition preview ยังไม่ผูกกับ model/atlas ใน Babylon runtime |
 | large-batch asset coverage | starter pack 16 PNG ไม่ใช่ coverage ของ catalog 3,000 definitions |
@@ -55,6 +55,6 @@ Generator ถูกวางไว้นอก `client/src/game/` และไ�
 
 ## Verification record
 
-Focused test `pnpm exec vitest run server/texturePackBuilder.test.ts` ผ่าน `1` test file และ `4` tests. หลังแก้ TypeScript iteration compatibility แล้ว `pnpm check` ผ่าน. Browser smoke test เปิด `/creator-studio`, เปลี่ยนจาก plant template เป็น skin template, ลงสีพิกเซล, เรียก validation ด้วย DOM click และเห็นสถานะ `ผ่าน`; root `/?route=landing` ยังคงเป็น player landing โดยไม่พบ creator controls. รายละเอียดถูกบันทึกไว้ใน `docs/creator-studio-browser-evidence-2026-08-27.md`.
+Focused test `pnpm exec vitest run server/texturePackBuilder.test.ts` ผ่าน `1` test file และ `4` tests. Creator API focused tests `pnpm exec vitest run server/creatorRouter.test.ts server/texturePackBuilder.test.ts` ผ่าน `2` files / `8` tests. Full regression ผ่าน `48` test files / `167` tests, `pnpm check` และ production build ด้วย memory cap. Browser smoke test เปิด `/creator-studio`, เปลี่ยนจาก plant template เป็น skin template, ลงสีพิกเซล, เรียก validation ด้วย DOM click และเห็นสถานะ `ผ่าน`; root `/?route=landing` ยังคงเป็น player landing โดยไม่พบ creator controls. ใน development browser ยังไม่มี authenticated admin session จึงยังไม่ได้อ้างว่า browser build mutation ผ่าน; admin boundary ถูกยืนยันด้วย router contract tests. รายละเอียด browser ถูกบันทึกไว้ใน `docs/creator-studio-browser-evidence-2026-08-27.md`.
 
 การตรวจนี้ยังไม่ใช่หลักฐานว่า creator platform เสร็จทั้งหมด. ต้องเพิ่ม backend contract, authorization, server-side Builder call, manifest persistence และ end-to-end export/register ก่อนยกระดับสถานะของข้อกำหนด no-code platform.

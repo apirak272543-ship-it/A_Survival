@@ -29,12 +29,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 
 type CreatorKind = "icon" | "tile" | "skin" | "atlas";
+type AssetSource = "generated" | "starter-authored" | "provided" | "reference-only";
 type ToolMode = "paint" | "erase";
 type SymmetryMode = "none" | "horizontal" | "vertical";
 type Rgba = [number, number, number, number];
@@ -156,6 +158,16 @@ const SKIN_PARTS: SkinPart[] = [
   { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา" },
 ];
 
+const SKIN_LAYOUT_PARTS: Record<string, SkinPart & { x: number; y: number; width: number; height: number }> = {
+  head: { id: "head", label: "หัว", detail: "ทรงและสีผม/หมวก", x: 0, y: 0, width: 32, height: 16 },
+  face: { id: "face", label: "ใบหน้า", detail: "ตา ปาก และรายละเอียดหน้า", x: 32, y: 0, width: 32, height: 16 },
+  torso: { id: "torso", label: "ลำตัว", detail: "เสื้อ เกราะ หรือชุดหลัก", x: 0, y: 16, width: 32, height: 24 },
+  "left-arm": { id: "left-arm", label: "แขนซ้าย", detail: "แขนและส่วนต่ออุปกรณ์", x: 32, y: 16, width: 16, height: 24 },
+  "right-arm": { id: "right-arm", label: "แขนขวา", detail: "แขนและส่วนต่ออุปกรณ์", x: 48, y: 16, width: 16, height: 24 },
+  "left-leg": { id: "left-leg", label: "ขาซ้าย", detail: "กางเกง รองเท้า และเงา", x: 0, y: 40, width: 16, height: 24 },
+  "right-leg": { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา", x: 16, y: 40, width: 16, height: 24 },
+};
+
 function makePixels(width: number, height: number): Rgba[] {
   return Array.from({ length: width * height }, () => [0, 0, 0, 0] as Rgba);
 }
@@ -227,6 +239,7 @@ export default function CreatorStudio() {
   const [packName, setPackName] = useState("A_Survival Content Library");
   const [provenanceRef, setProvenanceRef] = useState("procedural-starter-authored");
   const [sampling, setSampling] = useState<"nearest" | "linear">("nearest");
+  const [assetSource, setAssetSource] = useState<AssetSource>("generated");
   const [selectedColor, setSelectedColor] = useState(PALETTE[8]!);
   const [customColor, setCustomColor] = useState(PALETTE[8]!);
   const [tool, setTool] = useState<ToolMode>("paint");
@@ -261,10 +274,62 @@ export default function CreatorStudio() {
     if (!assetName.trim()) issues.push("ต้องใส่ชื่อ asset ที่อ่านรู้เรื่อง");
     if (!/^[a-z0-9][a-z0-9._-]{1,63}$/.test(assetId)) issues.push("ระบบสร้าง ID ไม่ถูกต้อง กรุณาเปลี่ยนชื่อ asset");
     if (!provenanceRef.trim()) issues.push("ต้องระบุที่มาของ asset ก่อนส่งเข้า registry");
+    if (assetSource === "reference-only" && !provenanceRef.trim()) issues.push("reference-only ต้องมีที่มาอ้างอิง");
     if (layers.length === 0) issues.push("ต้องมีอย่างน้อยหนึ่ง layer");
     if (template.kind === "skin" && Object.values(skinMapping).every(value => !value)) issues.push("สกินต้องเลือกส่วนประกอบอย่างน้อยหนึ่งส่วน");
     return issues;
-  }, [assetId, assetName, layers.length, provenanceRef, skinMapping, template.kind]);
+  }, [assetId, assetName, assetSource, layers.length, provenanceRef, skinMapping, template.kind]);
+
+  const buildMutation = trpc.creator.texture.build.useMutation({
+    onSuccess: response => {
+      setValidationRun(true);
+      if (response.validation.valid) {
+        const digest = response.output.assets[0]?.sha256.slice(0, 12) ?? "ไม่มี digest";
+        setStatus(`Builder สร้าง PNG และตรวจ manifest ผ่านแล้ว · sha256 ${digest}…`);
+      } else {
+        setStatus(`Builder ตรวจแล้วพบ ${response.validation.issues.length} จุดที่ต้องแก้`);
+      }
+    },
+    onError: error => {
+      setValidationRun(true);
+      setStatus(`ส่งให้ Builder ไม่สำเร็จ: ${error.message}`);
+    },
+  });
+
+  const makeBuilderInput = (): Parameters<typeof buildMutation.mutate>[0] => ({
+    id: "creator-studio-pack",
+    namespace: "creator",
+    version: "0.1.0",
+    displayName: packName,
+    textureSampling: sampling,
+    assets: [{
+      assetId,
+      kind: template.kind,
+      width: template.width,
+      height: template.height,
+      layers: layers.map(layer => ({ id: layer.id, x: 0, y: 0, width: template.width, height: template.height, rgba: layer.pixels.flat() })),
+      source: assetSource,
+      provenanceRef,
+      skinLayout: template.kind === "skin" ? {
+        id: "humanoid-skin-v1",
+        allowPartOverlap: false,
+        parts: Object.entries(skinMapping).filter(([, enabled]) => enabled).map(([partId]) => {
+          const part = SKIN_LAYOUT_PARTS[partId]!;
+          return { id: part.id, x: part.x, y: part.y, width: part.width, height: part.height };
+        }),
+      } : undefined,
+    }],
+  });
+
+  const sendToBuilder = () => {
+    setValidationRun(true);
+    if (validationIssues.length > 0) {
+      setStatus("แก้ข้อมูลที่แจ้งก่อนส่งให้ Builder");
+      return;
+    }
+    setStatus("กำลังให้ server-side Builder ประกอบ PNG และตรวจ manifest…");
+    buildMutation.mutate(makeBuilderInput());
+  };
 
   const applyPreset = (nextId: string) => {
     const nextTemplate = TEMPLATES.find(candidate => candidate.id === nextId) ?? TEMPLATES[0]!;
@@ -536,8 +601,8 @@ export default function CreatorStudio() {
             <Card className="mt-5 border-white/10 bg-[#0c1422]/90">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><ImageIcon size={16} className="text-cyan-300" /> ตัวอย่างภาพที่ประกอบเสร็จ</CardTitle></CardHeader>
               <CardContent className="grid gap-5 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
-                <div className="creator-preview-frame grid aspect-square place-items-center rounded-xl border border-cyan-300/15 bg-[#050a12] p-4"><div className="creator-preview-grid" style={{ gridTemplateColumns: `repeat(${template.width}, 1fr)`, backgroundSize: `${100 / template.width}% ${100 / template.height}%` }}>{composedPixels.map((pixel, index) => <span key={`preview-${index}`} style={{ backgroundColor: rgbaToCss(pixel) }} />)}</div></div>
-                <div><p className="text-sm font-bold text-white">{assetName || "ยังไม่ได้ตั้งชื่อ"}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">ระบบจะใช้ภาพรวมจากทุกชั้นที่เปิดอยู่ และส่งต่อเป็น asset เดียวตาม template <span className="font-mono text-cyan-200/80">{template.kind}</span></p><div className="mt-4 flex flex-wrap gap-2"><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">sampling: {sampling}</Badge><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">layers: {layers.length}</Badge><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">{template.width}×{template.height}</Badge></div></div>
+                <div className="creator-preview-frame grid aspect-square place-items-center rounded-xl border border-cyan-300/15 bg-[#050a12] p-4">{buildMutation.data?.output.assets[0]?.pngBase64 ? <img src={`data:image/png;base64,${buildMutation.data.output.assets[0].pngBase64}`} alt="ภาพ PNG ที่ Builder ประกอบแล้ว" className="aspect-square w-full object-contain [image-rendering:pixelated]" /> : <div className="creator-preview-grid" style={{ gridTemplateColumns: `repeat(${template.width}, 1fr)`, backgroundSize: `${100 / template.width}% ${100 / template.height}%` }}>{composedPixels.map((pixel, index) => <span key={`preview-${index}`} style={{ backgroundColor: rgbaToCss(pixel) }} />)}</div>}</div>
+                <div><p className="text-sm font-bold text-white">{assetName || "ยังไม่ได้ตั้งชื่อ"}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">ระบบจะใช้ภาพรวมจากทุกชั้นที่เปิดอยู่และส่งต่อผ่าน <span className="font-mono text-cyan-200/80">texture.pack</span> ตาม template <span className="font-mono text-cyan-200/80">{template.kind}</span></p><div className="mt-4 flex flex-wrap gap-2"><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">sampling: {sampling}</Badge><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">layers: {layers.length}</Badge><Badge className="border-white/10 bg-white/5 text-[10px] text-slate-300">{template.width}×{template.height}</Badge>{buildMutation.data?.output.assets[0]?.sha256 && <Badge className="border-emerald-300/20 bg-emerald-300/10 font-mono text-[10px] text-emerald-200">sha256: {buildMutation.data.output.assets[0].sha256.slice(0, 12)}…</Badge>}</div></div>
               </CardContent>
             </Card>
           </div>
@@ -551,6 +616,7 @@ export default function CreatorStudio() {
               <div className="space-y-2"><Label htmlFor="creator-asset-name" className="text-xs text-slate-300">ชื่อ asset ที่คนจะเห็น</Label><Input id="creator-asset-name" value={assetName} onChange={event => handleAssetNameChange(event.target.value)} className="border-white/10 bg-white/[0.04] text-sm" /></div>
               <div className="space-y-2"><Label htmlFor="creator-asset-id" className="flex items-center gap-2 text-xs text-slate-300">รหัสภายในที่ระบบสร้าง <Badge className="border-cyan-300/15 bg-cyan-300/10 text-[9px] text-cyan-200">อัตโนมัติ</Badge></Label><Input id="creator-asset-id" value={assetId} readOnly className="border-white/10 bg-black/20 font-mono text-xs text-cyan-100/80" /><p className="text-[10px] leading-relaxed text-slate-500">ใช้เป็น logical ID เท่านั้น ไม่ต้องจำเพื่อเล่นเกม</p></div>
               <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label htmlFor="creator-sampling" className="text-xs text-slate-300">การแสดงพิกเซล</Label><select id="creator-sampling" value={sampling} onChange={event => setSampling(event.target.value as "nearest" | "linear")} className="h-9 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-xs text-slate-200 outline-none focus:border-cyan-300/50"><option value="nearest">คม / nearest</option><option value="linear">นุ่ม / linear</option></select></div><div className="space-y-2"><Label className="text-xs text-slate-300">ขนาด canvas</Label><div className="flex h-9 items-center rounded-md border border-white/10 bg-black/20 px-2 font-mono text-xs text-cyan-100">{template.width} × {template.height}</div></div></div>
+              <div className="space-y-2"><Label htmlFor="creator-source" className="text-xs text-slate-300">สถานะที่มาของไฟล์</Label><select id="creator-source" value={assetSource} onChange={event => setAssetSource(event.target.value as AssetSource)} className="h-9 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 text-xs text-slate-200 outline-none focus:border-cyan-300/50"><option value="generated">สร้างจากระบบ</option><option value="starter-authored">ไฟล์เริ่มต้นที่ทีมทำเอง</option><option value="provided">ไฟล์ที่เจ้าของให้มา</option><option value="reference-only">ใช้อ้างอิงเท่านั้น</option></select></div>
               <div className="space-y-2"><Label htmlFor="creator-provenance" className="text-xs text-slate-300">ที่มาของ asset</Label><Input id="creator-provenance" value={provenanceRef} onChange={event => setProvenanceRef(event.target.value)} className="border-white/10 bg-white/[0.04] font-mono text-xs" /><p className="text-[10px] leading-relaxed text-slate-500">ต้องระบุให้ตรวจสอบย้อนกลับได้ เช่น procedural-starter-authored หรือ reference-only</p></div>
             </div>
 
@@ -562,8 +628,8 @@ export default function CreatorStudio() {
               <Button size="sm" variant="outline" onClick={() => { setValidationRun(true); setStatus(validationIssues.length === 0 ? "ตรวจเบื้องต้นผ่านแล้ว" : "พบข้อมูลที่ต้องแก้ก่อนส่ง"); }} className="mt-3 h-8 w-full gap-2 border-white/10 bg-black/10 text-xs"><ShieldCheck size={13} /> ตรวจงานตอนนี้</Button>
             </div>
 
-            <div className="grid gap-2"><Button onClick={saveDraft} className="h-10 w-full gap-2 bg-cyan-300 text-[#031319] hover:bg-cyan-200"><Save size={15} /> บันทึกแบบร่าง</Button><Button onClick={exportDraft} variant="outline" className="h-10 w-full gap-2 border-white/10 bg-white/[0.03] text-slate-200"><ArrowDownToLine size={15} /> ส่งออกแบบร่าง</Button><Button disabled className="h-10 w-full gap-2 bg-white/10 text-slate-500"><Boxes size={15} /> ส่งเข้า Builder / Registry</Button></div>
-            <div className="rounded-xl border border-cyan-300/10 bg-cyan-300/[0.04] p-3"><p className="flex items-center gap-2 text-[10px] font-bold text-cyan-200"><Sparkles size={13} /> สถานะพื้นที่ทำงาน</p><p className="mt-1 text-[10px] leading-relaxed text-slate-400">{status}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">ปุ่มส่งเข้า Builder จะเปิดเมื่อ backend contract, PNG hash, manifest และ provenance validation เชื่อมครบใน checkpoint ถัดไป</p></div>
+            <div className="grid gap-2"><Button onClick={saveDraft} className="h-10 w-full gap-2 bg-cyan-300 text-[#031319] hover:bg-cyan-200"><Save size={15} /> บันทึกแบบร่าง</Button><Button onClick={exportDraft} variant="outline" className="h-10 w-full gap-2 border-white/10 bg-white/[0.03] text-slate-200"><ArrowDownToLine size={15} /> ส่งออกแบบร่าง</Button><Button onClick={sendToBuilder} disabled={buildMutation.isPending} className="h-10 w-full gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"><Boxes size={15} /> {buildMutation.isPending ? "กำลังสร้างด้วย Builder…" : "ส่งเข้า Builder / Registry"}</Button></div>
+            <div className="rounded-xl border border-cyan-300/10 bg-cyan-300/[0.04] p-3"><p className="flex items-center gap-2 text-[10px] font-bold text-cyan-200"><Sparkles size={13} /> สถานะพื้นที่ทำงาน</p><p className="mt-1 text-[10px] leading-relaxed text-slate-400">{status}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">ปุ่มนี้เรียก server-side `texture.pack` เพื่อประกอบ PNG และตรวจ manifest/hash/provenance ก่อนจะมีการ register จริง โดยยังไม่แตะ playable runtime</p></div>
           </div>
         </aside>
       </div>
