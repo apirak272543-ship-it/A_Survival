@@ -36,7 +36,7 @@ import { WEEKLY_EVENTS } from "@/game/data/worldTime";
 import { GAME_VERSION, formatVersionLabel } from "@/game/version";
 import { trpc } from "@/lib/trpc";
 import { getCachedMapIds, prepareMapModule } from "@/game/storage/mapCache";
-import { getPendingTransactions, loadOfflineProfile, markTransactionsSynced, reconcileOfflineVectorClock } from "@/game/storage/indexedDb";
+import { getPendingTransactions, loadOfflineMapState, loadOfflineProfile, markTransactionsSynced, reconcileOfflineVectorClock, saveOfflineMapState } from "@/game/storage/indexedDb";
 import { getCropStage, getPetBonus, harvestCrop, moveStructure, placeHomeObject, plantSeed, recallStructure, rotateStructure, togglePetFollowing, transferPetEquipment } from "@/game/home/homeSystemV2";
 import {
   DEFAULT_SETTINGS,
@@ -48,12 +48,13 @@ import {
   type GameSettings,
   type LocalGameSession,
 } from "@/game/storage/session";
-import type { GameSnapshot } from "@/game/scene";
+import type { BlockActionEvent, GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
 import { RUNTIME_MAP_ID, isRuntimeMapAllowed, resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
+import { consumeOneFromStack, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
@@ -257,6 +258,8 @@ export default function ArcaneFrontier() {
   const [cachedMapIds, setCachedMapIds] = useState<Set<string>>(() => new Set());
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
+  const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
+  const [worldBlockStateReady, setWorldBlockStateReady] = useState(false);
   const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedHomeSeedId, setSelectedHomeSeedId] = useState<string | null>(null);
@@ -287,6 +290,26 @@ export default function ArcaneFrontier() {
   useEffect(() => saveSettings(settings), [settings]);
 
   useEffect(() => {
+    if (screen !== "game" || !session) {
+      setWorldBlockStateReady(false);
+      return;
+    }
+    let active = true;
+    setWorldBlockStateReady(false);
+    void loadOfflineMapState(RUNTIME_MAP_ID, session.playerId).then(state => {
+      if (!active) return;
+      setWorldBlockOverrides(state.worldBlockOverrides);
+      setWorldBlockStateReady(true);
+    }).catch(() => {
+      if (active) {
+        setWorldBlockOverrides({});
+        setWorldBlockStateReady(true);
+      }
+    });
+    return () => { active = false; };
+  }, [screen, session?.playerId]);
+
+  useEffect(() => {
     let active = true;
     void loadAssetPackManifest(DEFAULT_ASSET_PACK_MANIFEST).then(manifest => {
       if (active) setAssetPackManifest(manifest);
@@ -298,7 +321,7 @@ export default function ArcaneFrontier() {
     const onShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select")) return;
-      if (["1", "2", "3"].includes(event.key)) {
+      if (["1", "2", "3", "4"].includes(event.key)) {
         setActiveHotbarSlot(Number(event.key) - 1);
         return;
       }
@@ -503,6 +526,26 @@ export default function ArcaneFrontier() {
     }
   };
 
+  const blockActionHandler = useCallback((event: Pick<BlockActionEvent, "type" | "mapId" | "overrides" | "itemInstanceId" | "itemDefinitionId" | "message" | "coordinate" | "moduleId">) => {
+    if (!session || event.mapId !== RUNTIME_MAP_ID) return false;
+    if (event.type === "place" && event.itemInstanceId) {
+      const consumed = consumeOneFromStack(session.inventory, event.itemInstanceId);
+      if (!consumed.accepted) {
+        setToast(consumed.reason);
+        return false;
+      }
+      updateSession({ inventory: consumed.inventory, pendingActions: session.pendingActions.concat({ id: `block-place-${Date.now()}`, type: "block-place", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, itemInstanceId: event.itemInstanceId, itemDefinitionId: event.itemDefinitionId, coordinate: event.coordinate }, }) });
+    } else {
+      updateSession({ pendingActions: session.pendingActions.concat({ id: `block-break-${Date.now()}`, type: "block-break", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, coordinate: event.coordinate }, }) });
+    }
+    setWorldBlockOverrides(event.overrides);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    setToast(event.message);
+    return true;
+  }, [session]);
+
+  const blockMessageHandler = useCallback((message: string) => setToast(message), []);
+
   const snapshotHandler = useCallback((next: GameSnapshot) => {
     setGameSnapshot(next);
   }, []);
@@ -571,7 +614,7 @@ export default function ArcaneFrontier() {
       updateSession({ inventory: result.inventory, pendingActions: session.pendingActions.concat({ id: `use-item-${Date.now()}`, type: "use-item", createdAt: Date.now(), payload: { slot, instanceId: result.instance?.instanceId, definitionId: result.definitionId } }) });
     }
     setToast(result.message);
-    dispatchControl({ type: "use-item", slot });
+    dispatchControl({ type: "use-item", slot, itemInstanceId: result.instance?.instanceId, itemDefinitionId: result.definitionId });
   };
   const equipVaultInstance = (instanceId: string) => {
     if (!session) return;
@@ -646,14 +689,14 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} />
+    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onBlockMessage={blockMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src={obsidianCompanionArt ?? "/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg"} alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ANOMALY DETECTED · {activeMap.eventBossName ?? "Unknown anomaly"} may emerge</span></div>
       {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>
-      <div className="quick-slots" aria-label="ช่องลัดไอเทม">{([0, 1, 2] as const).map(slot => { const instance = session ? getHotbarInstance(session.inventory, session.hotbarBindings ?? {}, slot) : undefined; const definition = instance ? getItemDefinition(instance.definitionId) : undefined; const iconUrl = getPackIconUrl(definition?.iconAssetId); const fallbackIcon = slot === 0 ? <Wheat size={18} /> : slot === 1 ? <Zap size={18} /> : <Box size={18} />; return <button key={slot} className={activeHotbarSlot === slot ? "active" : ""} onClick={() => setActiveHotbarSlot(slot)} aria-label={`ช่องไอเทม ${slot + 1}${definition ? ` · ${definition.name}` : " · ว่าง"} · แตะเพื่อเลือก`}>{iconUrl ? <img className="hotbar-pack-icon" src={iconUrl} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : fallbackIcon}<span>{slot + 1}</span>{instance && instance.quantity > 1 && <small>×{instance.quantity}</small>}</button>; })}</div>
+      <div className="quick-slots" aria-label="ช่องลัดไอเทม">      {([0, 1, 2, 3] as const).map(slot => { const instance = session ? getHotbarInstance(session.inventory, session.hotbarBindings ?? {}, slot) : undefined; const definition = instance ? getItemDefinition(instance.definitionId) : undefined; const iconUrl = getPackIconUrl(definition?.iconAssetId); const fallbackIcon = slot === 0 ? <Wheat size={18} /> : slot === 1 ? <Zap size={18} /> : slot === 3 ? <Pickaxe size={18} /> : <Box size={18} />; return <button key={slot} className={activeHotbarSlot === slot ? "active" : ""} onClick={() => setActiveHotbarSlot(slot)} aria-label={`ช่องไอเทม ${slot + 1}${definition ? ` · ${definition.name}` : " · ว่าง"} · แตะเพื่อเลือก`}>{iconUrl ? <img className="hotbar-pack-icon" src={iconUrl} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : fallbackIcon}<span>{slot + 1}</span>{instance && instance.quantity > 1 && <small>×{instance.quantity}</small>}</button>; })}</div>
       <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button use" onPointerDown={() => useHotbarSlot(activeHotbarSlot as HotbarSlot)} aria-label="ใช้ไอเท็มที่เลือก"><Box size={20} /><small>USE</small></button><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })} aria-label="แดช · Shift"><Zap size={20} /><small>SHIFT</small></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })} aria-label="โต้ตอบและเก็บของ · E"><Pickaxe size={20} /><small>E</small></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })} aria-label="โจมตี · Space"><Sword size={28} /><span>ATTACK</span></button></div></div>
       <div className="game-footer"><button onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><Menu size={18} /> Exit expedition</button><span><Crosshair size={15} /> {gameSnapshot.enemies} hostiles · {gameSnapshot.resources} resources</span><button onClick={() => setShowSettings(true)}><Settings2 size={18} /></button></div>
     </section>}

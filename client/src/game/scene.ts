@@ -11,6 +11,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
+import { getItemDefinition } from "@/game/data/catalog";
 import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
 import { MAP002_JAX_CAMP, MAP002_PYROCLASTIC_ALTAR, initialMap002Encounter, resolveMap002Encounter } from "@/game/map002/encounter";
@@ -35,6 +36,8 @@ import { canSpendStamina, createStaminaState, regenerateStamina, spendStamina, s
 import { chunkKey, getStreamingChunkKeys } from "@/game/systems/visibleRegionSystem";
 import { updatePixelTerrainStream } from "@/game/assets/pixelPack";
 import { getRenderDistanceConfig, type RenderDistancePreset } from "@/game/systems/renderDistance";
+import { blockKey, getBlockDefinition, getPlaceableBlockModule, getBlockToolForItem, type BlockTool } from "@/game/data/blockModules";
+import { breakBlockAt, getAdjacentSupportModule, getWorldBlockAt, normalizeWorldBlockOverrides, placeBlockAt, type BlockCoordinate, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 
 export type GameSnapshot = {
   health: number;
@@ -57,6 +60,20 @@ export type GameReward = {
   provenanceType: "harvest" | "drop" | "reward";
 };
 
+export type BlockActionEvent = {
+  type: "break" | "place";
+  mapId: string;
+  coordinate: BlockCoordinate;
+  moduleId: string;
+  itemInstanceId?: string;
+  itemDefinitionId?: string;
+  droppedDefinitionId?: string;
+  overrides: WorldBlockOverrides;
+  message: string;
+};
+
+export type BlockActionHandler = (event: BlockActionEvent) => boolean;
+
 export type CompanionConfig = {
   following: boolean;
   lootRadius: number;
@@ -73,6 +90,9 @@ type GameOptions = {
   mapId: string;
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
+  onBlockAction?: BlockActionHandler;
+  onBlockMessage?: (message: string) => void;
+  worldBlockOverrides?: WorldBlockOverrides;
   companion?: CompanionConfig;
   reducedMotion?: boolean;
   renderDistance?: RenderDistancePreset;
@@ -83,7 +103,7 @@ type ArcaneControl =
   | { type: "attack" }
   | { type: "interact" }
   | { type: "dash" }
-  | { type: "use-item"; slot: number };
+  | { type: "use-item"; slot: number; itemInstanceId?: string; itemDefinitionId?: string };
 
 function material(scene: Scene, name: string, color: string, glow = 0) {
   const result = new StandardMaterial(name, scene);
@@ -222,6 +242,56 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const petArt = await loadPackModel(scene, "companion", { name: "arcane-cyber-fox-pack-model", scale: 1.12 });
   petArt.parent = pet;
   petArt.position.y = 0.02;
+
+  let worldBlockOverrides = normalizeWorldBlockOverrides(options.worldBlockOverrides);
+  let activeBlockTool: BlockTool = "hand";
+  const worldBlockMeshes = new Map<string, AbstractMesh>();
+  const blockMaterials = new Map<string, StandardMaterial>();
+  const initialWorldBlocks: Array<{ coordinate: BlockCoordinate; moduleId: string }> = [
+    { coordinate: { x: 0, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+    { coordinate: { x: -1, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+    { coordinate: { x: 1, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+  ];
+  const staticWorldBlocks = new Map(initialWorldBlocks.map(block => [blockKey(block.coordinate.x, block.coordinate.y, block.coordinate.z), block.moduleId]));
+  const readSceneBlockAt = (coordinate: BlockCoordinate) => {
+    const key = blockKey(coordinate.x, coordinate.y, coordinate.z);
+    if (Object.prototype.hasOwnProperty.call(worldBlockOverrides, key)) return worldBlockOverrides[key];
+    return staticWorldBlocks.get(key) ?? getWorldBlockAt(coordinate, worldBlockOverrides);
+  };
+  const getBlockMaterial = (moduleId: string) => {
+    const existing = blockMaterials.get(moduleId);
+    if (existing) return existing;
+    const definition = getBlockDefinition(moduleId);
+    const blockMaterial = material(scene, `block-material-${moduleId.replaceAll(".", "-")}`, definition?.tint ?? "#6e5aa8", 0.08);
+    blockMaterials.set(moduleId, blockMaterial);
+    return blockMaterial;
+  };
+  const syncWorldBlockMesh = (coordinate: BlockCoordinate, moduleId: string | null) => {
+    const key = blockKey(coordinate.x, coordinate.y, coordinate.z);
+    const current = worldBlockMeshes.get(key);
+    if (!moduleId) {
+      current?.setEnabled(false);
+      return;
+    }
+    const definition = getBlockDefinition(moduleId);
+    if (!definition) return;
+    const mesh = current ?? MeshBuilder.CreateBox(`obsidian-block-${key.replaceAll(":", "-")}`, { width: 0.92, depth: 0.92, height: definition.partial ? 0.36 : 0.92 }, scene);
+    mesh.position.set(coordinate.x, coordinate.y + (definition.partial ? 0.18 : 0.46), coordinate.z);
+    mesh.material = getBlockMaterial(moduleId);
+    mesh.metadata = { ...(mesh.metadata ?? {}), mapId: options.mapId, blockModuleId: moduleId, coordinate, solid: definition.solid, partial: definition.partial, replaceable: true };
+    mesh.setEnabled(true);
+    worldBlockMeshes.set(key, mesh);
+  };
+  if (isMap001) {
+    initialWorldBlocks.forEach(({ coordinate, moduleId }) => {
+      const resolved = readSceneBlockAt(coordinate);
+      if (resolved) syncWorldBlockMesh(coordinate, resolved);
+    });
+    Object.entries(worldBlockOverrides).forEach(([key, moduleId]) => {
+      const [x, y, z] = key.split(":").map(Number);
+      if ([x, y, z].every(Number.isFinite) && moduleId) syncWorldBlockMesh({ x, y, z }, moduleId);
+    });
+  }
 
   const enemies: AbstractMesh[] = [];
   for (let index = 0; index < 7; index += 1) {
@@ -478,6 +548,71 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map014Warning: string | undefined;
   let map015Warning: string | undefined;
 
+  const nearestWorldBlock = () => {
+    let nearest: { mesh: AbstractMesh; coordinate: BlockCoordinate; moduleId: string; distance: number } | undefined;
+    worldBlockMeshes.forEach(mesh => {
+      if (!mesh.isEnabled() || mesh.metadata?.mapId !== options.mapId) return;
+      const moduleId = mesh.metadata?.blockModuleId as string | undefined;
+      const coordinate = mesh.metadata?.coordinate as BlockCoordinate | undefined;
+      if (!moduleId || !coordinate) return;
+      const distance = Vector3.Distance(mesh.position, player.position);
+      if (distance <= 3.8 && (!nearest || distance < nearest.distance)) nearest = { mesh, coordinate, moduleId, distance };
+    });
+    return nearest;
+  };
+
+  const applyBlockAction = (event: BlockActionEvent) => {
+    const accepted = options.onBlockAction?.(event) ?? true;
+    if (!accepted) return false;
+    worldBlockOverrides = event.overrides;
+    syncWorldBlockMesh(event.coordinate, event.type === "break" ? null : event.moduleId);
+    return true;
+  };
+
+  const breakNearestWorldBlock = () => {
+    if (!isMap001) return false;
+    const target = nearestWorldBlock();
+    if (!target) return false;
+    const result = breakBlockAt({ moduleId: target.moduleId, coordinate: target.coordinate, tool: activeBlockTool, overrides: worldBlockOverrides });
+    if (!result.removed) return false;
+    const accepted = applyBlockAction({
+      type: "break",
+      mapId: options.mapId,
+      coordinate: target.coordinate,
+      moduleId: target.moduleId,
+      droppedDefinitionId: result.droppedDefinitionId,
+      overrides: result.overrides,
+      message: result.message,
+    });
+    if (accepted && result.droppedDefinitionId) {
+      const item = getItemDefinition(result.droppedDefinitionId);
+      options.onReward?.({ definitionId: result.droppedDefinitionId, displayName: item?.name ?? result.droppedDefinitionId, eventId: `block-break-${options.mapId}-${blockKey(target.coordinate.x, target.coordinate.y, target.coordinate.z)}`, provenanceType: "drop" });
+    }
+    return accepted;
+  };
+
+  const placeSelectedWorldBlock = (itemInstanceId?: string, itemDefinitionId?: string) => {
+    if (!isMap001 || !itemInstanceId || !itemDefinitionId || !getPlaceableBlockModule(itemDefinitionId)) return false;
+    const anchor = nearestWorldBlock();
+    const coordinate = anchor
+      ? { x: anchor.coordinate.x, y: anchor.coordinate.y + 1, z: anchor.coordinate.z }
+      : { x: Math.round(player.position.x), y: 1, z: Math.round(player.position.z + 1) };
+    const existingModuleId = getWorldBlockAt(coordinate, worldBlockOverrides);
+    const supportModuleId = getAdjacentSupportModule(coordinate, worldBlockOverrides) ?? (anchor?.moduleId ?? null);
+    const placement = placeBlockAt({ moduleId: "player.placed", coordinate, supportModuleId, existingModuleId, overrides: worldBlockOverrides });
+    if (!placement.accepted) return false;
+    return applyBlockAction({
+      type: "place",
+      mapId: options.mapId,
+      coordinate,
+      moduleId: "player.placed",
+      itemInstanceId,
+      itemDefinitionId,
+      overrides: placement.overrides,
+      message: "วางบล็อกสำเร็จ · ใช้บล็อกไป 1 ชิ้น",
+    });
+  };
+
   const handleControl = (event: Event) => {
     const control = (event as CustomEvent<ArcaneControl>).detail;
     if (!control) return;
@@ -493,7 +628,20 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       stamina = spendStamina(stamina, "dash").state;
       dashPulse = 0.25;
     }
+    if (control.type === "use-item") {
+      const selectedTool = control.itemDefinitionId ? getBlockToolForItem(control.itemDefinitionId) : null;
+      activeBlockTool = selectedTool ?? "hand";
+      if (control.itemDefinitionId) options.onBlockMessage?.(selectedTool ? `เลือกเครื่องมือ: ${selectedTool}` : "เลือกมือเปล่า");
+      if (control.itemInstanceId && control.itemDefinitionId && getPlaceableBlockModule(control.itemDefinitionId)) {
+        const placed = placeSelectedWorldBlock(control.itemInstanceId, control.itemDefinitionId);
+        if (!placed) options.onBlockMessage?.("วางไม่ได้: ต้องวางบนบล็อกทึบและตำแหน่งต้องว่าง");
+      }
+    }
     if (control.type === "interact") {
+      if (breakNearestWorldBlock()) {
+        pendingMapInteraction = false;
+        return;
+      }
       pendingMapInteraction = true;
       resources.forEach(resource => {
         const lootReach = 2.8 + Math.max(0, (options.companion?.lootRadius ?? 2) - 2) * 0.16;

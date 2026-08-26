@@ -56,11 +56,12 @@ export function createSession(playerId: string): LocalGameSession {
     createStarterInstance("sword-001", 1),
     createStarterInstance("seed-001", 2),
     createStarterInstance("structure-001", 3),
-    createStarterInstance("seed-002", 4),
-    createStarterInstance("seed-004", 5),
-    createStarterInstance("structure-002", 6),
-    createStarterInstance("decoration-001", 7),
-    createStarterInstance("material-001", 8),
+    createStarterInstance("tool-001", 4),
+    createStarterInstance("seed-002", 5),
+    createStarterInstance("seed-004", 6),
+    createStarterInstance("structure-002", 7),
+    createStarterInstance("decoration-001", 8),
+    createStarterInstance("material-001", 9),
   ];
   return {
     playerId: normalized,
@@ -71,7 +72,7 @@ export function createSession(playerId: string): LocalGameSession {
     currency: 240,
     inventory,
     vaultEquipment: {},
-    hotbarBindings: { 0: "sword-001", 1: "seed-001", 2: "structure-001", 3: "material-001" },
+    hotbarBindings: { 0: "sword-001", 1: "seed-001", 2: "structure-001", 3: "tool-001", 4: "material-001" },
     home: {
       structures: [],
       plots: [

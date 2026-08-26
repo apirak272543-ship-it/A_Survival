@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
+import type { WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig } from "@/game/scene";
+import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig, type BlockActionHandler } from "@/game/scene";
 import { prepareAssetPack } from "@/game/assets/assetPackLoader";
 import { setActiveAssetPackManifest } from "@/game/assets/pixelPack";
 
@@ -9,13 +10,18 @@ type GameCanvasProps = {
   reducedMotion?: boolean;
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
+  onBlockAction?: BlockActionHandler;
+  onBlockMessage?: (message: string) => void;
+  worldBlockOverrides?: WorldBlockOverrides;
   companion?: CompanionConfig;
   renderDistance?: "near" | "balanced" | "far";
 };
 
-export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, companion, renderDistance }: GameCanvasProps) {
+export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
+  const latestPropsRef = useRef<GameCanvasProps>({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance });
+  latestPropsRef.current = { mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,7 +44,8 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
         console.warn("Asset pack used fallback entries", pack.failedAssetIds);
       }
       if (cancelled) return;
-      const game = await createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion, renderDistance });
+      const latest = latestPropsRef.current;
+      const game = await createGameScene(engine, canvas, { mapId: latest.mapId, onSnapshot: latest.onSnapshot, onReward: latest.onReward, onBlockAction: latest.onBlockAction, onBlockMessage: latest.onBlockMessage, worldBlockOverrides: latest.worldBlockOverrides, companion: latest.companion, reducedMotion: latest.reducedMotion, renderDistance: latest.renderDistance });
       if (cancelled) {
         game.dispose();
         return;
@@ -58,7 +65,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       engine.dispose();
       startedRef.current = false;
     };
-  }, [mapId, onSnapshot, onReward, companion, reducedMotion, renderDistance]);
+  }, [mapId, onSnapshot, onReward, onBlockAction, onBlockMessage, companion, reducedMotion, renderDistance]);
 
   return (
     <div className="game-viewport">

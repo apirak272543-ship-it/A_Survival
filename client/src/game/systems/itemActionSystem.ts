@@ -17,7 +17,7 @@ export type HotbarBindings = Partial<Record<HotbarSlot, string>>;
 
 const CONSUMABLE_CATEGORIES = new Set<ItemCategory>(["seed"]);
 const DEPLOYABLE_CATEGORIES = new Set<ItemCategory>(["structure", "furniture", "decoration"]);
-const HARVEST_TOOL_TAGS = new Set(["material", "structure"]);
+const HARVEST_TOOL_TAGS = new Set(["material", "structure", "tool"]);
 
 export const DEFAULT_HOTBAR_BINDINGS: HotbarBindings = {
   0: "sword-001",
@@ -34,7 +34,7 @@ export function getHotbarInstance(inventory: ItemInstance[], bindings: HotbarBin
 
 export function getHotbarActionKind(category?: ItemCategory): HotbarActionKind {
   if (!category) return "inspect";
-  if (category === "sword" || category === "bow" || category === "ranged") return "equip";
+  if (category === "sword" || category === "bow" || category === "ranged" || category === "tool") return "equip";
   if (CONSUMABLE_CATEGORIES.has(category)) return "consume";
   if (DEPLOYABLE_CATEGORIES.has(category)) return "deploy";
   if (HARVEST_TOOL_TAGS.has(category)) return "harvest";
@@ -54,7 +54,7 @@ export function dispatchHotbarAction(inventory: ItemInstance[], bindings: Hotbar
     return { accepted: true, kind, instance, definitionId: definition.id, inventory: nextInventory, message: `${definition.name} ถูกใช้แล้ว` };
   }
   if (kind === "deploy") return { accepted: true, kind, instance, definitionId: definition.id, inventory, message: `${definition.name} พร้อมวางใน Home grid` };
-  if (kind === "harvest") return { accepted: true, kind, instance, definitionId: definition.id, inventory, message: `${definition.name} พร้อมเก็บทรัพยากร` };
+  if (kind === "harvest") return { accepted: true, kind, instance, definitionId: definition.id, inventory, message: `${definition.name} พร้อมทุบ/ขุด/เก็บทรัพยากร` };
   if (kind === "equip") return { accepted: true, kind, instance, definitionId: definition.id, inventory, message: `${definition.name} พร้อมใช้งาน` };
   return { accepted: true, kind, instance, definitionId: definition.id, inventory, message: `ตรวจสอบ ${definition.name} แล้ว` };
 }

@@ -28,12 +28,12 @@
 
 | ID | ข้อกำหนดของเจ้าของ | หลักฐานปัจจุบัน | สถานะ | สิ่งที่ยังต้องผ่าน |
 |---|---|---|---|---|
-| B-01 | สิ่งที่เป็นบล็อกได้ต้องเป็น independent coordinate/state/action; ต้นไม้/ใบไม้เป็น block records | current scene ยังเป็น terrain/decoration mesh แบบรวมบางส่วน | PARTIAL | block records, per-block state และ group generation ที่แก้ทีละ block ได้ |
+| B-01 | สิ่งที่เป็นบล็อกได้ต้องเป็น independent coordinate/state/action; ต้นไม้/ใบไม้เป็น block records | Obsidian slice มี deterministic block coordinates, per-cell mesh metadata, override state และ action resolver สำหรับ slab/player block; terrain/decoration อื่นยังเป็น mesh รวมบางส่วน | PARTIAL | ขยาย block records ให้ครอบคลุม world content, tree/leaf groups และ per-block mutation ทุกชนิด |
 | B-02 | partial/non-solid object นับเป็น 1 cell แต่เดินผ่านได้ตามชนิด; hazard และ cactus/หนามทำ damage | current scene มี collision-less decorations และ combat damage | PARTIAL | occupancy/partial collision/hazard contract และ test |
-| B-03 | support/gravity: บางบล็อกวางต่อจากเพื่อนได้ บางชนิดลอยได้ บางชนิดต้องตกเมื่อฐานหาย | ไม่มี universal support solver ใน current GitHub main | PENDING | backend validator + runtime placement rules + tests |
-| B-04 | generic/wrong tool ทำลายโดยไม่คืน item; correct tool คืน placeable block item | current source มี generic resource interaction แต่ยังไม่มี block tool-aware flow ครบ | PARTIAL | block action resolver, drop provenance, correct/wrong browser proof |
-| B-05 | วางบล็อกและคง state ข้าม reload/map ตามกฎ | current `OfflineMapState` ยังไม่มี block overrides | PENDING | map-local block override schema/runtime/persistence |
-| B-06 | carry inventory 40 ช่อง, block stack ปกติ 64 และ item-specific caps; carry ข้าม map | current session inventory/hotbar มีฐาน แต่ไม่มี full 40-slot enforcement contract | PARTIAL | test capacity/stack/cross-map persistence |
+| B-03 | support/gravity: บางบล็อกวางต่อจากเพื่อนได้ บางชนิดลอยได้ บางชนิดต้องตกเมื่อฐานหาย | Obsidian slice มี solid-support gate, empty-cell gate และ partial/solid flags พร้อม unit tests; ยังไม่มี gravity solver หรือ rule registry ครบทุกชนิด | PARTIAL | universal support/gravity/partial occupancy validator และ runtime tests |
+| B-04 | generic/wrong tool ทำลายโดยไม่คืน item; correct tool คืน placeable block item | Obsidian slab ใช้ pickaxe แล้วคืน `structure-001` พร้อม drop provenance; hand/wrong tool ทำลายโดยไม่คืน block; unit tests และ browser localStorage proof ผ่าน | PARTIAL | ขยาย tool/block registry ให้ครอบคลุม block families และ universal durability/drop rules |
+| B-05 | วางบล็อกและคง state ข้าม reload/map ตามกฎ | `OfflineMapState` มี `worldBlockOverrides`, composite key `[mapId+playerId]`, runtime rehydration และ browser IndexedDB proof ของ break/place หลัง reload | PARTIAL | ทดสอบหลาย map/player เมื่อ future maps เปิดตามแผน และเชื่อม persistence กับ universal world state |
+| B-06 | carry inventory 40 ช่อง, block stack ปกติ 64 และ item-specific caps; carry ข้าม map | `structure-001` เป็น placeable block stack cap 64, placement consume เป็น atomic และ starter มี dedicated pickaxe; ยังไม่มี carry capacity 40/cross-map contract | PARTIAL | enforce/test exactly 40 carry slots, overflow/stack merge และ cross-map carry |
 | B-07 | chest แยกจาก carry เป็น storage map-local | current source ยังไม่มี chest runtime/UI | PENDING | chest 27 ช่อง, interaction sheet, transfer, persistence/isolation |
 
 ## Backend generation และ content registry

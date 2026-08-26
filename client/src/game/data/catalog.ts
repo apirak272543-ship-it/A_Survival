@@ -8,7 +8,8 @@ export type ItemCategory =
   | "material"
   | "furniture"
   | "decoration"
-  | "structure";
+  | "structure"
+  | "tool";
 
 export type ItemTier = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type ProvenanceType = "drop" | "craft" | "harvest" | "reward" | "starter";
@@ -119,6 +120,7 @@ const materialNames = ["Alloy", "Fiber", "Crystal", "Circuit", "Essence", "Resin
 const furnitureNames = ["Wardrobe", "Workbench", "Storage Chest", "Lantern", "Bedroll", "Field Kitchen", "Signal Table", "Pet Nook"];
 const decorationNames = ["Rune Banner", "Holo Planter", "Crystal Vase", "Wall Sigil", "Garden Arch", "Wind Chime", "Star Map", "Portal Lamp"];
 const structureNames = ["Foundation", "Wall Panel", "Roof Segment", "Door Frame", "Window Module", "Bridge Tile", "Fence Unit", "Power Pylon"];
+const toolNames = ["Pickaxe", "Hand Axe", "Field Shovel", "Builder Hammer", "Rune Chisel", "Survey Spade", "Obsidian Drill", "Aether Cutter"];
 
 const categoryNames: Record<ItemCategory, string[]> = {
   sword: swordNames,
@@ -129,6 +131,7 @@ const categoryNames: Record<ItemCategory, string[]> = {
   furniture: furnitureNames,
   decoration: decorationNames,
   structure: structureNames,
+  tool: toolNames,
 };
 
 const soilForSeed = (index: number): SoilId => SOILS[index % SOILS.length]!.id;
@@ -138,6 +141,7 @@ function iconAssetIdForCategory(category: ItemCategory) {
   if (category === "bow" || category === "ranged") return "items.energy";
   if (category === "seed") return "items.seed";
   if (category === "material" || category === "furniture" || category === "decoration" || category === "structure") return "items.buildingCube";
+  if (category === "tool") return "items.energy";
   return "items.energy";
 }
 
@@ -147,7 +151,7 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
     const prefix = palette[index % palette.length]!;
     const noun = categoryNames[category][Math.floor(index / palette.length) % categoryNames[category].length]!;
     const tier = tierForPosition(index);
-    const equippable = category === "sword" || category === "bow" || category === "ranged";
+    const equippable = category === "sword" || category === "bow" || category === "ranged" || category === "tool";
     const soilId = category === "seed" ? soilForSeed(index) : undefined;
     const seedSoil = soilId ? SOILS.find(soil => soil.id === soilId) : undefined;
 
@@ -156,7 +160,7 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
       category,
       name: `${prefix} ${noun} ${String(ordinal).padStart(3, "0")}`,
       tier,
-      stackLimit: equippable ? 1 : category === "furniture" || category === "decoration" || category === "structure" ? 1 : 99,
+      stackLimit: equippable ? 1 : category === "structure" && index === 0 ? 64 : category === "furniture" || category === "decoration" || category === "structure" ? 1 : 99,
       equippable,
       tags: category === "seed" ? ["plant", ...(seedSoil?.compatiblePlantTags ?? [])] : [category, tier],
       soilId,
@@ -166,9 +170,11 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
           ? "โจมตีระยะประชิดและสะสมรอยแยกพลังงาน"
           : category === "bow"
             ? "ยิงระยะไกลและเพิ่มโอกาส critical ตามระยะ"
-            : category === "ranged"
-              ? "ยิงพลังงานและบริหารความร้อนของอาวุธ"
-              : category === "seed"
+              : category === "ranged"
+                ? "ยิงพลังงานและบริหารความร้อนของอาวุธ"
+                : category === "tool"
+                  ? "เครื่องมือเฉพาะทางสำหรับทุบ ขุด ตัด หรือวางบล็อก"
+                  : category === "seed"
                 ? `เติบโตได้ดีบน ${seedSoil?.name ?? "ดินที่เหมาะสม"}`
                 : category === "structure"
                   ? "ชิ้นส่วน modular ที่วาง หมุน ย้าย และเก็บคืนได้"

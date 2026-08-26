@@ -26,8 +26,40 @@ export type OfflineMapState = {
   playerId: string;
   fogOfWar: string;
   harvestedNodes: Record<string, number>;
+  worldBlockOverrides: Record<string, string | null>;
   updatedAt: number;
 };
+
+export function defaultOfflineMapState(mapId: string, playerId: string): OfflineMapState {
+  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: {}, updatedAt: Date.now() };
+}
+
+export function normalizeOfflineMapState(candidate: Partial<OfflineMapState>, mapId: string, playerId: string): OfflineMapState {
+  const rawOverrides = candidate.worldBlockOverrides;
+  const worldBlockOverrides = rawOverrides && typeof rawOverrides === "object" && !Array.isArray(rawOverrides)
+    ? Object.fromEntries(Object.entries(rawOverrides).filter(([key, value]) => /^-?\d+:-?\d+:-?\d+$/.test(key) && (typeof value === "string" || value === null))) as Record<string, string | null>
+    : {};
+  return {
+    mapId,
+    playerId,
+    fogOfWar: typeof candidate.fogOfWar === "string" ? candidate.fogOfWar : "",
+    harvestedNodes: candidate.harvestedNodes && typeof candidate.harvestedNodes === "object" ? candidate.harvestedNodes : {},
+    worldBlockOverrides,
+    updatedAt: typeof candidate.updatedAt === "number" ? candidate.updatedAt : Date.now(),
+  };
+}
+
+export async function loadOfflineMapState(mapId: string, playerId: string) {
+  const state = await offlineDb.mapStates.get([mapId, playerId]);
+  return state ? normalizeOfflineMapState(state, mapId, playerId) : defaultOfflineMapState(mapId, playerId);
+}
+
+export async function saveOfflineMapState(state: OfflineMapState) {
+  const normalized = normalizeOfflineMapState(state, state.mapId, state.playerId);
+  normalized.updatedAt = Date.now();
+  await offlineDb.mapStates.put(normalized);
+  return normalized;
+}
 
 class ArcaneOfflineDatabase extends Dexie {
   profiles!: Table<OfflineProfileRecord, string>;
