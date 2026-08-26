@@ -103,3 +103,14 @@ Recovery protections ยังอยู่ครบ: branch `local-pre-forensic-
 ดังนั้นขนาดแผนที่ที่ใช้งานในปัจจุบันคือ **รัศมี 500m** ไม่ใช้ค่าประวัติ 1,000–1,500m; runtime เปิดเฉพาะ **Obsidian Frontier** ไม่ใช้สถานะ prototype ใน registry เป็นสิทธิ์ playable; และ global `near/balanced/far` ยังคงเป็น compatibility presets แยกจาก in-map view-distance model 5–50 blocks จนกว่าจะมี implementation/benchmark ที่ละเอียดกว่า การตัดสินใจนี้ลดความเสี่ยงด้าน memory, loading และ runtime scope แต่ยังไม่ใช่ผล benchmark บนอุปกรณ์จริง
 
 เอกสาร planning ที่มี checklist `[x]` เช่น MAP_011–015 จึงยังไม่ยกระดับเป็น runtime completion หากไม่มี source, tests และ browser/device evidence ที่ผ่าน allow-list ปัจจุบัน การเปลี่ยน decision ภายหลังต้องเพิ่ม impact review และ decision record ใหม่ก่อนแก้ contract
+
+
+## 9. Implementation update — 27 สิงหาคม 2026
+
+หลัง audit เดิม มีการเพิ่มและตรวจยืนยัน `server/generators/texturePackBuilder.ts` กับ `server/texturePackBuilder.test.ts` เป็น backend/data-only Texture/Asset Pack Builder บน Common Generator Registry. Builder รองรับ `icon`, `tile`, `skin` และ `atlas`, ประกอบ RGBA pixel layers เป็น deterministic PNG, สร้าง relative path/logical asset ID, SHA-256 ต่อไฟล์, manifest hash และ provenance/source validation. Skin layout มี part geometry, duplicate/bounds check และ overlap policy. Focused test ผ่าน 1 file / 4 tests และ `pnpm check` ผ่านหลังแก้ TypeScript compatibility ของ CRC loop.
+
+มีการเพิ่ม `client/src/pages/CreatorStudio.tsx` และ route `/creator-studio` ใน `client/src/App.tsx` พร้อมสไตล์เฉพาะใน `client/src/index.css`. หน้าเป็น developer-only no-code draft workspace แยกจาก player UI มี template พืช/อาวุธ/ไอเทม/พื้น/สกิน/atlas, pixel grid, palette, custom color, paint/erase, symmetry, layers, opacity, skin-part mapping, composition preview, metadata/provenance และ draft save/export. Browser evidence ยืนยันเปิด route, เปลี่ยน plant เป็น skin template, ลงสี pixel, validation state ผ่าน และ root player landing ไม่มี creator controls.
+
+ข้อค้นพบนี้ปรับสถานะจากข้อความใน audit เดิมที่ระบุว่าไม่มี Texture Pack Builder และ Thai no-code UI ให้เป็น **PARTIAL foundation** ใน `OWNER_REQUIREMENTS_MATRIX.md` เท่านั้น. ยังไม่มี creator tRPC/API, creator-specific authorization, server-side save/register persistence, builder-backed PNG response ใน UI, model attachment/runtime registry หรือการ migrate procedural starter pack ผ่าน Builder แบบ end-to-end. จึงยังไม่ยกระดับเป็น complete creator platform และยังไม่มีการนำ route นี้ไปปนกับ `ArcaneFrontier` player HUD.
+
+Validation หลัง implementation รอบนี้ผ่าน full suite `47` test files / `163` tests และ production build ด้วย `NODE_OPTIONS=--max-old-space-size=1536`. Build ยังคงมี warning เดิมเรื่อง analytics environment placeholders และ Babylon vendor chunk ขนาดใหญ่; warnings เหล่านี้ไม่ถูกตีความเป็น mobile performance acceptance.
