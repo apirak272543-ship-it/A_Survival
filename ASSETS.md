@@ -99,3 +99,15 @@ The authoritative gameplay pack is `client/public/assets/packs/arcane-frontier-v
 | Animation states | `metadata/animations.json` | `data.animations` | Declarative idle/walk/run/dash/attack/hurt/dead timing; GLB clips remain future work |
 
 The previous Gemini image endpoint was quota-blocked. The current v0.3.0 compact files were prepared with the built-in image-generation route from an original Google/Gemini visual direction; they are explicitly **starter-authored from a Google/Gemini visual brief**, not falsely labelled as Gemini-generated images. The high-resolution source concepts and crop script are kept outside the repository audit workspace. When Gemini image generation or an artist pipeline becomes available, replacement files should preserve asset IDs, update the manifest hash, and pass the same visual, size, transparency and browser-loading checks.
+
+
+## Future content library starter pack — v0.1.0
+
+`client/public/assets/packs/a-survival-content-library-v0-1/` เป็น pack แยกสำหรับคลัง content ในอนาคต ไม่ถูก import โดย Obsidian Frontier runtime ใน checkpoint นี้. Pack ใช้ namespace `afc`, nearest sampling และมี 16 PNG entries ได้แก่ terrain 4 รายการ (`obsidian-frontier`, `aether-crystal`, `verdant-humus`, `ashen-volcanic`) และ icon 12 รายการสำหรับ plant, weapon และ material. ทุก entry มี SHA-256, logical ID, `procedural-starter-authored` source และ provenance reference นี้
+
+`server/generators/generateStarterTexturePack.py` สร้าง pack แบบ deterministic เพื่อให้ generate once → store → reuse ได้โดยไม่ผูกกับ AI image quota. ไฟล์นี้เป็น **original procedural starter art** ไม่ใช่ Minecraft asset, ไม่ใช่ Gemini-generated image และไม่ใช่ final art coverage ของ definitions 3,000 รายการ. เมื่อมี image/artist pipeline ในอนาคต ให้แทนที่ตาม logical IDs เดิม, อัปเดต manifest hash และผ่าน visual, size, alpha, provenance และ browser-loading checks ก่อน runtime ใช้จริง
+
+| Pack | Entries | Status | Runtime boundary |
+| --- | ---: | --- | --- |
+| `arcane-frontier-voxel-pixel` | 30+ | Current Obsidian gameplay pack | Runtime-allowed, namespace `af` |
+| `a-survival-content-library-v0-1` | 16 | Future content starter pack | Future-library-only, namespace `afc`; ไม่ selectable/player-facing |

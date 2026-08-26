@@ -18,7 +18,7 @@ Generator เชื่อม `CommonGeneratorRegistry` ผ่าน plugin `cont
 
 ## ขอบเขตที่ยังไม่เสร็จ
 
-Checkpoint นี้ยังไม่มี texture files, sprites, models, atlas, generated art หรือ asset upload. ยังไม่มี universal item/equipment/combat/crafting/economy engine, plant growth ecology, procedural animation, Codex, credits หรือ player-facing content editor. Logical asset references จะถูกนำไปผูกกับ asset pack เมื่อถึง visual/asset phase และต้องผ่าน provenance, validation, cache และ performance review ก่อน runtime ใช้จริง
+Checkpoint นี้มี starter texture pack แยกที่ `client/public/assets/packs/a-survival-content-library-v0-1/` จำนวน 16 PNG สำหรับ terrain, plant, weapon และ material พร้อม manifest/digest/provenance; ยังไม่มี texture/model/atlas ครบตาม definitions 3,000 รายการ และยังไม่มี final art coverage หรือ asset upload ภายนอก. ยังไม่มี universal item/equipment/combat/crafting/economy engine, plant growth ecology, procedural animation, Codex, credits หรือ player-facing content editor. Logical asset references ที่เหลือจะถูกนำไปผูกกับ asset pack เมื่อถึง visual/asset phase และต้องผ่าน provenance, validation, cache และ performance review ก่อน runtime ใช้จริง
 
 Current `client/src/game/data/catalog.ts` ยังเป็น runtime catalog owner ของ gameplay slice และไม่ได้ถูกแทนที่ด้วย catalog generator ใน checkpoint เดียวกัน
 
