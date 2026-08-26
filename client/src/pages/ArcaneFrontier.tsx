@@ -52,7 +52,7 @@ import type { GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
-import { resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
+import { RUNTIME_MAP_ID, isRuntimeMapAllowed, resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
@@ -90,7 +90,7 @@ function getLoadingDemoTransition(): Transition {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const demo = params.get("loading");
-  const map = MAP_REGISTRY.find(candidate => candidate.id === params.get("map")) ?? MAP_REGISTRY[4];
+  const map = MAP_REGISTRY.find(candidate => candidate.id === params.get("map") && isRuntimeMapAllowed(candidate.id)) ?? MAP_REGISTRY.find(candidate => candidate.id === RUNTIME_MAP_ID);
   if (demo === "biome" && map) return { destination: "game", mapId: map.id, title: map.name, accent: map.accent, progress: 64, phase: "กำลังตรวจ asset ของ biome", cached: false, offline: false };
   if (demo === "home") return { destination: "home", title: "Aether Homestead", accent: "#ffb703", progress: 68, phase: "เตรียมระบบฐานที่มั่น", cached: true, offline: false };
   if (demo === "maps") return { destination: "maps", title: "Map Observatory", accent: "#9d4edd", progress: 42, phase: "กำลังอ่านพิกัดที่บันทึกไว้", cached: true, offline: true };
@@ -274,9 +274,11 @@ export default function ArcaneFrontier() {
       const demoSession = requested !== "landing" && requested !== "identity" ? createSession("DEMO-EXPLORER") : null;
       setSession(saved ?? demoSession);
       setSettings(getSettings());
-      if (requested !== "landing") {
-        const map = requested === "game" ? MAP_REGISTRY.find(candidate => candidate.id === directMapRef.current) : undefined;
-        transitionTo(requested, { mapId: map?.id, title: map?.name, accent: map?.accent });
+      if (requested === "game") {
+        const map = MAP_REGISTRY.find(candidate => candidate.id === RUNTIME_MAP_ID);
+        transitionTo("game", { mapId: map?.id, title: map?.name, accent: map?.accent });
+      } else if (requested !== "landing" && requested !== "identity") {
+        transitionTo(requested, { title: requested === "home" ? "Aether Homestead" : "Frontier Lobby", accent: requested === "home" ? "#7ee787" : "#9d4edd" });
       }
     });
     return () => { active = false; };
@@ -333,7 +335,7 @@ export default function ArcaneFrontier() {
   useEffect(() => {
     if (screen !== "maps") return;
     let active = true;
-    void getCachedMapIds(MAP_REGISTRY.slice(0, 15).map(map => map.id)).then(ids => {
+    void getCachedMapIds([RUNTIME_MAP_ID]).then(ids => {
       if (active) setCachedMapIds(new Set(ids));
     });
     return () => { active = false; };
@@ -422,14 +424,16 @@ export default function ArcaneFrontier() {
   }, [session, syncSession]);
 
   const transitionTo = useCallback((destination: Screen, options?: { mapId?: string; title?: string; accent?: string }) => {
-    const map = options?.mapId ? MAP_REGISTRY.find(candidate => candidate.id === options.mapId) : undefined;
+    const requestedMapId = destination === "game" ? RUNTIME_MAP_ID : options?.mapId;
+    const map = requestedMapId ? MAP_REGISTRY.find(candidate => candidate.id === requestedMapId && isRuntimeMapAllowed(candidate.id)) : undefined;
+    const mapId = destination === "game" ? RUNTIME_MAP_ID : options?.mapId;
     const title = options?.title ?? map?.name ?? (destination === "home" ? "Aether Homestead" : "Frontier Lobby");
     const accent = options?.accent ?? map?.accent ?? "#00f3ff";
-    setTransition({ destination, mapId: options?.mapId, title, accent, progress: 0, phase: "กำลังปรับเส้นทางพลังงาน" });
+    setTransition({ destination, mapId, title, accent, progress: 0, phase: "กำลังปรับเส้นทางพลังงาน" });
     const delay = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
     void (async () => {
       let resolvedDestination = destination;
-      let resolvedMapId = options?.mapId;
+      let resolvedMapId = mapId;
       if (map) {
         try {
           const result = await prepareMapModule(map, update => setTransition(current => current ? { ...current, progress: update.progress, phase: update.phase, cached: update.cached, offline: update.offline } : current));
@@ -622,11 +626,11 @@ export default function ArcaneFrontier() {
 
     {screen === "maps" && session && <section className="map-screen">
       <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Map observatory</p><h2>Choose an expedition</h2></div><button className="map-count help-trigger" onClick={() => openHelp("offline")}><CircleHelp size={16} /> Cache & offline</button></header>
-      <div className="map-cards">{MAP_REGISTRY.slice(0, 15).map((map, index) => {
+      <div className="map-cards">{MAP_REGISTRY.filter(map => isRuntimeMapAllowed(map.id)).map((map, index) => {
         const cached = cachedMapIds.has(map.id);
         return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{(map.id === "obsidian-frontier" ? obsidianKeyArt : map.keyArt) ? <img src={map.id === "obsidian-frontier" ? obsidianKeyArt : map.keyArt} alt="" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">{String(index + 1).padStart(2, "0")}</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">{map.status === "prototype" ? "EXPEDITION PROTOTYPE · PLAYABLE" : "MODULE IN PLANNING"}</small></div><div className="map-meta"><span>RADIUS {map.radiusMeters}m</span><span>THREAT {"◆".repeat(map.threat)}</span></div><button disabled={map.status !== "prototype"} onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{map.status !== "prototype" ? "Module in planning" : cached ? <><Play size={15} fill="currentColor" /> Enter cached sector</> : <><Download size={15} /> Prepare expedition</>}</button></div></article>;
       })}</div>
-      <p className="map-footnote">MAP_001–MAP_015 เปิดเป็น expedition prototype แล้ว: ใช้วงจรต่อสู้/เก็บทรัพยากรร่วมกัน แต่แต่ละ module มี key art, ambience, NPC, landmark, regular threat และ event boss ของตนเอง · การดาวน์โหลดครั้งแรกจะเก็บ cache ไว้ในเบราว์เซอร์</p>
+      <p className="map-footnote">ตอนนี้เปิดให้เล่นเฉพาะ Obsidian Frontier vertical slice เท่านั้น ส่วนแผนที่อื่นยังเป็นข้อมูลแผนงานหลังบ้านและยังไม่เปิดให้เลือกหรือเตรียม cache ใน runtime</p>
     </section>}
 
     {screen === "home" && session && <section className="home-screen">
