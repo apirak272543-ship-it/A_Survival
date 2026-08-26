@@ -58,3 +58,12 @@ Generator ถูกวางไว้นอก `client/src/game/` และไ�
 Focused test `pnpm exec vitest run server/texturePackBuilder.test.ts` ผ่าน `1` test file และ `4` tests. Creator API focused tests `pnpm exec vitest run server/creatorRouter.test.ts server/texturePackBuilder.test.ts` ผ่าน `2` files / `8` tests. Full regression ผ่าน `48` test files / `167` tests, `pnpm check` และ production build ด้วย memory cap. Browser smoke test เปิด `/creator-studio`, เปลี่ยนจาก plant template เป็น skin template, ลงสีพิกเซล, เรียก validation ด้วย DOM click และเห็นสถานะ `ผ่าน`; root `/?route=landing` ยังคงเป็น player landing โดยไม่พบ creator controls. ใน development browser ยังไม่มี authenticated admin session จึงยังไม่ได้อ้างว่า browser build mutation ผ่าน; admin boundary ถูกยืนยันด้วย router contract tests. รายละเอียด browser ถูกบันทึกไว้ใน `docs/creator-studio-browser-evidence-2026-08-27.md`.
 
 การตรวจนี้ยังไม่ใช่หลักฐานว่า creator platform เสร็จทั้งหมด. ต้องเพิ่ม backend contract, authorization, server-side Builder call, manifest persistence และ end-to-end export/register ก่อนยกระดับสถานะของข้อกำหนด no-code platform.
+
+
+## Starter pack migration ผ่าน Builder
+
+`server/generators/migrateStarterTexturePack.ts` อ่าน manifest ของ `a-survival-content-library-v0-1`, decode non-interlaced 8-bit RGB/RGBA PNG เป็น pixel array และส่ง asset ทั้ง 16 รายการเข้า `texture.pack@1.0.0`. ผลลัพธ์ถูกเขียนแยกไปยัง `client/public/assets/packs/a-survival-content-library-builder-v0-1/` พร้อม Builder manifest และ provenance record. Source pack เดิมแบ่งเป็น tile 4 รายการกับ icon 12 รายการ; Builder output ใช้ชนิด `tile` และ `icon` ตามนั้น.
+
+ชื่อสถานะเดิม `procedural-starter-authored` เป็น provenance vocabulary ของ starter pack จึงถูกเก็บไว้ใน `provenance.json`; ใน `TextureAssetInput.source` แปลงเป็น `starter-authored` ซึ่งเป็น enum ของ Common Generator API. การแปลงนี้เป็น schema mapping ไม่ใช่การเปลี่ยนเจ้าของงานหรือการกล่าวอ้างว่าเป็น AI-generated.
+
+Migration command คืนผล 16 entries และ pack hash `f8abe22704a1d99290c770bcc028088d1c34b4a82c1a510bbcda6195efb0d4bb`. Focused migration tests ผ่าน `2` tests และ full regression หลังเพิ่ม migration ผ่าน `49` test files / `169` tests. Output pack ยังคง future-only และยังไม่ถูกนำเข้า playable Obsidian runtime.

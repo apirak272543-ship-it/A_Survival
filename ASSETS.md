@@ -111,3 +111,17 @@ The previous Gemini image endpoint was quota-blocked. The current v0.3.0 compact
 | --- | ---: | --- | --- |
 | `arcane-frontier-voxel-pixel` | 30+ | Current Obsidian gameplay pack | Runtime-allowed, namespace `af` |
 | `a-survival-content-library-v0-1` | 16 | Future content starter pack | Future-library-only, namespace `afc`; ไม่ selectable/player-facing |
+
+
+## Future content library — Builder-owned migration v0.1.0
+
+`client/public/assets/packs/a-survival-content-library-builder-v0-1/` คือผลลัพธ์จากการอ่าน procedural starter pack v0.1.0 แล้วส่ง pixel RGBA ทุกไฟล์เข้า `server/generators/texturePackBuilder.ts` ผ่าน `server/generators/migrateStarterTexturePack.ts`. Pack ใหม่นี้มี 16 entries เดิมในรูปแบบ Builder manifest `a-survival.texture-pack.v1`, namespace `afc-builder`, nearest sampling, per-entry PNG SHA-256, `packSha256` `f8abe22704a1d99290c770bcc028088d1c34b4a82c1a510bbcda6195efb0d4bb` และ `provenance.json` ที่อ้าง source pack เดิม.
+
+สถานะ `procedural-starter-authored` ของ source pack ถูกเก็บไว้ใน provenance record ส่วน field ที่ Builder รองรับใช้ `starter-authored` เพื่อให้ผ่าน schema โดยไม่เรียกไฟล์เหล่านี้ว่า AI-generated. Output ยังคงเป็น original procedural starter art, ไม่ใช่ Minecraft asset และยังเป็น `future-library-only`; ไม่มีการเพิ่ม import หรือ runtime allow-list ให้ pack นี้.
+
+| Pack | Generator path | Entries | Runtime boundary |
+| --- | --- | ---: | --- |
+| `a-survival-content-library-v0-1` | `generateStarterTexturePack.py` | 16 | Future-only source pack |
+| `a-survival-content-library-builder-v0-1` | `migrateStarterTexturePack.ts` → `texture.pack@1.0.0` | 16 | Future-only Builder output, not imported by Obsidian runtime |
+
+Migration tests ยืนยันการ decode non-interlaced 8-bit PNG, 4 tile entries + 12 icon entries, RGBA geometry, per-file digest, manifest equality, provenance status และ output pack hash. การ migrate นี้ยังไม่ใช่การขยาย coverage ของ catalog 3,000 definitions และยังไม่ใช่ final visual acceptance บนอุปกรณ์จริง.

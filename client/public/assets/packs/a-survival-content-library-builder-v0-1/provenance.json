@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "a-survival.texture-pack-migration.v1",
+  "sourcePack": "a-survival-content-library-v0-1",
+  "sourceManifestSha256": "a876456a438c4363f4fc7c32bb96db75fae65232ec3a28481b74f744600be512",
+  "builderGeneratorId": "texture.pack",
+  "builderGeneratorVersion": "1.0.0",
+  "sourceArtStatus": "procedural-starter-authored",
+  "usage": "future-library-only; not imported by playable Obsidian runtime",
+  "inputAssetCount": 16,
+  "outputPackSha256": "f8abe22704a1d99290c770bcc028088d1c34b4a82c1a510bbcda6195efb0d4bb"
+}
