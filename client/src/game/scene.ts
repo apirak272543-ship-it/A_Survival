@@ -39,6 +39,7 @@ import { getRenderDistanceConfig, type RenderDistancePreset } from "@/game/syste
 import { blockKey, getBlockDefinition, getPlaceableBlockModule, getBlockToolForItem, type BlockTool } from "@/game/data/blockModules";
 import { breakBlockAt, getAdjacentSupportModule, getWorldBlockAt, normalizeWorldBlockOverrides, placeBlockAt, type BlockCoordinate, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 import { getWorldFarmCropStage, getWorldFarmPlant, normalizeWorldFarmState, planHarvestWorldPlant, planPlantWorldSeed, type WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { STORAGE_CHEST_ID, STORAGE_CHEST_MODULE_ID } from "@/game/systems/worldStorageSystem";
 import type { WorldPlantEffect } from "@/game/tools/plantCatalogGenerator";
 
 export type GameSnapshot = {
@@ -111,6 +112,7 @@ type GameOptions = {
   onBlockMessage?: (message: string) => void;
   onFarmAction?: FarmActionHandler;
   onFarmMessage?: (message: string) => void;
+  onChestOpen?: (chestId: string) => void;
   worldBlockOverrides?: WorldBlockOverrides;
   worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
@@ -266,6 +268,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let worldBlockOverrides = normalizeWorldBlockOverrides(options.worldBlockOverrides);
   let activeBlockTool: BlockTool = "hand";
   const worldBlockMeshes = new Map<string, AbstractMesh>();
+  const worldChestMeshes = new Map<string, AbstractMesh>();
   const blockMaterials = new Map<string, StandardMaterial>();
   let worldFarmState = normalizeWorldFarmState(options.worldFarmState);
   const worldFarmPlotMeshes = new Map<string, AbstractMesh>();
@@ -309,6 +312,14 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     mesh.setEnabled(true);
     worldBlockMeshes.set(key, mesh);
   };
+  const syncWorldChestMesh = (chestId: string, coordinate: BlockCoordinate) => {
+    const mesh = worldChestMeshes.get(chestId) ?? MeshBuilder.CreateBox(`world-chest-${chestId}`, { width: 0.76, depth: 0.62, height: 0.56 }, scene);
+    mesh.position.set(coordinate.x, coordinate.y + 0.28, coordinate.z);
+    mesh.material = getBlockMaterial(STORAGE_CHEST_MODULE_ID);
+    mesh.metadata = { ...(mesh.metadata ?? {}), mapId: options.mapId, storageChestId: chestId, blockModuleId: STORAGE_CHEST_MODULE_ID, coordinate, solid: true, partial: true };
+    mesh.setEnabled(true);
+    worldChestMeshes.set(chestId, mesh);
+  };
   const getFarmMaterial = (key: string, color: string) => {
     const existing = farmMaterials.get(key);
     if (existing) return existing;
@@ -337,6 +348,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     });
   };
   if (isMap001) {
+    syncWorldChestMesh(STORAGE_CHEST_ID, { x: 0, y: 0, z: 4 });
     initialWorldBlocks.forEach(({ coordinate, moduleId }) => {
       const resolved = readSceneBlockAt(coordinate);
       if (resolved) syncWorldBlockMesh(coordinate, resolved);
@@ -616,6 +628,18 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     return nearest;
   };
 
+  const nearestWorldChest = () => {
+    let nearest: { chestId: string; distance: number } | undefined;
+    worldChestMeshes.forEach(mesh => {
+      if (!mesh.isEnabled() || mesh.metadata?.mapId !== options.mapId) return;
+      const chestId = mesh.metadata?.storageChestId as string | undefined;
+      if (!chestId) return;
+      const distance = Vector3.Distance(mesh.position, player.position);
+      if (distance <= 3.8 && (!nearest || distance < nearest.distance)) nearest = { chestId, distance };
+    });
+    return nearest;
+  };
+
   const nearestWorldFarmPlot = () => {
     let nearest: { plotId: string; distance: number } | undefined;
     Object.values(worldFarmState).forEach(plot => {
@@ -743,6 +767,12 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       }
     }
     if (control.type === "interact") {
+      const chest = isMap001 ? nearestWorldChest() : undefined;
+      if (chest) {
+        options.onChestOpen?.(chest.chestId);
+        pendingMapInteraction = false;
+        return;
+      }
       if (harvestNearestWorldFarmPlot()) {
         pendingMapInteraction = false;
         return;

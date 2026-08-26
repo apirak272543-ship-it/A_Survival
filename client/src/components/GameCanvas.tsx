@@ -15,17 +15,18 @@ type GameCanvasProps = {
   onBlockMessage?: (message: string) => void;
   onFarmAction?: FarmActionHandler;
   onFarmMessage?: (message: string) => void;
+  onChestOpen?: (chestId: string) => void;
   worldBlockOverrides?: WorldBlockOverrides;
   worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
   renderDistance?: "near" | "balanced" | "far";
 };
 
-export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance }: GameCanvasProps) {
+export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, onChestOpen, worldBlockOverrides, worldFarmState, companion, renderDistance }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
-  const latestPropsRef = useRef<GameCanvasProps>({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance });
-  latestPropsRef.current = { mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance };
+  const latestPropsRef = useRef<GameCanvasProps>({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, onChestOpen, worldBlockOverrides, worldFarmState, companion, renderDistance });
+  latestPropsRef.current = { mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, onChestOpen, worldBlockOverrides, worldFarmState, companion, renderDistance };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -49,7 +50,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       }
       if (cancelled) return;
       const latest = latestPropsRef.current;
-      const game = await createGameScene(engine, canvas, { mapId: latest.mapId, onSnapshot: latest.onSnapshot, onReward: latest.onReward, onBlockAction: latest.onBlockAction, onBlockMessage: latest.onBlockMessage, onFarmAction: latest.onFarmAction, onFarmMessage: latest.onFarmMessage, worldBlockOverrides: latest.worldBlockOverrides, worldFarmState: latest.worldFarmState, companion: latest.companion, reducedMotion: latest.reducedMotion, renderDistance: latest.renderDistance });
+      const game = await createGameScene(engine, canvas, { mapId: latest.mapId, onSnapshot: latest.onSnapshot, onReward: latest.onReward, onBlockAction: latest.onBlockAction, onBlockMessage: latest.onBlockMessage, onFarmAction: latest.onFarmAction, onFarmMessage: latest.onFarmMessage, onChestOpen: latest.onChestOpen, worldBlockOverrides: latest.worldBlockOverrides, worldFarmState: latest.worldFarmState, companion: latest.companion, reducedMotion: latest.reducedMotion, renderDistance: latest.renderDistance });
       if (cancelled) {
         game.dispose();
         return;

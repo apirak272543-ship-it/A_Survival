@@ -55,6 +55,7 @@ import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/g
 import { RUNTIME_MAP_ID, isRuntimeMapAllowed, resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
 import { consumeOneFromStack, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import { CHEST_SLOT_LIMIT, CARRY_SLOT_LIMIT, STORAGE_CHEST_ID, createEmptyWorldStorage, depositIntoChest, getWorldStorageSlots, withdrawFromChest as withdrawItemFromChest, type WorldStorageById } from "@/game/systems/worldStorageSystem";
 import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
@@ -237,6 +238,23 @@ function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncReq
   </section></div>;
 }
 
+function ChestSheet({ session, storage, chestId, quarantinedInstanceIds, close, onDeposit, onWithdraw, getAssetUrl }: { session: LocalGameSession; storage: WorldStorageById; chestId: string; quarantinedInstanceIds: Set<string>; close: () => void; onDeposit: (instanceId: string) => void; onWithdraw: (instanceId: string) => void; getAssetUrl: (assetId?: string) => string | undefined }) {
+  const [selectedChestInstanceId, setSelectedChestInstanceId] = useState<string | null>(null);
+  const [selectedCarryInstanceId, setSelectedCarryInstanceId] = useState<string | null>(null);
+  const slots = getWorldStorageSlots(storage, chestId);
+  const storedItems = slots.filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const selectedChest = storedItems.find(item => item.instanceId === selectedChestInstanceId) ?? storedItems[0];
+  const selectedCarry = session.inventory.find(item => item.instanceId === selectedCarryInstanceId) ?? session.inventory[0];
+  const icon = (definitionId: string) => getAssetUrl(getItemDefinition(definitionId)?.iconAssetId);
+  return <div className="settings-scrim vault-scrim chest-scrim" onPointerDown={close}><section className="vault-sheet chest-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="หีบเก็บของใน Obsidian Frontier">
+    <header><div><p className="eyebrow">Map-local storage · Obsidian Frontier</p><h3>หีบออบซิเดียน</h3></div><button className="icon-button" onClick={close} aria-label="ปิดหีบ"><X size={18} /></button></header>
+    <div className="chest-layout">
+      <section className="chest-panel"><div className="vault-grid-label"><span>CHEST SLOTS</span><b>{storedItems.length}/{CHEST_SLOT_LIMIT}</b></div><div className="chest-grid">{slots.map((item, index) => { const itemDefinition = item ? getItemDefinition(item.definitionId) : undefined; const locked = Boolean(item && quarantinedInstanceIds.has(item.instanceId)); return <button key={`${chestId}-${index}`} className={`chest-slot ${item?.instanceId === selectedChest?.instanceId ? "selected" : ""} ${locked ? "quarantined" : ""}`} onClick={() => item && setSelectedChestInstanceId(item.instanceId)} disabled={!item} aria-label={`ช่องหีบ ${index + 1}${item ? ` · ${itemDefinition?.name ?? item.definitionId} ×${item.quantity}` : " · ว่าง"}`}><span>{item && (icon(item.definitionId) ? <img src={icon(item.definitionId)} alt="" /> : <Box size={16} />)}</span>{item && <><b>{itemDefinition?.name ?? item.definitionId}</b><small>×{item.quantity}</small></>}</button>; })}</div><div className="chest-actions"><button disabled={!selectedChest || quarantinedInstanceIds.has(selectedChest?.instanceId ?? "")} onClick={() => selectedChest && onWithdraw(selectedChest.instanceId)}>นำของออก</button><small>เลือกของในหีบเพื่อย้ายเข้าตัว · คง provenance เดิม</small></div></section>
+      <section className="chest-panel"><div className="vault-grid-label"><span>CARRY SLOTS</span><b>{session.inventory.length}/{CARRY_SLOT_LIMIT}</b></div><div className="chest-carry-list">{session.inventory.map(item => { const itemDefinition = getItemDefinition(item.definitionId); const locked = quarantinedInstanceIds.has(item.instanceId); return <button key={item.instanceId} className={`chest-carry-item ${item.instanceId === selectedCarry?.instanceId ? "selected" : ""} ${locked ? "quarantined" : ""}`} onClick={() => setSelectedCarryInstanceId(item.instanceId)} aria-label={`${itemDefinition?.name ?? item.definitionId} ×${item.quantity}${locked ? " · รอยืนยัน" : ""}`}><span>{icon(item.definitionId) ? <img src={icon(item.definitionId)} alt="" /> : <Box size={15} />}</span><b>{itemDefinition?.name ?? item.definitionId}</b><small>×{item.quantity}</small></button>; })}</div><div className="chest-actions"><button disabled={!selectedCarry || quarantinedInstanceIds.has(selectedCarry?.instanceId ?? "")} onClick={() => selectedCarry && onDeposit(selectedCarry.instanceId)}>เก็บเข้าหีบ</button><small>เลือกของติดตัวเพื่อย้ายเข้าช่องว่าง · หีบเต็มจะไม่ทำให้ของหาย</small></div></section>
+    </div>
+  </section></div>;
+}
+
 export default function ArcaneFrontier() {
   const directEntryRef = useRef<Screen>(getInitialScreen());
   const directMapRef = useRef(getInitialMapId());
@@ -251,6 +269,8 @@ export default function ArcaneFrontier() {
   const [showHelp, setShowHelp] = useState(false);
   const [showIntegrity, setShowIntegrity] = useState(getIntegrityDemoEnabled);
   const [showVault, setShowVault] = useState(getVaultDemoEnabled);
+  const [showChest, setShowChest] = useState(false);
+  const [activeChestId, setActiveChestId] = useState(STORAGE_CHEST_ID);
   const [showTacticalMap, setShowTacticalMap] = useState(false);
   const [syncAttention, setSyncAttention] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic>("identity");
@@ -261,6 +281,7 @@ export default function ArcaneFrontier() {
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
   const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
   const [worldFarmState, setWorldFarmState] = useState<WorldFarmState>({});
+  const [worldStorageById, setWorldStorageById] = useState<WorldStorageById>(createEmptyWorldStorage);
   const [worldBlockStateReady, setWorldBlockStateReady] = useState(false);
   const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -302,11 +323,13 @@ export default function ArcaneFrontier() {
       if (!active) return;
       setWorldBlockOverrides(state.worldBlockOverrides);
       setWorldFarmState(state.worldFarmState);
+      setWorldStorageById(state.worldStorageById);
       setWorldBlockStateReady(true);
     }).catch(() => {
       if (active) {
         setWorldBlockOverrides({});
         setWorldFarmState({});
+        setWorldStorageById(createEmptyWorldStorage());
         setWorldBlockStateReady(true);
       }
     });
@@ -543,10 +566,10 @@ export default function ArcaneFrontier() {
       updateSession({ pendingActions: session.pendingActions.concat({ id: `block-break-${Date.now()}`, type: "block-break", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, coordinate: event.coordinate }, }) });
     }
     setWorldBlockOverrides(event.overrides);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, worldStorageById, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     setToast(event.message);
     return true;
-  }, [session, worldFarmState]);
+  }, [session, worldFarmState, worldStorageById]);
 
   const blockMessageHandler = useCallback((message: string) => setToast(message), []);
   const farmMessageHandler = useCallback((message: string) => setToast(message), []);
@@ -569,10 +592,39 @@ export default function ArcaneFrontier() {
       if (event.effect?.kind === "repel") setToast(`${event.message} · แรงผลักทำงาน ${event.effect.radius} บล็อกแบบไม่ทำลาย`);
     }
     setWorldFarmState(event.state);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, worldStorageById, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     if (!event.effect || event.effect.kind !== "repel") setToast(event.message);
     return true;
-  }, [session, worldBlockOverrides]);
+  }, [session, worldBlockOverrides, worldStorageById]);
+
+  const chestOpenHandler = useCallback((chestId: string) => {
+    if (chestId !== STORAGE_CHEST_ID) return;
+    setActiveChestId(chestId);
+    setShowChest(true);
+  }, []);
+
+  const persistStorageTransfer = useCallback((result: ReturnType<typeof depositIntoChest> | ReturnType<typeof withdrawItemFromChest>) => {
+    if (!session || !result.ok) return;
+    setWorldStorageById(result.storage);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById: result.storage, updatedAt: Date.now() }).catch(() => setToast("บันทึกของในหีบไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    updateSession({ inventory: result.carry, pendingActions: session.pendingActions.concat(result.action) });
+  }, [session, worldBlockOverrides, worldFarmState]);
+
+  const depositFromChest = useCallback((itemInstanceId: string) => {
+    if (!session) return;
+    const result = depositIntoChest({ mapId: RUNTIME_MAP_ID, chestId: activeChestId, carry: session.inventory, storage: worldStorageById, itemInstanceId, now: Date.now() });
+    if (!result.ok) return setToast(result.reason);
+    persistStorageTransfer(result);
+    setToast("เก็บของเข้าหีบแล้ว · item instance และ provenance เดิมยังอยู่");
+  }, [activeChestId, persistStorageTransfer, session, worldStorageById]);
+
+  const withdrawFromChest = useCallback((itemInstanceId: string) => {
+    if (!session) return;
+    const result = withdrawItemFromChest({ mapId: RUNTIME_MAP_ID, chestId: activeChestId, carry: session.inventory, storage: worldStorageById, itemInstanceId, now: Date.now() });
+    if (!result.ok) return setToast(result.reason);
+    persistStorageTransfer(result);
+    setToast("นำของออกจากหีบแล้ว · provenance เดิมยังอยู่");
+  }, [activeChestId, persistStorageTransfer, session, worldStorageById]);
 
   const snapshotHandler = useCallback((next: GameSnapshot) => {
     setGameSnapshot(next);
@@ -666,6 +718,7 @@ export default function ArcaneFrontier() {
     {showSettings && <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />}
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
+    {showChest && session && screen === "game" && <ChestSheet session={session} storage={worldStorageById} chestId={activeChestId} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowChest(false)} onDeposit={depositFromChest} onWithdraw={withdrawFromChest} getAssetUrl={getPackIconUrl} />}
     {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} toast={message => setToast(message)} getAssetUrl={getPackIconUrl} />}
     {showTacticalMap && screen === "game" && <TacticalMapSheet map={activeMap} snapshot={gameSnapshot} close={() => setShowTacticalMap(false)} />}
     {contextHint && <button className="context-help-hint" onClick={() => { openHelp(contextHint.topic); setContextHint(null); }}><CircleHelp size={15} /><span>{contextHint.text}</span><X size={13} /></button>}
@@ -717,7 +770,7 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
+    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onChestOpen={chestOpenHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src={obsidianCompanionArt ?? "/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg"} alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>

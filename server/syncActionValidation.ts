@@ -10,6 +10,7 @@ const BLOCK_MODULE_ID_PATTERN = /^(terrain|obstacle|structure|flora|storage)\.[A
 const OBSIDIAN_MAP_ID = "obsidian-frontier";
 const FARM_PLOT_ID_PATTERN = /^farm-plot-0[1-4]$/;
 const WORLD_PLANT_ID_PATTERN = /^world-plant-\d{3}$/;
+const STORAGE_CHEST_ID_PATTERN = /^obsidian-chest-\d{2}$/;
 
 export function isSafeUseItemPayload(payload: Record<string, unknown>): payload is UseItemSyncPayload {
   return Number.isInteger(payload.slot)
@@ -65,4 +66,26 @@ export function isSafeHarvestWorldCropPayload(payload: Record<string, unknown>) 
     && INSTANCE_ID_PATTERN.test(payload.rewardInstanceId)
     && isSafeBlockCoordinate(payload.coordinate)
     && Number.isFinite(Number(payload.harvestedAt));
+}
+
+function isSafeStorageTransferPayload(payload: Record<string, unknown>) {
+  return payload.mapId === OBSIDIAN_MAP_ID
+    && typeof payload.chestId === "string"
+    && STORAGE_CHEST_ID_PATTERN.test(payload.chestId)
+    && typeof payload.itemInstanceId === "string"
+    && INSTANCE_ID_PATTERN.test(payload.itemInstanceId)
+    && Number.isInteger(payload.slot)
+    && Number(payload.slot) >= 0
+    && Number(payload.slot) < 27
+    && Number.isInteger(payload.quantity)
+    && Number(payload.quantity) >= 1
+    && Number(payload.quantity) <= 64;
+}
+
+export function isSafeStorageDepositPayload(payload: Record<string, unknown>) {
+  return isSafeStorageTransferPayload(payload);
+}
+
+export function isSafeStorageWithdrawPayload(payload: Record<string, unknown>) {
+  return isSafeStorageTransferPayload(payload);
 }
