@@ -94,3 +94,12 @@ Recovery protections ยังอยู่ครบ: branch `local-pre-forensic-
 [10]: ../client/src/game/storage/indexedDb.ts "Offline persistence source"
 [11]: ../client/src/game/help/helpContent.ts "Current help/onboarding source"
 [12]: ./MINECRAFT_PE_CASE_STUDY.md "Reference-only Minecraft case study"
+
+
+## 8. Decision policy เมื่อเอกสารขัดกัน
+
+เพื่อไม่ให้การทำงานต่อพลาดจุดสำคัญ ใช้ลำดับน้ำหนักต่อไปนี้: ข้อกำหนดล่าสุดของเจ้าของที่ผ่านการคำนวณและไม่ทำลาย performance/ความปลอดภัยมาก่อน, ตามด้วย runtime source และ automated/browser/device evidence, จากนั้น `GAME_RULES.md` และ architecture contracts, ต่อด้วย Toolkit Master/uploaded specifications ในฐานะ design requirements และสุดท้ายคือ prototype/planning documents เก่าในฐานะประวัติ
+
+ดังนั้นขนาดแผนที่ที่ใช้งานในปัจจุบันคือ **รัศมี 500m** ไม่ใช้ค่าประวัติ 1,000–1,500m; runtime เปิดเฉพาะ **Obsidian Frontier** ไม่ใช้สถานะ prototype ใน registry เป็นสิทธิ์ playable; และ global `near/balanced/far` ยังคงเป็น compatibility presets แยกจาก in-map view-distance model 5–50 blocks จนกว่าจะมี implementation/benchmark ที่ละเอียดกว่า การตัดสินใจนี้ลดความเสี่ยงด้าน memory, loading และ runtime scope แต่ยังไม่ใช่ผล benchmark บนอุปกรณ์จริง
+
+เอกสาร planning ที่มี checklist `[x]` เช่น MAP_011–015 จึงยังไม่ยกระดับเป็น runtime completion หากไม่มี source, tests และ browser/device evidence ที่ผ่าน allow-list ปัจจุบัน การเปลี่ยน decision ภายหลังต้องเพิ่ม impact review และ decision record ใหม่ก่อนแก้ contract

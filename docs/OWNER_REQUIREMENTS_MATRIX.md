@@ -168,3 +168,11 @@ Focused tests cover generator count/link validation, soil and biome rejection, a
 การตรวจ source จริงพบว่า generator ที่มีอยู่คือ `client/src/game/tools/plantCatalogGenerator.ts` เพียงตัวเดียวและเป็น Obsidian-scoped 300-record catalog; ยังไม่พบ Structure/Quest/Dungeon/Loot/Crafting/Economy/Audio/Weather/Vegetation/Profiler/Migration/Orchestrator/Common Generator API, Procedural Animation/Motion Generator, world-instance/network implementation, unified adaptive performance controller, Codex/Credits/story progression หรือ Thai no-code platform. ดังนั้นข้อกำหนดเหล่านี้ยังคง `PENDING` หรือ `PARTIAL` ตามแถวด้านบน ไม่ถูกยกระดับจากการอ่านเอกสารเพียงอย่างเดียว
 
 `pnpm check` และ `pnpm test -- --run` ผ่านที่ `4c71961` (`40` test files / `130` tests). นี่เป็น compile/regression evidence ของ checkpoint ปัจจุบันเท่านั้น ไม่ใช่หลักฐานว่า requirements ทั้งหมดเสร็จ และไม่เปลี่ยน Obsidian-only runtime guard หรือ recovery refs
+
+### Conflict resolution policy — 2026-08-26
+
+เมื่อเอกสารเก่ากับเอกสารใหม่ขัดกัน ให้ใช้ลำดับน้ำหนักดังนี้: (1) ข้อกำหนดล่าสุดของเจ้าของที่ผ่านการคำนวณและไม่ทำลาย performance/ความปลอดภัย, (2) runtime source, tests และ browser/device evidence ที่ตรวจได้จริง, (3) `GAME_RULES.md`/architecture contracts ที่ยังไม่ขัดกับข้อ 1–2, (4) Toolkit Master และ uploaded specifications ในฐานะ design requirements สำหรับงานถัดไป, และ (5) prototype/planning documents เก่าในฐานะประวัติและ reference เท่านั้น
+
+ผลการตัดสินใจที่ใช้ต่อจากนี้คือใช้ **500m map radius** และ runtime scope แบบ **Obsidian-only** แทนข้อความเก่า 1,000–1,500m/การเปิด MAP_002–010 เพราะสอดคล้องกับข้อจำกัด performance และมี runtime guard จริง; ใช้ global render presets `near/balanced/far` เป็น compatibility contract ไปก่อน โดยยังไม่อ้างว่าเท่ากับ in-map view distance 5–50 blocks แบบละเอียด; แยก world map data จำนวน 100 records ออกจาก playable runtime; และถือ checklist `[x]` ใน adopted planning docs เป็น design history จนกว่าจะมี source/test/browser evidence ของเส้นทางนั้น
+
+การเลือกค่าที่ลดภาระเครื่องเป็น **decision ด้าน product/performance** ไม่ใช่ผล benchmark บนอุปกรณ์จริง หากมีข้อกำหนดใหม่ที่ดีกว่าและมีหลักฐานรองรับ ให้เพิ่ม decision record และ impact review ก่อนเปลี่ยน contract ทุกครั้ง
