@@ -110,7 +110,7 @@ function LoadingGate({ transition, reducedMotion }: { transition: NonNullable<Tr
   const statusCopy = transition.offline ? "โหมดออฟไลน์: กำลังโหลดข้อมูลจากหน่วยความจำสำรองในเครื่อง..." : transition.cached ? "พบข้อมูลในแคช: กำลังเข้าสู่พื้นที่อย่างรวดเร็ว..." : transition.phase === "กำลังปรับเส้นทางพลังงาน" ? variant.statusLabel : transition.phase;
   return (
     <div className="loading-gate" data-destination-type={variant.kind} data-loading-state={transition.progress >= 100 ? "complete" : transition.progress > 0 ? "loading" : "preparing"} data-connection-mode={connectionMode} data-reduced-motion={reducedMotion ? "true" : "false"} style={{ "--biome-accent": transition.accent } as React.CSSProperties}>
-      {variant.keyArt && <img className="loading-keyart" src={variant.keyArt} alt="" aria-hidden="true" />}
+      {variant.keyArt && <img className="loading-keyart" src={variant.keyArt} alt="" aria-hidden="true" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} />}
       <div className="loading-variant-texture" aria-hidden="true" />
       <div className="loading-stars" />
       <div className="loading-orbit orbit-one" />
@@ -140,9 +140,10 @@ function TouchStick() {
     if (!box) return;
     const rawX = (event.clientX - (box.left + box.width / 2)) / (box.width / 2);
     const rawY = (event.clientY - (box.top + box.height / 2)) / (box.height / 2);
-    const length = Math.max(1, Math.hypot(rawX, rawY));
-    const x = Math.max(-1, Math.min(1, rawX / length));
-    const y = Math.max(-1, Math.min(1, rawY / length));
+    const rawLength = Math.hypot(rawX, rawY);
+    const length = Math.min(1, rawLength);
+    const x = rawLength > 0 ? Math.max(-1, Math.min(1, (rawX / rawLength) * length)) : 0;
+    const y = rawLength > 0 ? Math.max(-1, Math.min(1, (rawY / rawLength) * length)) : 0;
     setPoint({ x, y });
     dispatchControl({ type: "move", x, y });
   };
@@ -235,6 +236,7 @@ export default function ArcaneFrontier() {
   const [selectedMapId, setSelectedMapId] = useState(getInitialMapId);
   const [cachedMapIds, setCachedMapIds] = useState<Set<string>>(() => new Set());
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
+  const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedHomeSeedId, setSelectedHomeSeedId] = useState<string | null>(null);
   const [selectedHomeObjectId, setSelectedHomeObjectId] = useState<string | null>(null);
@@ -260,6 +262,27 @@ export default function ArcaneFrontier() {
   }, []);
 
   useEffect(() => saveSettings(settings), [settings]);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select")) return;
+      if (["1", "2", "3"].includes(event.key)) {
+        setActiveHotbarSlot(Number(event.key) - 1);
+        return;
+      }
+      if (screen === "game" && (event.key.toLowerCase() === "i" || event.key === "Tab")) {
+        event.preventDefault();
+        setShowVault(true);
+      }
+      if (screen === "game" && event.key === "Escape") {
+        event.preventDefault();
+        setShowSettings(current => !current);
+      }
+    };
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, [screen]);
 
   useEffect(() => {
     const hint = SCREEN_HINTS[screen];
@@ -528,7 +551,7 @@ export default function ArcaneFrontier() {
       <div className="landing-void" /><div className="landing-runes rune-a" /><div className="landing-runes rune-b" />
       <nav className="landing-nav"><div className="brand-lockup"><ArcaneMark /><span>ARCANE<br />FRONTIER</span></div><button className="quiet-control" onClick={() => setShowSettings(true)}><Volume2 size={16} /> Audio</button></nav>
       <div className="landing-copy"><p className="eyebrow">An offline-first survival frontier</p><h1>Survive the<br /><em>impossible.</em></h1><p className="landing-description">โลกเวทมนตร์แตกสลายกำลังเชื่อมต่อกับเทคโนโลยีต่างดาว สร้างบ้าน ฝึกสัตว์เลี้ยง และออกสำรวจขอบจักรวาลตามจังหวะของคุณเอง</p><button className="primary-cta" onClick={startIdentity}><Play size={18} fill="currentColor" /> Enter the frontier</button><p className="landing-note">Landscape mobile · cache-ready · no password required</p></div>
-      <div className="landing-scene"><img className="landing-key-art" src="/manus-storage/map001-obsidian-outpost_09f41a7e.jpg" alt="Obsidian Outpost" /><img className="hero-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Arcane Frontier survivor" /></div>
+      <div className="landing-scene"><img className="landing-key-art" src="/manus-storage/map001-obsidian-outpost_09f41a7e.jpg" alt="Obsidian Outpost" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><img className="hero-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Arcane Frontier survivor" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback-character"); }} /></div>
       <div className="landing-bottom"><span>01 — OBSIDIAN FRONTIER</span><span>Build {GAME_VERSION}</span></div>
     </section>}
 
@@ -542,7 +565,7 @@ export default function ArcaneFrontier() {
       <header className="lobby-header"><div className="brand-lockup compact"><ArcaneMark /><span>ARCANE FRONTIER</span></div><div className="lobby-header-right"><span className="currency"><Gem size={15} /> {session.currency.toLocaleString()}</span><button className="icon-button" onClick={() => openHelp("identity")} aria-label="เปิดคู่มือ"><CircleHelp size={18} /></button><button className="icon-button" onClick={() => setShowSettings(true)}><Settings2 size={18} /></button><button className="player-chip"><span className="player-avatar">{session.playerId.slice(0, 1).toUpperCase()}</span>{session.playerId}</button></div></header>
       <div className="lobby-grid">
         <aside className="lobby-rail left-rail"><button onClick={() => transitionTo("home", { title: "Aether Homestead", accent: "#7ee787" })}><Home size={18} /><span>HOME</span></button><button onClick={() => setShowVault(true)}><Backpack size={18} /><span>VAULT</span></button><button onClick={() => setToast("Cosmetic studio is ready for catalog items") }><Sparkles size={18} /><span>STYLE</span></button><button onClick={() => setToast("Shop rotations will use weekly event data") }><Gem size={18} /><span>SHOP</span></button></aside>
-        <section className="lobby-character"><div className="lobby-haze" /><div className="character-pedestal"><div className="character-runes"><i /><i /><i /></div><img className="lobby-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Survivor loadout" /></div><div className="loadout-caption"><span className="tier-dot" style={{ background: TIER_RULES[primaryWeapon?.tier ?? "common"].color }} /><div><b>{primaryWeapon?.name ?? "Aether Blade"}</b><small>+{session.inventory[0]?.enhancement ?? 0} · {TIER_RULES[primaryWeapon?.tier ?? "common"].label}</small></div></div></section>
+        <section className="lobby-character"><div className="lobby-haze" /><div className="character-pedestal"><div className="character-runes"><i /><i /><i /></div><img className="lobby-survivor-art" src="/manus-storage/survivor-hero_d9227206.jpg" alt="Survivor loadout" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback-character"); }} /></div><div className="loadout-caption"><span className="tier-dot" style={{ background: TIER_RULES[primaryWeapon?.tier ?? "common"].color }} /><div><b>{primaryWeapon?.name ?? "Aether Blade"}</b><small>+{session.inventory[0]?.enhancement ?? 0} · {TIER_RULES[primaryWeapon?.tier ?? "common"].label}</small></div></div></section>
         <aside className="lobby-rail right-rail"><section className="weekly-card" style={{ "--event-accent": event.accent } as React.CSSProperties}><div><p className="eyebrow">Weekly event</p><h3>{event.title}</h3><p>{event.subtitle}</p></div><div className="weekly-footer"><span><TimerReset size={14} /> 5d 14h</span><button onClick={() => setToast(event.objective)}><BellRing size={15} /></button></div></section><section className="status-card"><p className="eyebrow">Loadout integrity</p><button className={`status-line integrity-status ${hasIntegrityAttention ? "attention" : ""}`} onClick={() => setShowIntegrity(true)}><Shield size={16} /><span>Instance scan</span><b>{hasIntegrityAttention ? "REVIEW" : "VALID"}</b></button><div className="status-line"><PawPrint size={16} /><span>{session.home.petName}</span><b>LV. 01</b></div></section></aside>
       </div>
       <footer className="lobby-footer"><div className="version-stamp">{formatVersionLabel()}</div><div className="event-objective"><Flame size={15} /><span>{event.objective}</span></div><button className="deploy-button" onClick={() => transitionTo("maps", { title: "Map Observatory", accent: "#00f3ff" })}><Compass size={19} /> DEPLOY <span>เลือกแผนที่</span></button></footer>
@@ -552,7 +575,7 @@ export default function ArcaneFrontier() {
       <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><ChevronLeft size={18} /> Lobby</button><div><p className="eyebrow">Map observatory</p><h2>Choose an expedition</h2></div><button className="map-count help-trigger" onClick={() => openHelp("offline")}><CircleHelp size={16} /> Cache & offline</button></header>
       <div className="map-cards">{MAP_REGISTRY.slice(0, 15).map((map, index) => {
         const cached = cachedMapIds.has(map.id);
-        return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{map.keyArt ? <img src={map.keyArt} alt="" /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">{String(index + 1).padStart(2, "0")}</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">{map.status === "prototype" ? "EXPEDITION PROTOTYPE · PLAYABLE" : "MODULE IN PLANNING"}</small></div><div className="map-meta"><span>RADIUS {map.radiusMeters}m</span><span>THREAT {"◆".repeat(map.threat)}</span></div><button disabled={map.status !== "prototype"} onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{map.status !== "prototype" ? "Module in planning" : cached ? <><Play size={15} fill="currentColor" /> Enter cached sector</> : <><Download size={15} /> Prepare expedition</>}</button></div></article>;
+        return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{map.keyArt ? <img src={map.keyArt} alt="" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">{String(index + 1).padStart(2, "0")}</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">{map.status === "prototype" ? "EXPEDITION PROTOTYPE · PLAYABLE" : "MODULE IN PLANNING"}</small></div><div className="map-meta"><span>RADIUS {map.radiusMeters}m</span><span>THREAT {"◆".repeat(map.threat)}</span></div><button disabled={map.status !== "prototype"} onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{map.status !== "prototype" ? "Module in planning" : cached ? <><Play size={15} fill="currentColor" /> Enter cached sector</> : <><Download size={15} /> Prepare expedition</>}</button></div></article>;
       })}</div>
       <p className="map-footnote">MAP_001–MAP_015 เปิดเป็น expedition prototype แล้ว: ใช้วงจรต่อสู้/เก็บทรัพยากรร่วมกัน แต่แต่ละ module มี key art, ambience, NPC, landmark, regular threat และ event boss ของตนเอง · การดาวน์โหลดครั้งแรกจะเก็บ cache ไว้ในเบราว์เซอร์</p>
     </section>}
@@ -571,14 +594,14 @@ export default function ArcaneFrontier() {
     </section>}
 
     {screen === "game" && session && <section className="game-screen"><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} />
-      <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div></div>
-      <div className="companion-hud"><img src="/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg" alt="Arcane Cyber Fox" /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
+      <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
+      <div className="companion-hud"><img src="/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg" alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ANOMALY DETECTED · {activeMap.eventBossName ?? "Unknown anomaly"} may emerge</span></div>
       {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>
-      <div className="quick-slots"><button><span>1</span><Wheat size={18} /></button><button><span>2</span><Zap size={18} /></button><button><span>3</span><Box size={18} /></button></div>
-      <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })}><Zap size={20} /></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })}><Pickaxe size={20} /></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })}><Sword size={28} /><span>ATTACK</span></button></div></div>
+      <div className="quick-slots" aria-label="ช่องลัดไอเทม"><button className={activeHotbarSlot === 0 ? "active" : ""} onClick={() => setActiveHotbarSlot(0)} aria-label="ช่องไอเทม 1 · เมล็ดและอาหาร"><span>1</span><Wheat size={18} /></button><button className={activeHotbarSlot === 1 ? "active" : ""} onClick={() => setActiveHotbarSlot(1)} aria-label="ช่องไอเทม 2 · พลังงาน"><span>2</span><Zap size={18} /></button><button className={activeHotbarSlot === 2 ? "active" : ""} onClick={() => setActiveHotbarSlot(2)} aria-label="ช่องไอเทม 3 · วัตถุดิบ"><span>3</span><Box size={18} /></button></div>
+      <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })} aria-label="แดช · Shift"><Zap size={20} /><small>SHIFT</small></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })} aria-label="โต้ตอบและเก็บของ · E"><Pickaxe size={20} /><small>E</small></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })} aria-label="โจมตี · Space"><Sword size={28} /><span>ATTACK</span></button></div></div>
       <div className="game-footer"><button onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><Menu size={18} /> Exit expedition</button><span><Crosshair size={15} /> {gameSnapshot.enemies} hostiles · {gameSnapshot.resources} resources</span><button onClick={() => setShowSettings(true)}><Settings2 size={18} /></button></div>
     </section>}
   </main>;

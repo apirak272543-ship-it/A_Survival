@@ -7,7 +7,6 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -30,7 +29,7 @@ import { MAP013_SULFUR_FALLS, MAP013_THERON_BOARDWALK, initialMap013Encounter, r
 import { MAP014_CITADEL_GATE, MAP014_WARDEN_POST, initialMap014Encounter, resolveMap014Encounter } from "@/game/map014/encounter";
 import { MAP015_PRIMAL_ANVIL, MAP015_FORGE_SHRINE, initialMap015Encounter, resolveMap015Encounter } from "@/game/map015/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
-import { getGameAssetUrl } from "@/game/assets/pollinations";
+import { createPixelTerrain, createVoxelModel } from "@/game/assets/pixelPack";
 
 export type GameSnapshot = {
   health: number;
@@ -40,6 +39,8 @@ export type GameSnapshot = {
   mapState?: string;
   warning?: string;
   companionState?: CompanionRuntimeState;
+  movementState?: "idle" | "walk" | "run" | "dash";
+  speed?: number;
 };
 
 export type GameReward = {
@@ -80,143 +81,6 @@ function material(scene: Scene, name: string, color: string, glow = 0) {
   result.diffuseColor = Color3.FromHexString(color);
   result.emissiveColor = Color3.FromHexString(color).scale(glow);
   result.specularColor = Color3.Black();
-  return result;
-}
-
-const map001Asset = {
-  hero: "/manus-storage/survivor-hero_d9227206.jpg",
-  stalker: "/manus-storage/glass-stalker-monster_48677eda.jpg",
-  crystal: "/manus-storage/ley-crystal-resource_052c1bcd.jpg",
-  boss: "/manus-storage/void-reaper-boss_03f9497f.jpg",
-  koral: "/manus-storage/commander-koral-portrait_06a487e5.jpg",
-  monolith: "/manus-storage/crashed-leyline-monolith_35d89c1e.jpg",
-  elite: "/manus-storage/obsidian-golem-elite_a0a82e7e.jpg",
-  alloy: "/manus-storage/frontier-alloy-icon_1192ae58.jpg",
-  companion: "/manus-storage/arcane-cyber-fox_d0832d7b.jpg",
-};
-
-const map002Asset = {
-  jax: "/manus-storage/scavenger-jax_5e8c7328.jpg",
-  crawler: "/manus-storage/ash-crawler-v2_63661c7a.jpg",
-  elite: "/manus-storage/obsidian-shell-golem_6ec8be90.jpg",
-  boss: "/manus-storage/pyroclastic-behemoth_2fdfe2eb.jpg",
-  ore: "/manus-storage/ember-ore-v2_8fe7e31d.jpg",
-};
-
-const map003Asset = {
-  lyra: "/manus-storage/researcher-lyra_072d7a37.jpg",
-  beetle: "/manus-storage/glow-spore-beetle_f84e6c03.jpg",
-  elite: "/manus-storage/luminous-stalker_11beed51.jpg",
-  boss: "/manus-storage/mycelium-empress_3886310d.jpg",
-  crystal: "/manus-storage/glow-crystal_7882072b.jpg",
-};
-
-const map004Asset = {
-  zephyr: "/manus-storage/cartographer-zephyr_0edb606a.jpg",
-  gnat: "/manus-storage/shard-gnat_00c26a5d.jpg",
-  elite: "/manus-storage/prism-golem_716fbfa6.jpg",
-  boss: "/manus-storage/resonance-archon_97fdc4b6.jpg",
-  shard: "/manus-storage/resonance-shard_0bc60214.jpg",
-};
-
-const map005Asset = {
-  vane: "/manus-storage/alchemist-vane_6d5c6239.jpg",
-  slime: "/manus-storage/acid-slime_b32817d4.jpg",
-  elite: "/manus-storage/mire-lurker_0be2a315.jpg",
-  boss: "/manus-storage/toxic-hydra_84776812.jpg",
-  lily: "/manus-storage/toxic-lily_cec5bf87.jpg",
-};
-
-const map006Asset = {
-  rusty: "/manus-storage/engineer-rusty_0f169fbd.jpg",
-  ray: "/manus-storage/magnetic-hover-ray_51293df0.jpg",
-  elite: "/manus-storage/ironclad-golem_953cf9b6.jpg",
-  boss: "/manus-storage/lodestone-colossus_abc05348.jpg",
-  sand: "/manus-storage/magnetite-sand_cff4f19d.jpg",
-};
-
-const map007Asset = {
-  frost: "/manus-storage/scout-frost_9dca1a23.jpg",
-  weaver: "/manus-storage/frostbite-weaver_10752103.jpg",
-  elite: "/manus-storage/cryo-beast_c26d6444.jpg",
-  boss: "/manus-storage/glacial-terror_c5edf25c.jpg",
-  crystal: "/manus-storage/cryo-crystal_bdf10c85.jpg",
-};
-
-const map008Asset = {
-  kael: "/manus-storage/historian-kael_91aba0ed.jpg",
-  drone: "/manus-storage/sentinel-drone_d76e8dac.jpg",
-  elite: "/manus-storage/ruin-guardian_8b582e9f.jpg",
-  boss: "/manus-storage/matrix-overlord_ebc672f3.jpg",
-  relic: "/manus-storage/ancient-relic_4bed6a8a.jpg",
-};
-
-const map009Asset = {
-  iris: "/manus-storage/botanist-iris_6ee1f067.jpg",
-  stalker: "/manus-storage/vine-stalker_5d03728e.jpg",
-  elite: "/manus-storage/thornback-behemoth_1319f41f.jpg",
-  boss: "/manus-storage/verdant-hive-mind_f4e78c03.jpg",
-  bloom: "/manus-storage/alien-bloom_eb6b9201.jpg",
-};
-
-const map010Asset = {
-  wanderer: "/manus-storage/void-wanderer-final_388eac96.jpg",
-  larva: "/manus-storage/void-larva_17e9a4a9.jpg",
-  elite: "/manus-storage/rift-horror_7749a2c0.jpg",
-  boss: "/manus-storage/void-singularity_6a946640.jpg",
-  essence: "/manus-storage/void-essence-final_17daa419.jpg",
-};
-
-const map011Asset = {
-  npc: getGameAssetUrl("portrait of a rugged obsidian forgemaster with glowing ember eyes and heavy leather apron, dark fantasy sci-fi game art, no text no ui", { seed: 11021 }),
-  regular: getGameAssetUrl("small obsidian lava crawler with glowing orange cracks, dark fantasy sci-fi game monster, no text no ui", { seed: 11022 }),
-  elite: getGameAssetUrl("hulking pyroclast brute made of jagged obsidian and molten rock, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11023 }),
-  boss: getGameAssetUrl("towering ignis colossus of black glass and lava with a molten crown, dark fantasy sci-fi game boss, no text no ui", { seed: 11024 }),
-  resource: getGameAssetUrl("glowing orange cinder bloom flower growing from black basalt, dark fantasy sci-fi game resource, no text no ui", { seed: 11025 }),
-};
-
-const map012Asset = {
-  npc: getGameAssetUrl("portrait of a wind-scarred scout with a hood and brass goggles, dark fantasy sci-fi game art, no text no ui", { seed: 11026 }),
-  regular: getGameAssetUrl("lean spire stalker with razor glass wings and obsidian limbs, dark fantasy sci-fi game monster, no text no ui", { seed: 11027 }),
-  elite: getGameAssetUrl("gale-talon alpha with jagged black feathers and a purple wind aura, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11028 }),
-  boss: getGameAssetUrl("gale-terror zephyr a massive storm bird of obsidian and violet lightning, dark fantasy sci-fi game boss, no text no ui", { seed: 11029 }),
-  resource: getGameAssetUrl("shard of razor glass with purple internal glow on dark rock, dark fantasy sci-fi game resource, no text no ui", { seed: 11030 }),
-};
-
-const map013Asset = {
-  npc: getGameAssetUrl("portrait of a masked alchemist with green sulfur stains and brass filters, dark fantasy sci-fi game art, no text no ui", { seed: 11031 }),
-  regular: getGameAssetUrl("mire leaper a bloated frog-like creature with sulfur pustules, dark fantasy sci-fi game monster, no text no ui", { seed: 11032 }),
-  elite: getGameAssetUrl("corrosive aberration a dripping mass of acid and black chitin, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11033 }),
-  boss: getGameAssetUrl("bile-mother vile a massive sulfur hydra with glowing yellow boils, dark fantasy sci-fi game boss, no text no ui", { seed: 11034 }),
-  resource: getGameAssetUrl("yellow sulfur crust crystal on black mire stone, dark fantasy sci-fi game resource, no text no ui", { seed: 11035 }),
-};
-
-const map014Asset = {
-  npc: getGameAssetUrl("portrait of a stern warden in cracked basalt armor, dark fantasy sci-fi game art, no text no ui", { seed: 11036 }),
-  regular: getGameAssetUrl("bastion hound a muscular obsidian canine with magma veins, dark fantasy sci-fi game monster, no text no ui", { seed: 11037 }),
-  elite: getGameAssetUrl("magma drake sentinel a wingless drake of black rock and fire, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11038 }),
-  boss: getGameAssetUrl("trench-lord baelrok a colossal armored magma titan with a broken bridge for a crown, dark fantasy sci-fi game boss, no text no ui", { seed: 11039 }),
-  resource: getGameAssetUrl("chunk of hardened magma with cooling orange cracks, dark fantasy sci-fi game resource, no text no ui", { seed: 11040 }),
-};
-
-const map015Asset = {
-  npc: getGameAssetUrl("portrait of a serene forge avatar with glowing white tattoos and obsidian robes, dark fantasy sci-fi game art, no text no ui", { seed: 11041 }),
-  regular: getGameAssetUrl("crucible myrmidon a soldier of living obsidian with a furnace core, dark fantasy sci-fi game monster, no text no ui", { seed: 11042 }),
-  elite: getGameAssetUrl("dread infernal goliath a massive horned demon of black glass and red fire, dark fantasy sci-fi game elite monster, no text no ui", { seed: 11043 }),
-  boss: getGameAssetUrl("the crucible overlord a god-like obsidian titan with a burning anvil heart, dark fantasy sci-fi game boss, no text no ui", { seed: 11044 }),
-  resource: getGameAssetUrl("primal core ember a perfect sphere of white-hot obsidian, dark fantasy sci-fi game resource, no text no ui", { seed: 11045 }),
-};
-
-function assetMaterial(scene: Scene, name: string, url: string, glow = 0.45) {
-  const result = new StandardMaterial(name, scene);
-  const texture = new Texture(url, scene, true, false);
-  texture.vScale = -1;
-  result.diffuseTexture = texture;
-  result.emissiveTexture = texture;
-  result.emissiveColor = new Color3(glow, glow, glow);
-  result.specularColor = Color3.Black();
-  result.backFaceCulling = false;
-  result.disableLighting = true;
   return result;
 }
 
@@ -270,438 +134,218 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const glow = new GlowLayer("arcane-glow", scene, { blurKernelSize: 32 });
   glow.intensity = 0.82;
 
-  const ground = MeshBuilder.CreateGround("obsidian-terrain", { width: worldRadius * 2.15, height: worldRadius * 2.15, subdivisions: 2 }, scene);
-  const terrainMaterial = mapDefinition?.keyArt
-    ? assetMaterial(scene, `${mapDefinition.id}-terrain-key-art`, mapDefinition.keyArt, 0.14)
-    : material(scene, "obsidian-ground", "#101824", 0.1);
-  terrainMaterial.alpha = mapDefinition?.keyArt ? 0.28 : 1;
-  ground.material = terrainMaterial;
-  if (sceneTreatment) {
-    const terrainVeil = MeshBuilder.CreateGround("biome-terrain-veil", { width: worldRadius * 2.14, height: worldRadius * 2.14 }, scene);
-    terrainVeil.position.y = 0.012;
-    const veilMaterial = material(scene, "biome-terrain-veil-material", sceneTreatment.terrainColor, 0.22);
-    veilMaterial.alpha = 0.42;
-    terrainVeil.material = veilMaterial;
-  }
+  const terrainTiles = Math.min(96, Math.max(48, Math.floor(worldRadius * 0.8)));
+  const ground = createPixelTerrain(scene, terrainTiles, terrainTiles, 2);
+  ground.position.y = -0.02;
+  ground.metadata = { ...ground.metadata, mapId: options.mapId, biome: mapDefinition?.biome ?? "Obsidian frontier", accent: mapAccent };
 
-  const gridMaterial = material(scene, "ley-grid", mapAccent, 0.95);
-  gridMaterial.alpha = 0.32;
-  for (let i = -worldRadius; i <= worldRadius; i += 20) {
-    const eastWest = MeshBuilder.CreateBox(`ley-ew-${i}`, { width: worldRadius * 2, height: 0.025, depth: 0.15 }, scene);
-    eastWest.position = new Vector3(0, 0.035, i);
-    eastWest.material = gridMaterial;
-    const northSouth = MeshBuilder.CreateBox(`ley-ns-${i}`, { width: 0.15, height: 0.025, depth: worldRadius * 2 }, scene);
-    northSouth.position = new Vector3(i, 0.04, 0);
-    northSouth.material = gridMaterial;
-  }
-
-  const boundaryMaterial = material(scene, "frontier-boundary", mapAccent, 0.7);
-  boundaryMaterial.alpha = 0.45;
-  const boundary = MeshBuilder.CreateTorus("frontier-boundary", { diameter: worldRadius * 2, thickness: 0.28, tessellation: 120 }, scene);
-  boundary.rotation.x = Math.PI / 2;
-  boundary.position.y = 0.12;
-  boundary.material = boundaryMaterial;
-
-  const ruinMaterial = material(scene, "ruin-material", "#26283a", 0.18);
-  const runeMaterial = material(scene, "rune-material", mapAccent, 1.05);
   for (let i = 0; i < 12; i += 1) {
     const angle = (Math.PI * 2 * i) / 12;
     const distance = 18 + (i % 3) * 8;
-    const pylon = MeshBuilder.CreateCylinder(`ruin-pylon-${i}`, { height: 4 + (i % 3), diameterTop: 0.55, diameterBottom: 1.4, tessellation: 6 }, scene);
-    pylon.position = new Vector3(Math.cos(angle) * distance, pylon.scaling.y + 1.2, Math.sin(angle) * distance);
-    pylon.rotation.z = (i % 2 ? 1 : -1) * 0.13;
-    pylon.material = ruinMaterial;
-    const rune = MeshBuilder.CreateTorus(`rune-${i}`, { diameter: 1.3, thickness: 0.06, tessellation: 24 }, scene);
-    rune.position = pylon.position.add(new Vector3(0, 1.1, 0));
-    rune.rotation.x = Math.PI / 2;
-    rune.material = runeMaterial;
+    const pylon = createVoxelModel(scene, "landmark", { name: `pixel-frontier-marker-${i}`, scale: 0.62 + (i % 3) * 0.08 });
+    pylon.position = new Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+    pylon.scaling.y *= 1.2 + (i % 2) * 0.2;
+    const rune = createVoxelModel(scene, "resource", { name: `pixel-frontier-rune-${i}`, scale: 0.24 });
+    rune.position = pylon.position.add(new Vector3(0, 1.2, 0));
   }
 
-  if (sceneTreatment && mapDefinition?.keyArt) {
-    const landmark = MeshBuilder.CreatePlane(`${mapDefinition.id}-landmark-art`, { width: 7.2, height: 5.4 }, scene);
-    landmark.position = new Vector3(-9, 3.1, -23);
-    landmark.billboardMode = 7;
-    landmark.material = assetMaterial(scene, `${mapDefinition.id}-landmark-art-material`, mapDefinition.keyArt, 0.5);
-    landmark.metadata = { sceneIdentity: true, kind: sceneTreatment.landmarkKind, label: sceneTreatment.landmarkLabel };
+  if (sceneTreatment) {
+    const landmark = createVoxelModel(scene, "landmark", { name: `${mapDefinition?.id ?? "frontier"}-landmark-voxel`, scale: 1.5 });
+    landmark.position = new Vector3(-9, 0, -23);
+    landmark.metadata = { sceneIdentity: true, kind: sceneTreatment.landmarkKind, label: sceneTreatment.landmarkLabel, assetPack: "arcane-frontier-voxel-pixel" };
   }
 
-  const player = new TransformNode("anime-survivor", scene);
-  const heroArt = MeshBuilder.CreatePlane("survivor-key-art", { width: 3.25, height: 3.25 }, scene);
+  const player = new TransformNode("voxel-survivor", scene);
+  const heroArt = createVoxelModel(scene, "survivor", { name: "survivor-voxel-model", scale: 1.08 });
   heroArt.parent = player;
-  heroArt.position.y = 1.55;
-  heroArt.billboardMode = 7;
-  heroArt.material = assetMaterial(scene, "survivor-key-art-material", map001Asset.hero, 0.68);
-  const pet = new TransformNode("arcane-cyber-fox", scene);
+  heroArt.position.y = 0.04;
+  const pet = new TransformNode("voxel-arcane-cyber-fox", scene);
   pet.position = new Vector3(-1.8, 0, -1.2);
-  const petArt = MeshBuilder.CreatePlane("arcane-cyber-fox-art", { width: 1.7, height: 1.7 }, scene);
+  const petArt = createVoxelModel(scene, "companion", { name: "arcane-cyber-fox-voxel-model", scale: 1.12 });
   petArt.parent = pet;
-  petArt.position.y = 0.85;
-  petArt.billboardMode = 7;
-  petArt.material = assetMaterial(scene, "arcane-cyber-fox-material", map001Asset.companion, 0.6);
+  petArt.position.y = 0.02;
 
-  const enemyMaterial = isMap010
-    ? assetMaterial(scene, "void-larva-material", map010Asset.larva, 0.76)
-    : isMap011
-    ? assetMaterial(scene, "cinder-crawler-material", map011Asset.regular, 0.72)
-    : isMap012
-    ? assetMaterial(scene, "spire-stalker-material", map012Asset.regular, 0.72)
-    : isMap013
-    ? assetMaterial(scene, "mire-leaper-material", map013Asset.regular, 0.72)
-    : isMap014
-    ? assetMaterial(scene, "bastion-hound-material", map014Asset.regular, 0.72)
-    : isMap015
-    ? assetMaterial(scene, "crucible-myrmidon-material", map015Asset.regular, 0.72)
-    : isMap009
-    ? assetMaterial(scene, "vine-stalker-material", map009Asset.stalker, 0.74)
-    : isMap008
-    ? assetMaterial(scene, "sentinel-drone-material", map008Asset.drone, 0.74)
-    : isMap007
-    ? assetMaterial(scene, "frostbite-weaver-material", map007Asset.weaver, 0.72)
-    : isMap006
-    ? assetMaterial(scene, "magnetic-hover-ray-material", map006Asset.ray, 0.7)
-    : isMap005
-    ? assetMaterial(scene, "acid-slime-material", map005Asset.slime, 0.68)
-    : isMap004
-    ? assetMaterial(scene, "shard-gnat-material", map004Asset.gnat, 0.68)
-    : isMap003
-    ? assetMaterial(scene, "glow-spore-beetle-material", map003Asset.beetle, 0.67)
-    : isMap002
-      ? assetMaterial(scene, "ash-crawler-material", map002Asset.crawler, 0.62)
-      : assetMaterial(scene, "glass-stalker-material", map001Asset.stalker, 0.62);
   const enemies = Array.from({ length: 7 }, (_, index) => {
-    const enemy = MeshBuilder.CreatePlane(`${regularMonster.toLowerCase().replaceAll(" ", "-")}-${index}`, { width: 2.5, height: 2.5 }, scene);
+    const enemy = createVoxelModel(scene, "enemy", { name: `${regularMonster.toLowerCase().replaceAll(" ", "-")}-${index}`, scale: 1.12 });
     const angle = (Math.PI * 2 * index) / 7;
-    enemy.position = new Vector3(Math.cos(angle) * (10 + index * 1.2), 1.25, Math.sin(angle) * (10 + index * 1.2));
-    enemy.billboardMode = 7;
-    enemy.material = enemyMaterial;
-    enemy.metadata = { health: 30, alive: true, encounterName: regularMonster };
+    enemy.position = new Vector3(Math.cos(angle) * (10 + index * 1.2), 0, Math.sin(angle) * (10 + index * 1.2));
+    enemy.metadata = { health: 30, alive: true, encounterName: regularMonster, assetPack: "arcane-frontier-voxel-pixel" };
     if ((isMap002 || isMap006 || isMap007 || isMap008 || isMap009 || isMap010) && index > 4) enemy.setEnabled(false);
     return enemy;
   });
 
-  const resourceMaterial = isMap010
-    ? assetMaterial(scene, "void-essence-material", map010Asset.essence, 0.88)
-    : isMap011
-    ? assetMaterial(scene, "cinder-bloom-material", map011Asset.resource, 0.82)
-    : isMap012
-    ? assetMaterial(scene, "razor-glass-material", map012Asset.resource, 0.82)
-    : isMap013
-    ? assetMaterial(scene, "sulfur-crust-material", map013Asset.resource, 0.82)
-    : isMap014
-    ? assetMaterial(scene, "hardened-magma-material", map014Asset.resource, 0.82)
-    : isMap015
-    ? assetMaterial(scene, "primal-ember-material", map015Asset.resource, 0.82)
-    : isMap009
-    ? assetMaterial(scene, "alien-bloom-material", map009Asset.bloom, 0.86)
-    : isMap008
-    ? assetMaterial(scene, "ancient-relic-material", map008Asset.relic, 0.86)
-    : isMap007
-    ? assetMaterial(scene, "cryo-crystal-material", map007Asset.crystal, 0.88)
-    : isMap006
-    ? assetMaterial(scene, "magnetite-sand-material", map006Asset.sand, 0.86)
-    : isMap005
-    ? assetMaterial(scene, "toxic-lily-material", map005Asset.lily, 0.86)
-    : isMap004
-    ? assetMaterial(scene, "resonance-shard-material", map004Asset.shard, 0.86)
-    : isMap003
-    ? assetMaterial(scene, "glow-crystal-material", map003Asset.crystal, 0.85)
-    : isMap002
-      ? assetMaterial(scene, "ember-ore-material", map002Asset.ore, 0.82)
-      : assetMaterial(scene, "ley-crystal-material", map001Asset.crystal, 0.82);
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
-    const resource = MeshBuilder.CreatePlane(`${isMap010 ? "void-essence" : isMap011 ? "cinder-bloom" : isMap012 ? "razor-glass" : isMap013 ? "sulfur-crust" : isMap014 ? "hardened-magma" : isMap015 ? "primal-ember" : isMap009 ? "alien-bloom" : isMap008 ? "ancient-relic" : isMap007 ? "cryo-crystal" : isMap006 ? "magnetite-sand" : isMap005 ? "toxic-lily" : isMap004 ? "resonance-shard" : isMap003 ? "glow-crystal" : isMap002 ? "ember-ore" : "ley-crystal"}-${index}`, { width: 1.35, height: 1.35 }, scene);
-    resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0.72, Math.sin(angle) * (7 + (index % 4) * 2));
-    resource.billboardMode = 7;
-    resource.material = resourceMaterial;
+    const resource = createVoxelModel(scene, "resource", { name: `pixel-resource-${index}`, scale: 0.95 + (index % 3) * 0.12 });
+    resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0, Math.sin(angle) * (7 + (index % 4) * 2));
+    resource.metadata = { assetPack: "arcane-frontier-voxel-pixel", interaction: "harvest" };
     return resource;
   });
 
-  const boss = MeshBuilder.CreatePlane(`${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, { width: 5.8, height: 5.8 }, scene);
-  boss.position = new Vector3(0, 2.8, -18);
-  boss.billboardMode = 7;
-  boss.material = isMap010
-    ? assetMaterial(scene, "void-singularity-material", map010Asset.boss, 0.98)
-    : isMap011
-    ? assetMaterial(scene, "ignis-colossus-material", map011Asset.boss, 0.96)
-    : isMap012
-    ? assetMaterial(scene, "gale-terror-zephyr-material", map012Asset.boss, 0.96)
-    : isMap013
-    ? assetMaterial(scene, "bile-mother-vile-material", map013Asset.boss, 0.96)
-    : isMap014
-    ? assetMaterial(scene, "trench-lord-baelrok-material", map014Asset.boss, 0.96)
-    : isMap015
-    ? assetMaterial(scene, "crucible-overlord-material", map015Asset.boss, 0.96)
-    : isMap009
-    ? assetMaterial(scene, "verdant-hive-mind-material", map009Asset.boss, 0.98)
-    : isMap008
-    ? assetMaterial(scene, "matrix-overlord-material", map008Asset.boss, 0.98)
-    : isMap007
-    ? assetMaterial(scene, "glacial-terror-material", map007Asset.boss, 0.97)
-    : isMap006
-    ? assetMaterial(scene, "lodestone-colossus-material", map006Asset.boss, 0.96)
-    : isMap005
-    ? assetMaterial(scene, "toxic-hydra-material", map005Asset.boss, 0.96)
-    : isMap004
-    ? assetMaterial(scene, "resonance-archon-material", map004Asset.boss, 0.96)
-    : isMap003
-    ? assetMaterial(scene, "mycelium-empress-material", map003Asset.boss, 0.95)
-    : isMap002
-      ? assetMaterial(scene, "pyroclastic-behemoth-material", map002Asset.boss, 0.92)
-      : assetMaterial(scene, "void-reaper-boss-material", map001Asset.boss, 0.92);
+  const boss = createVoxelModel(scene, "boss", { name: `${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, scale: 1.3 });
+  boss.position = new Vector3(0, 0, -18);
+  boss.metadata = { health: 420, alive: true, encounterName: eventBoss, assetPack: "arcane-frontier-voxel-pixel" };
   boss.setEnabled(false);
 
-  const koral = MeshBuilder.CreatePlane("commander-koral-safe-zone", { width: 2.2, height: 2.2 }, scene);
-  koral.position = new Vector3(-5.5, 1.1, 2.8);
-  koral.billboardMode = 7;
-  koral.material = assetMaterial(scene, "commander-koral-material", map001Asset.koral, 0.48);
+  const koral = createVoxelModel(scene, "landmark", { name: "commander-koral-safe-zone", scale: 1.0 });
+  koral.position = new Vector3(-5.5, 0, 2.8);
   koral.setEnabled(false);
 
-  const monolith = MeshBuilder.CreatePlane("crashed-leyline-monolith", { width: 4.6, height: 4.6 }, scene);
-  monolith.position = new Vector3(MAP001_MONOLITH.x, 2.8, MAP001_MONOLITH.z);
-  monolith.billboardMode = 7;
-  monolith.material = assetMaterial(scene, "crashed-leyline-monolith-material", map001Asset.monolith, 0.62);
+  const monolith = createVoxelModel(scene, "landmark", { name: "crashed-leyline-monolith", scale: 1.0 });
+  monolith.position = new Vector3(MAP001_MONOLITH.x, 0, MAP001_MONOLITH.z);
   monolith.setEnabled(false);
 
-  const elite = MeshBuilder.CreatePlane("obsidian-golem-elite", { width: 3.9, height: 3.9 }, scene);
-  elite.position = new Vector3(9, 1.6, -10);
-  elite.billboardMode = 7;
-  elite.material = assetMaterial(scene, "obsidian-golem-elite-material", map001Asset.elite, 0.68);
+  const elite = createVoxelModel(scene, "elite", { name: "obsidian-golem-elite", scale: 1.28 });
+  elite.position = new Vector3(9, 0, -10);
   elite.metadata = { health: 180, alive: true, encounterName: "Obsidian Golem", elite: true };
   elite.setEnabled(false);
 
-  const distressPod = MeshBuilder.CreatePlane("distress-pod-signal", { width: 1.9, height: 1.9 }, scene);
-  distressPod.position = new Vector3(MAP001_DISTRESS_POD.x, 1, MAP001_DISTRESS_POD.z);
-  distressPod.billboardMode = 7;
-  distressPod.material = assetMaterial(scene, "frontier-alloy-distress-marker", map001Asset.alloy, 0.52);
+  const distressPod = createVoxelModel(scene, "resource", { name: "distress-pod-signal", scale: 0.9 });
+  distressPod.position = new Vector3(MAP001_DISTRESS_POD.x, 0, MAP001_DISTRESS_POD.z);
   distressPod.setEnabled(isMap001);
 
-  const jax = MeshBuilder.CreatePlane("scavenger-jax-camp", { width: 2.8, height: 2.8 }, scene);
-  jax.position = new Vector3(MAP002_JAX_CAMP.x, 1.4, MAP002_JAX_CAMP.z);
-  jax.billboardMode = 7;
-  jax.material = assetMaterial(scene, "scavenger-jax-material", map002Asset.jax, 0.5);
+  const jax = createVoxelModel(scene, "landmark", { name: "scavenger-jax-camp", scale: 1.0 });
+  jax.position = new Vector3(MAP002_JAX_CAMP.x, 0, MAP002_JAX_CAMP.z);
   jax.setEnabled(isMap002);
 
-  const map002Elite = MeshBuilder.CreatePlane("obsidian-shell-golem-elite", { width: 4.3, height: 4.3 }, scene);
-  map002Elite.position = new Vector3(25, 2.1, 5);
-  map002Elite.billboardMode = 7;
-  map002Elite.material = assetMaterial(scene, "obsidian-shell-golem-material", map002Asset.elite, 0.68);
+  const map002Elite = createVoxelModel(scene, "elite", { name: "obsidian-shell-golem-elite", scale: 1.28 });
+  map002Elite.position = new Vector3(25, 0, 5);
   map002Elite.setEnabled(false);
 
-  const pyroclasticAltar = MeshBuilder.CreatePlane("pyroclastic-altar", { width: 2.6, height: 2.6 }, scene);
-  pyroclasticAltar.position = new Vector3(MAP002_PYROCLASTIC_ALTAR.x, 1.35, MAP002_PYROCLASTIC_ALTAR.z);
-  pyroclasticAltar.billboardMode = 7;
-  pyroclasticAltar.material = assetMaterial(scene, "pyroclastic-altar-material", map002Asset.ore, 0.72);
+  const pyroclasticAltar = createVoxelModel(scene, "resource", { name: "pyroclastic-altar", scale: 0.9 });
+  pyroclasticAltar.position = new Vector3(MAP002_PYROCLASTIC_ALTAR.x, 0, MAP002_PYROCLASTIC_ALTAR.z);
   pyroclasticAltar.setEnabled(isMap002);
 
-  const lyra = MeshBuilder.CreatePlane("researcher-lyra-camp", { width: 2.8, height: 2.8 }, scene);
-  lyra.position = new Vector3(MAP003_LYRA_CAMP.x, 1.4, MAP003_LYRA_CAMP.z);
-  lyra.billboardMode = 7;
-  lyra.material = assetMaterial(scene, "researcher-lyra-material", map003Asset.lyra, 0.56);
+  const lyra = createVoxelModel(scene, "landmark", { name: "researcher-lyra-camp", scale: 1.0 });
+  lyra.position = new Vector3(MAP003_LYRA_CAMP.x, 0, MAP003_LYRA_CAMP.z);
   lyra.setEnabled(isMap003);
 
-  const map003Elite = MeshBuilder.CreatePlane("luminous-stalker-elite", { width: 4.1, height: 4.1 }, scene);
-  map003Elite.position = new Vector3(-18.4, 2.05, 24);
-  map003Elite.billboardMode = 7;
-  map003Elite.material = assetMaterial(scene, "luminous-stalker-material", map003Asset.elite, 0.72);
+  const map003Elite = createVoxelModel(scene, "elite", { name: "luminous-stalker-elite", scale: 1.28 });
+  map003Elite.position = new Vector3(-18.4, 0, 24);
   map003Elite.setEnabled(false);
 
-  const myceliumShrine = MeshBuilder.CreatePlane("mycelium-empress-shrine", { width: 2.65, height: 2.65 }, scene);
-  myceliumShrine.position = new Vector3(MAP003_EMPRESS_SHRINE.x, 1.4, MAP003_EMPRESS_SHRINE.z);
-  myceliumShrine.billboardMode = 7;
-  myceliumShrine.material = assetMaterial(scene, "mycelium-shrine-material", map003Asset.crystal, 0.8);
+  const myceliumShrine = createVoxelModel(scene, "landmark", { name: "mycelium-empress-shrine", scale: 1.0 });
+  myceliumShrine.position = new Vector3(MAP003_EMPRESS_SHRINE.x, 0, MAP003_EMPRESS_SHRINE.z);
   myceliumShrine.setEnabled(isMap003);
 
-  const zephyr = MeshBuilder.CreatePlane("cartographer-zephyr-camp", { width: 2.8, height: 2.8 }, scene);
-  zephyr.position = new Vector3(MAP004_ZEPHYR_CAMP.x, 1.4, MAP004_ZEPHYR_CAMP.z);
-  zephyr.billboardMode = 7;
-  zephyr.material = assetMaterial(scene, "cartographer-zephyr-material", map004Asset.zephyr, 0.58);
+  const zephyr = createVoxelModel(scene, "landmark", { name: "cartographer-zephyr-camp", scale: 1.0 });
+  zephyr.position = new Vector3(MAP004_ZEPHYR_CAMP.x, 0, MAP004_ZEPHYR_CAMP.z);
   zephyr.setEnabled(isMap004);
-  const map004Elite = MeshBuilder.CreatePlane("prism-golem-elite", { width: 4.3, height: 4.3 }, scene);
-  map004Elite.position = new Vector3(-18, 2.1, 24);
-  map004Elite.billboardMode = 7;
-  map004Elite.material = assetMaterial(scene, "prism-golem-material", map004Asset.elite, 0.74);
+  const map004Elite = createVoxelModel(scene, "elite", { name: "prism-golem-elite", scale: 1.28 });
+  map004Elite.position = new Vector3(-18, 0, 24);
   map004Elite.setEnabled(false);
-  const resonanceDais = MeshBuilder.CreatePlane("resonance-archon-dais", { width: 2.65, height: 2.65 }, scene);
-  resonanceDais.position = new Vector3(MAP004_ARCHON_DAIS.x, 1.4, MAP004_ARCHON_DAIS.z);
-  resonanceDais.billboardMode = 7;
-  resonanceDais.material = assetMaterial(scene, "resonance-dais-material", map004Asset.shard, 0.82);
+  const resonanceDais = createVoxelModel(scene, "landmark", { name: "resonance-archon-dais", scale: 1.0 });
+  resonanceDais.position = new Vector3(MAP004_ARCHON_DAIS.x, 0, MAP004_ARCHON_DAIS.z);
   resonanceDais.setEnabled(isMap004);
 
-  const vane = MeshBuilder.CreatePlane("alchemist-vane-shelter", { width: 2.8, height: 2.8 }, scene);
-  vane.position = new Vector3(MAP005_VANE_SHELTER.x, 1.4, MAP005_VANE_SHELTER.z);
-  vane.billboardMode = 7;
-  vane.material = assetMaterial(scene, "alchemist-vane-material", map005Asset.vane, 0.58);
+  const vane = createVoxelModel(scene, "landmark", { name: "alchemist-vane-shelter", scale: 1.0 });
+  vane.position = new Vector3(MAP005_VANE_SHELTER.x, 0, MAP005_VANE_SHELTER.z);
   vane.setEnabled(isMap005);
-  const map005Elite = MeshBuilder.CreatePlane("mire-lurker-elite", { width: 4.3, height: 4.3 }, scene);
-  map005Elite.position = new Vector3(-18, 2.1, 24);
-  map005Elite.billboardMode = 7;
-  map005Elite.material = assetMaterial(scene, "mire-lurker-material", map005Asset.elite, 0.72);
+  const map005Elite = createVoxelModel(scene, "elite", { name: "mire-lurker-elite", scale: 1.28 });
+  map005Elite.position = new Vector3(-18, 0, 24);
   map005Elite.setEnabled(false);
-  const hydraNest = MeshBuilder.CreatePlane("toxic-hydra-nest", { width: 2.65, height: 2.65 }, scene);
-  hydraNest.position = new Vector3(MAP005_HYDRA_NEST.x, 1.4, MAP005_HYDRA_NEST.z);
-  hydraNest.billboardMode = 7;
-  hydraNest.material = assetMaterial(scene, "toxic-hydra-nest-material", map005Asset.lily, 0.82);
+  const hydraNest = createVoxelModel(scene, "landmark", { name: "toxic-hydra-nest", scale: 1.0 });
+  hydraNest.position = new Vector3(MAP005_HYDRA_NEST.x, 0, MAP005_HYDRA_NEST.z);
   hydraNest.setEnabled(isMap005);
 
-  const rusty = MeshBuilder.CreatePlane("engineer-rusty-stabilizer", { width: 2.8, height: 2.8 }, scene);
-  rusty.position = new Vector3(MAP006_STABILIZER.x, 1.4, MAP006_STABILIZER.z);
-  rusty.billboardMode = 7;
-  rusty.material = assetMaterial(scene, "engineer-rusty-material", map006Asset.rusty, 0.58);
+  const rusty = createVoxelModel(scene, "landmark", { name: "engineer-rusty-stabilizer", scale: 1.0 });
+  rusty.position = new Vector3(MAP006_STABILIZER.x, 0, MAP006_STABILIZER.z);
   rusty.setEnabled(isMap006);
-  const map006Elite = MeshBuilder.CreatePlane("ironclad-golem-elite", { width: 4.3, height: 4.3 }, scene);
-  map006Elite.position = new Vector3(-18, 2.1, 24);
-  map006Elite.billboardMode = 7;
-  map006Elite.material = assetMaterial(scene, "ironclad-golem-material", map006Asset.elite, 0.72);
+  const map006Elite = createVoxelModel(scene, "elite", { name: "ironclad-golem-elite", scale: 1.28 });
+  map006Elite.position = new Vector3(-18, 0, 24);
   map006Elite.setEnabled(false);
-  const colossusCore = MeshBuilder.CreatePlane("lodestone-colossus-core", { width: 2.65, height: 2.65 }, scene);
-  colossusCore.position = new Vector3(MAP006_COLOSSUS_CORE.x, 1.4, MAP006_COLOSSUS_CORE.z);
-  colossusCore.billboardMode = 7;
-  colossusCore.material = assetMaterial(scene, "lodestone-core-material", map006Asset.sand, 0.82);
+  const colossusCore = createVoxelModel(scene, "resource", { name: "lodestone-colossus-core", scale: 0.9 });
+  colossusCore.position = new Vector3(MAP006_COLOSSUS_CORE.x, 0, MAP006_COLOSSUS_CORE.z);
   colossusCore.setEnabled(isMap006);
 
-  const scoutFrost = MeshBuilder.CreatePlane("scout-frost-steam-vent", { width: 2.8, height: 2.8 }, scene);
-  scoutFrost.position = new Vector3(MAP007_STEAM_VENT.x, 1.4, MAP007_STEAM_VENT.z);
-  scoutFrost.billboardMode = 7;
-  scoutFrost.material = assetMaterial(scene, "scout-frost-material", map007Asset.frost, 0.6);
+  const scoutFrost = createVoxelModel(scene, "landmark", { name: "scout-frost-steam-vent", scale: 1.0 });
+  scoutFrost.position = new Vector3(MAP007_STEAM_VENT.x, 0, MAP007_STEAM_VENT.z);
   scoutFrost.setEnabled(isMap007);
-  const map007Elite = MeshBuilder.CreatePlane("cryo-beast-elite", { width: 4.3, height: 4.3 }, scene);
-  map007Elite.position = new Vector3(-18, 2.1, 24);
-  map007Elite.billboardMode = 7;
-  map007Elite.material = assetMaterial(scene, "cryo-beast-material", map007Asset.elite, 0.74);
+  const map007Elite = createVoxelModel(scene, "elite", { name: "cryo-beast-elite", scale: 1.28 });
+  map007Elite.position = new Vector3(-18, 0, 24);
   map007Elite.setEnabled(false);
-  const terrorRift = MeshBuilder.CreatePlane("glacial-terror-rift", { width: 2.65, height: 2.65 }, scene);
-  terrorRift.position = new Vector3(MAP007_TERROR_RIFT.x, 1.4, MAP007_TERROR_RIFT.z);
-  terrorRift.billboardMode = 7;
-  terrorRift.material = assetMaterial(scene, "glacial-terror-rift-material", map007Asset.crystal, 0.84);
+  const terrorRift = createVoxelModel(scene, "landmark", { name: "glacial-terror-rift", scale: 1.0 });
+  terrorRift.position = new Vector3(MAP007_TERROR_RIFT.x, 0, MAP007_TERROR_RIFT.z);
   terrorRift.setEnabled(isMap007);
 
-  const kael = MeshBuilder.CreatePlane("historian-kael-rune-terminal", { width: 2.8, height: 2.8 }, scene);
-  kael.position = new Vector3(MAP008_RUNE_TERMINAL.x, 1.4, MAP008_RUNE_TERMINAL.z);
-  kael.billboardMode = 7;
-  kael.material = assetMaterial(scene, "historian-kael-material", map008Asset.kael, 0.6);
+  const kael = createVoxelModel(scene, "landmark", { name: "historian-kael-rune-terminal", scale: 1.0 });
+  kael.position = new Vector3(MAP008_RUNE_TERMINAL.x, 0, MAP008_RUNE_TERMINAL.z);
   kael.setEnabled(isMap008);
-  const map008Elite = MeshBuilder.CreatePlane("ruin-guardian-elite", { width: 4.3, height: 4.3 }, scene);
-  map008Elite.position = new Vector3(-18, 2.1, 24);
-  map008Elite.billboardMode = 7;
-  map008Elite.material = assetMaterial(scene, "ruin-guardian-material", map008Asset.elite, 0.74);
+  const map008Elite = createVoxelModel(scene, "elite", { name: "ruin-guardian-elite", scale: 1.28 });
+  map008Elite.position = new Vector3(-18, 0, 24);
   map008Elite.setEnabled(false);
-  const matrixCore = MeshBuilder.CreatePlane("matrix-overlord-core", { width: 2.65, height: 2.65 }, scene);
-  matrixCore.position = new Vector3(MAP008_MATRIX_CORE.x, 1.4, MAP008_MATRIX_CORE.z);
-  matrixCore.billboardMode = 7;
-  matrixCore.material = assetMaterial(scene, "matrix-core-material", map008Asset.relic, 0.84);
+  const matrixCore = createVoxelModel(scene, "resource", { name: "matrix-overlord-core", scale: 0.9 });
+  matrixCore.position = new Vector3(MAP008_MATRIX_CORE.x, 0, MAP008_MATRIX_CORE.z);
   matrixCore.setEnabled(isMap008);
 
-  const iris = MeshBuilder.CreatePlane("botanist-iris-canopy-haven", { width: 2.8, height: 2.8 }, scene);
-  iris.position = new Vector3(MAP009_CANOPY_HAVEN.x, 1.4, MAP009_CANOPY_HAVEN.z);
-  iris.billboardMode = 7;
-  iris.material = assetMaterial(scene, "botanist-iris-material", map009Asset.iris, 0.6);
+  const iris = createVoxelModel(scene, "landmark", { name: "botanist-iris-canopy-haven", scale: 1.0 });
+  iris.position = new Vector3(MAP009_CANOPY_HAVEN.x, 0, MAP009_CANOPY_HAVEN.z);
   iris.setEnabled(isMap009);
-  const map009Elite = MeshBuilder.CreatePlane("thornback-behemoth-elite", { width: 4.3, height: 4.3 }, scene);
-  map009Elite.position = new Vector3(-18, 2.1, 24);
-  map009Elite.billboardMode = 7;
-  map009Elite.material = assetMaterial(scene, "thornback-behemoth-material", map009Asset.elite, 0.74);
+  const map009Elite = createVoxelModel(scene, "elite", { name: "thornback-behemoth-elite", scale: 1.28 });
+  map009Elite.position = new Vector3(-18, 0, 24);
   map009Elite.setEnabled(false);
-  const hiveRoot = MeshBuilder.CreatePlane("verdant-hive-root", { width: 2.65, height: 2.65 }, scene);
-  hiveRoot.position = new Vector3(MAP009_HIVE_ROOT.x, 1.4, MAP009_HIVE_ROOT.z);
-  hiveRoot.billboardMode = 7;
-  hiveRoot.material = assetMaterial(scene, "verdant-hive-root-material", map009Asset.bloom, 0.84);
+  const hiveRoot = createVoxelModel(scene, "landmark", { name: "verdant-hive-root", scale: 1.0 });
+  hiveRoot.position = new Vector3(MAP009_HIVE_ROOT.x, 0, MAP009_HIVE_ROOT.z);
   hiveRoot.setEnabled(isMap009);
 
-  const voidWanderer = MeshBuilder.CreatePlane("void-wanderer-stable-pylon", { width: 2.8, height: 2.8 }, scene);
-  voidWanderer.position = new Vector3(MAP010_STABLE_PYLON.x, 1.4, MAP010_STABLE_PYLON.z);
-  voidWanderer.billboardMode = 7;
-  voidWanderer.material = assetMaterial(scene, "void-wanderer-material", map010Asset.wanderer, 0.62);
+  const voidWanderer = createVoxelModel(scene, "landmark", { name: "void-wanderer-stable-pylon", scale: 1.0 });
+  voidWanderer.position = new Vector3(MAP010_STABLE_PYLON.x, 0, MAP010_STABLE_PYLON.z);
   voidWanderer.setEnabled(isMap010);
-  const map010Elite = MeshBuilder.CreatePlane("rift-horror-elite", { width: 4.3, height: 4.3 }, scene);
-  map010Elite.position = new Vector3(-18, 2.1, 24);
-  map010Elite.billboardMode = 7;
-  map010Elite.material = assetMaterial(scene, "rift-horror-material", map010Asset.elite, 0.76);
+  const map010Elite = createVoxelModel(scene, "elite", { name: "rift-horror-elite", scale: 1.28 });
+  map010Elite.position = new Vector3(-18, 0, 24);
   map010Elite.setEnabled(false);
-  const singularityGate = MeshBuilder.CreatePlane("void-singularity-gate", { width: 2.65, height: 2.65 }, scene);
-  singularityGate.position = new Vector3(MAP010_SINGULARITY_GATE.x, 1.4, MAP010_SINGULARITY_GATE.z);
-  singularityGate.billboardMode = 7;
-  singularityGate.material = assetMaterial(scene, "void-singularity-gate-material", map010Asset.essence, 0.86);
+  const singularityGate = createVoxelModel(scene, "landmark", { name: "void-singularity-gate", scale: 1.0 });
+  singularityGate.position = new Vector3(MAP010_SINGULARITY_GATE.x, 0, MAP010_SINGULARITY_GATE.z);
   singularityGate.setEnabled(isMap010);
 
-  const forgemasterVael = MeshBuilder.CreatePlane("forgemaster-vael-camp", { width: 2.8, height: 2.8 }, scene);
-  forgemasterVael.position = new Vector3(MAP011_FORGE_CAMP.x, 1.4, MAP011_FORGE_CAMP.z);
-  forgemasterVael.billboardMode = 7;
-  forgemasterVael.material = assetMaterial(scene, "forgemaster-vael-material", map011Asset.npc, 0.58);
+  const forgemasterVael = createVoxelModel(scene, "landmark", { name: "forgemaster-vael-camp", scale: 1.0 });
+  forgemasterVael.position = new Vector3(MAP011_FORGE_CAMP.x, 0, MAP011_FORGE_CAMP.z);
   forgemasterVael.setEnabled(isMap011);
-  const map011Elite = MeshBuilder.CreatePlane("pyroclast-brute-elite", { width: 4.3, height: 4.3 }, scene);
-  map011Elite.position = new Vector3(-18, 2.1, 24);
-  map011Elite.billboardMode = 7;
-  map011Elite.material = assetMaterial(scene, "pyroclast-brute-material", map011Asset.elite, 0.74);
+  const map011Elite = createVoxelModel(scene, "elite", { name: "pyroclast-brute-elite", scale: 1.28 });
+  map011Elite.position = new Vector3(-18, 0, 24);
   map011Elite.setEnabled(false);
-  const smelterArch = MeshBuilder.CreatePlane("shattered-smelter-arch", { width: 2.65, height: 2.65 }, scene);
-  smelterArch.position = new Vector3(MAP011_SMELTER_ARCH.x, 1.4, MAP011_SMELTER_ARCH.z);
-  smelterArch.billboardMode = 7;
-  smelterArch.material = assetMaterial(scene, "smelter-arch-material", map011Asset.resource, 0.82);
+  const smelterArch = createVoxelModel(scene, "landmark", { name: "shattered-smelter-arch", scale: 1.0 });
+  smelterArch.position = new Vector3(MAP011_SMELTER_ARCH.x, 0, MAP011_SMELTER_ARCH.z);
   smelterArch.setEnabled(isMap011);
 
-  const scoutKaelen = MeshBuilder.CreatePlane("scout-kaelen-overlook", { width: 2.8, height: 2.8 }, scene);
-  scoutKaelen.position = new Vector3(MAP012_SCOUT_OVERLOOK.x, 1.4, MAP012_SCOUT_OVERLOOK.z);
-  scoutKaelen.billboardMode = 7;
-  scoutKaelen.material = assetMaterial(scene, "scout-kaelen-material", map012Asset.npc, 0.58);
+  const scoutKaelen = createVoxelModel(scene, "landmark", { name: "scout-kaelen-overlook", scale: 1.0 });
+  scoutKaelen.position = new Vector3(MAP012_SCOUT_OVERLOOK.x, 0, MAP012_SCOUT_OVERLOOK.z);
   scoutKaelen.setEnabled(isMap012);
-  const map012Elite = MeshBuilder.CreatePlane("gale-talon-alpha-elite", { width: 4.3, height: 4.3 }, scene);
-  map012Elite.position = new Vector3(-18, 2.1, 24);
-  map012Elite.billboardMode = 7;
-  map012Elite.material = assetMaterial(scene, "gale-talon-alpha-material", map012Asset.elite, 0.74);
+  const map012Elite = createVoxelModel(scene, "elite", { name: "gale-talon-alpha-elite", scale: 1.28 });
+  map012Elite.position = new Vector3(-18, 0, 24);
   map012Elite.setEnabled(false);
-  const windMonolith = MeshBuilder.CreatePlane("wind-monolith", { width: 2.65, height: 2.65 }, scene);
-  windMonolith.position = new Vector3(MAP012_WIND_MONOLITH.x, 1.4, MAP012_WIND_MONOLITH.z);
-  windMonolith.billboardMode = 7;
-  windMonolith.material = assetMaterial(scene, "wind-monolith-material", map012Asset.resource, 0.82);
+  const windMonolith = createVoxelModel(scene, "landmark", { name: "wind-monolith", scale: 1.0 });
+  windMonolith.position = new Vector3(MAP012_WIND_MONOLITH.x, 0, MAP012_WIND_MONOLITH.z);
   windMonolith.setEnabled(isMap012);
 
-  const alchemistTheron = MeshBuilder.CreatePlane("alchemist-theron-boardwalk", { width: 2.8, height: 2.8 }, scene);
-  alchemistTheron.position = new Vector3(MAP013_THERON_BOARDWALK.x, 1.4, MAP013_THERON_BOARDWALK.z);
-  alchemistTheron.billboardMode = 7;
-  alchemistTheron.material = assetMaterial(scene, "alchemist-theron-material", map013Asset.npc, 0.58);
+  const alchemistTheron = createVoxelModel(scene, "landmark", { name: "alchemist-theron-boardwalk", scale: 1.0 });
+  alchemistTheron.position = new Vector3(MAP013_THERON_BOARDWALK.x, 0, MAP013_THERON_BOARDWALK.z);
   alchemistTheron.setEnabled(isMap013);
-  const map013Elite = MeshBuilder.CreatePlane("corrosive-aberration-elite", { width: 4.3, height: 4.3 }, scene);
-  map013Elite.position = new Vector3(-18, 2.1, 24);
-  map013Elite.billboardMode = 7;
-  map013Elite.material = assetMaterial(scene, "corrosive-aberration-material", map013Asset.elite, 0.74);
+  const map013Elite = createVoxelModel(scene, "elite", { name: "corrosive-aberration-elite", scale: 1.28 });
+  map013Elite.position = new Vector3(-18, 0, 24);
   map013Elite.setEnabled(false);
-  const sulfurFalls = MeshBuilder.CreatePlane("sulfur-falls", { width: 2.65, height: 2.65 }, scene);
-  sulfurFalls.position = new Vector3(MAP013_SULFUR_FALLS.x, 1.4, MAP013_SULFUR_FALLS.z);
-  sulfurFalls.billboardMode = 7;
-  sulfurFalls.material = assetMaterial(scene, "sulfur-falls-material", map013Asset.resource, 0.82);
+  const sulfurFalls = createVoxelModel(scene, "resource", { name: "sulfur-falls", scale: 0.9 });
+  sulfurFalls.position = new Vector3(MAP013_SULFUR_FALLS.x, 0, MAP013_SULFUR_FALLS.z);
   sulfurFalls.setEnabled(isMap013);
 
-  const wardenSonya = MeshBuilder.CreatePlane("warden-sonya-post", { width: 2.8, height: 2.8 }, scene);
-  wardenSonya.position = new Vector3(MAP014_WARDEN_POST.x, 1.4, MAP014_WARDEN_POST.z);
-  wardenSonya.billboardMode = 7;
-  wardenSonya.material = assetMaterial(scene, "warden-sonya-material", map014Asset.npc, 0.58);
+  const wardenSonya = createVoxelModel(scene, "landmark", { name: "warden-sonya-post", scale: 1.0 });
+  wardenSonya.position = new Vector3(MAP014_WARDEN_POST.x, 0, MAP014_WARDEN_POST.z);
   wardenSonya.setEnabled(isMap014);
-  const map014Elite = MeshBuilder.CreatePlane("magma-drake-sentinel-elite", { width: 4.3, height: 4.3 }, scene);
-  map014Elite.position = new Vector3(-18, 2.1, 24);
-  map014Elite.billboardMode = 7;
-  map014Elite.material = assetMaterial(scene, "magma-drake-sentinel-material", map014Asset.elite, 0.74);
+  const map014Elite = createVoxelModel(scene, "elite", { name: "magma-drake-sentinel-elite", scale: 1.28 });
+  map014Elite.position = new Vector3(-18, 0, 24);
   map014Elite.setEnabled(false);
-  const citadelGate = MeshBuilder.CreatePlane("citadel-gate", { width: 2.65, height: 2.65 }, scene);
-  citadelGate.position = new Vector3(MAP014_CITADEL_GATE.x, 1.4, MAP014_CITADEL_GATE.z);
-  citadelGate.billboardMode = 7;
-  citadelGate.material = assetMaterial(scene, "citadel-gate-material", map014Asset.resource, 0.82);
+  const citadelGate = createVoxelModel(scene, "landmark", { name: "citadel-gate", scale: 1.0 });
+  citadelGate.position = new Vector3(MAP014_CITADEL_GATE.x, 0, MAP014_CITADEL_GATE.z);
   citadelGate.setEnabled(isMap014);
 
-  const forgeAvatar = MeshBuilder.CreatePlane("forge-avatar-shrine", { width: 2.8, height: 2.8 }, scene);
-  forgeAvatar.position = new Vector3(MAP015_FORGE_SHRINE.x, 1.4, MAP015_FORGE_SHRINE.z);
-  forgeAvatar.billboardMode = 7;
-  forgeAvatar.material = assetMaterial(scene, "forge-avatar-material", map015Asset.npc, 0.58);
+  const forgeAvatar = createVoxelModel(scene, "landmark", { name: "forge-avatar-shrine", scale: 1.0 });
+  forgeAvatar.position = new Vector3(MAP015_FORGE_SHRINE.x, 0, MAP015_FORGE_SHRINE.z);
   forgeAvatar.setEnabled(isMap015);
-  const map015Elite = MeshBuilder.CreatePlane("dread-infernal-goliath-elite", { width: 4.3, height: 4.3 }, scene);
-  map015Elite.position = new Vector3(-18, 2.1, 24);
-  map015Elite.billboardMode = 7;
-  map015Elite.material = assetMaterial(scene, "dread-infernal-goliath-material", map015Asset.elite, 0.74);
+  const map015Elite = createVoxelModel(scene, "elite", { name: "dread-infernal-goliath-elite", scale: 1.28 });
+  map015Elite.position = new Vector3(-18, 0, 24);
   map015Elite.setEnabled(false);
-  const primalAnvil = MeshBuilder.CreatePlane("primal-anvil", { width: 2.65, height: 2.65 }, scene);
-  primalAnvil.position = new Vector3(MAP015_PRIMAL_ANVIL.x, 1.4, MAP015_PRIMAL_ANVIL.z);
-  primalAnvil.billboardMode = 7;
-  primalAnvil.material = assetMaterial(scene, "primal-anvil-material", map015Asset.resource, 0.82);
+  const primalAnvil = createVoxelModel(scene, "resource", { name: "primal-anvil", scale: 0.9 });
+  primalAnvil.position = new Vector3(MAP015_PRIMAL_ANVIL.x, 0, MAP015_PRIMAL_ANVIL.z);
   primalAnvil.setEnabled(isMap015);
 
   let move = { x: 0, y: 0 };
@@ -756,6 +400,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map015DefeatedMyrmidons = 0;
   let enemySpeedMultiplier = 1;
   let playerSpeedMultiplier = 1;
+  let currentSpeed = 0;
   let pendingMapInteraction = false;
   let map001Warning: string | undefined;
   let map002Warning: string | undefined;
@@ -851,7 +496,21 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   };
 
   const keyState = new Set<string>();
-  const onKeyDown = (event: KeyboardEvent) => keyState.add(event.key.toLowerCase());
+  const onKeyDown = (event: KeyboardEvent) => {
+    const key = event.key.toLowerCase();
+    keyState.add(key);
+    if (event.repeat) return;
+    if (key === " ") {
+      event.preventDefault();
+      handleControl(new CustomEvent("arcane-control", { detail: { type: "attack" } }));
+    } else if (key === "shift") {
+      event.preventDefault();
+      handleControl(new CustomEvent("arcane-control", { detail: { type: "dash" } }));
+    } else if (key === "e") {
+      event.preventDefault();
+      handleControl(new CustomEvent("arcane-control", { detail: { type: "interact" } }));
+    }
+  };
   const onKeyUp = (event: KeyboardEvent) => keyState.delete(event.key.toLowerCase());
   window.addEventListener("arcane-control", handleControl);
   window.addEventListener("keydown", onKeyDown);
@@ -862,11 +521,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const keyboardX = (keyState.has("d") ? 1 : 0) - (keyState.has("a") ? 1 : 0);
     const keyboardY = (keyState.has("w") ? 1 : 0) - (keyState.has("s") ? 1 : 0);
     const movement = new Vector3(move.x + keyboardX, 0, move.y - keyboardY);
-    const isMoving = movement.lengthSquared() > 0.01;
+    const inputMagnitude = Math.min(1, movement.length());
+    const isMoving = inputMagnitude > 0.08;
+    const targetSpeed = dashPulse > 0 ? 12.4 : inputMagnitude > 0.72 ? 4.8 : 3.35;
+    currentSpeed += (isMoving ? targetSpeed * playerSpeedMultiplier : 0 - currentSpeed) * Math.min(1, dt * (isMoving ? 10 : 14));
     if (isMoving) {
       movement.normalize();
-      const speed = (dashPulse > 0 ? 18 : 7.8) * playerSpeedMultiplier;
-      player.position.addInPlace(movement.scale(speed * dt));
+      player.position.addInPlace(movement.scale(currentSpeed * dt));
       player.position.x = Math.max(-worldRadius, Math.min(worldRadius, player.position.x));
       player.position.z = Math.max(-worldRadius, Math.min(worldRadius, player.position.z));
       player.rotation.y = Math.atan2(movement.x, movement.z);
@@ -875,14 +536,21 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     camera.target = Vector3.Lerp(camera.target, cameraTarget, Math.min(1, dt * 5.4));
     dashPulse = Math.max(0, dashPulse - dt);
     attackPulse = Math.max(0, attackPulse - dt);
-    const heroScale = 1 + Math.sin((0.32 - attackPulse) * 18) * attackPulse * 0.24;
+    const heroScale = 1.08 * (1 + Math.sin((0.32 - attackPulse) * 18) * attackPulse * 0.24);
     heroArt.scaling.setAll(heroScale);
-    heroArt.position.y = 1.55 + Math.sin(performance.now() / 250) * (isMoving ? 0.08 : 0.025);
+    const movementState = dashPulse > 0 ? "dash" : !isMoving ? "idle" : currentSpeed > 4.25 ? "run" : "walk";
+    const bobAmplitude = movementState === "run" ? 0.08 : movementState === "walk" ? 0.045 : 0.018;
+    const now = performance.now();
+    heroArt.position.y = 0.04 + (options.reducedMotion ? 0 : Math.sin(now / (movementState === "run" ? 125 : 220)) * bobAmplitude);
+    const gait = options.reducedMotion || !isMoving ? 0 : Math.sin(now / (movementState === "run" ? 105 : 175)) * (movementState === "run" ? 0.075 : 0.04);
+    heroArt.rotation.z = gait;
+    heroArt.rotation.x = gait * 0.35;
     const companion = options.companion ?? { following: true, lootRadius: 2, resourceYieldMultiplier: 1, damageMitigation: 0 };
     const companionRuntime = resolveCompanionRuntime({ pet: { x: pet.position.x, z: pet.position.z }, player: { x: player.position.x, z: player.position.z }, following: companion.following, playerMoving: isMoving, reducedMotion: options.reducedMotion, deltaSeconds: dt });
     pet.position.x = companionRuntime.position.x;
     pet.position.z = companionRuntime.position.z;
-    pet.position.y = companionRuntime.state === "resting" ? 0 : options.reducedMotion ? 0 : Math.sin(performance.now() / 350) * 0.12;
+    pet.position.y = companionRuntime.state === "resting" ? 0 : options.reducedMotion ? 0 : Math.sin(now / (movementState === "run" ? 210 : 350)) * 0.12;
+    pet.rotation.z = options.reducedMotion || !isMoving ? 0 : Math.sin(now / 180) * 0.045;
     pet.setEnabled(companion.following || companionRuntime.state !== "resting");
 
     enemies.forEach((enemy, index) => {
@@ -942,7 +610,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnGlassStalkers).forEach((enemy, index) => {
           enemy.setEnabled(true);
           enemy.metadata = { health: 34, alive: true, encounterName: "Glass Stalker · Distress Pod" };
-          enemy.position = new Vector3(MAP001_DISTRESS_POD.x + 2 + index, 1.25, MAP001_DISTRESS_POD.z - 2 - index);
+          enemy.position = new Vector3(MAP001_DISTRESS_POD.x + 2 + index, 0, MAP001_DISTRESS_POD.z - 2 - index);
         });
       }
       if (encounter.event === "safe-reset") {
@@ -965,7 +633,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnAshCrawlers).forEach((enemy, index) => {
           enemy.setEnabled(true);
           enemy.metadata = { health: 36, alive: true, encounterName: "Ash Crawler · Ash Storm" };
-          enemy.position = new Vector3(8 + index * 2.2, 1.25, 9 - index * 2);
+          enemy.position = new Vector3(8 + index * 2.2, 0, 9 - index * 2);
         });
       }
       if (encounter.event === "safe-reset") {
@@ -989,7 +657,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnBeetles).forEach((enemy, index) => {
           enemy.setEnabled(true);
           enemy.metadata = { health: 40, alive: true, encounterName: "Glow Spore Beetle · Bloom" };
-          enemy.position = new Vector3(7 + index * 2.5, 1.25, 8 - index * 2.1);
+          enemy.position = new Vector3(7 + index * 2.5, 0, 8 - index * 2.1);
         });
       }
       if (encounter.event === "safe-reset") {
@@ -1009,7 +677,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       playerSpeedMultiplier = encounter.playerSpeedMultiplier;
       map004Elite.setEnabled(encounter.activateElite);
       if (encounter.laserDamagePerSecond > 0) health = Math.max(0, health - encounter.laserDamagePerSecond * dt);
-      if (encounter.spawnGnats > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnGnats).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 38, alive: true, encounterName: "Shard Gnat · Reflection Field" }; enemy.position = new Vector3(13 + index * 2.4, 1.25, 10 - index * 2); });
+      if (encounter.spawnGnats > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnGnats).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 38, alive: true, encounterName: "Shard Gnat · Reflection Field" }; enemy.position = new Vector3(13 + index * 2.4, 0, 10 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP004_ZEPHYR_CAMP.x + 1.5, 0, MAP004_ZEPHYR_CAMP.z + 1.2); }
       const laserPulse = encounter.laserActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 135) * 0.16 : 1;
       resonanceDais.scaling.setAll(laserPulse);
@@ -1023,7 +691,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map005Warning = encounter.warning;
       if (encounter.acidDamagePerSecond > 0) health = Math.max(0, health - encounter.acidDamagePerSecond * dt);
       map005Elite.setEnabled(encounter.activateElite);
-      if (encounter.spawnSlimes > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnSlimes).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Acid Slime · Acid Drizzle" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.spawnSlimes > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnSlimes).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Acid Slime · Acid Drizzle" }; enemy.position = new Vector3(10 + index * 2.4, 0, -3 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP005_VANE_SHELTER.x + 1.5, 0, MAP005_VANE_SHELTER.z + 1.2); }
       vane.setEnabled(isMap005 && (Vector3.Distance(player.position, vane.position) < 12 || encounter.sheltered));
       const drizzlePulse = encounter.drizzleActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
@@ -1037,7 +705,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       pendingMapInteraction = false;
       map006Warning = encounter.warning;
       map006Elite.setEnabled(encounter.activateElite);
-      if (encounter.spawnRays > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnRays).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Magnetic Hover-Ray · Magnetic Storm" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.spawnRays > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnRays).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Magnetic Hover-Ray · Magnetic Storm" }; enemy.position = new Vector3(10 + index * 2.4, 0, -3 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP006_STABILIZER.x + 1.5, 0, MAP006_STABILIZER.z + 1.2); }
       rusty.setEnabled(isMap006 && (Vector3.Distance(player.position, rusty.position) < 12 || encounter.sheltered));
       const stormPulse = encounter.stormActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
@@ -1052,7 +720,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map007Warning = encounter.warning;
       if (encounter.coldDamagePerSecond > 0) health = Math.max(0, health - encounter.coldDamagePerSecond * dt);
       map007Elite.setEnabled(encounter.activateElite);
-      if (encounter.spawnWeavers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnWeavers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Frostbite Weaver · Blizzard" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.spawnWeavers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnWeavers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Frostbite Weaver · Blizzard" }; enemy.position = new Vector3(10 + index * 2.4, 0, -3 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP007_STEAM_VENT.x + 1.5, 0, MAP007_STEAM_VENT.z + 1.2); }
       scoutFrost.setEnabled(isMap007 && (Vector3.Distance(player.position, scoutFrost.position) < 12 || encounter.sheltered));
       const blizzardPulse = encounter.blizzardActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
@@ -1067,7 +735,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map008Warning = encounter.warning;
       if (encounter.laserDamagePerSecond > 0) health = Math.max(0, health - encounter.laserDamagePerSecond * dt);
       map008Elite.setEnabled(encounter.activateElite);
-      if (encounter.spawnDrones > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnDrones).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Sentinel Drone · Defense Sweep" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.spawnDrones > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnDrones).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Sentinel Drone · Defense Sweep" }; enemy.position = new Vector3(10 + index * 2.4, 0, -3 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP008_RUNE_TERMINAL.x + 1.5, 0, MAP008_RUNE_TERMINAL.z + 1.2); }
       kael.setEnabled(isMap008 && (Vector3.Distance(player.position, kael.position) < 12 || encounter.sheltered));
       const sweepPulse = encounter.sweepActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
@@ -1082,7 +750,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       map009Warning = encounter.warning;
       if (encounter.toxinDamagePerSecond > 0) health = Math.max(0, health - encounter.toxinDamagePerSecond * dt);
       map009Elite.setEnabled(encounter.activateElite);
-      if (encounter.spawnStalkers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnStalkers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Vine Stalker · Toxic Downpour" }; enemy.position = new Vector3(10 + index * 2.4, 1.25, -3 - index * 2); });
+      if (encounter.spawnStalkers > 0) enemies.filter(enemy => !enemy.isEnabled()).slice(0, encounter.spawnStalkers).forEach((enemy, index) => { enemy.setEnabled(true); enemy.metadata = { health: 36, alive: true, encounterName: "Vine Stalker · Toxic Downpour" }; enemy.position = new Vector3(10 + index * 2.4, 0, -3 - index * 2); });
       if (encounter.event === "safe-reset") { health = 100; player.position.set(MAP009_CANOPY_HAVEN.x + 1.5, 0, MAP009_CANOPY_HAVEN.z + 1.2); }
       iris.setEnabled(isMap009 && (Vector3.Distance(player.position, iris.position) < 12 || encounter.sheltered));
       const downpourPulse = encounter.downpourActive && !options.reducedMotion ? 1 + Math.sin(performance.now() / 145) * 0.14 : 1;
@@ -1179,7 +847,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     if (bossActive) {
       boss.position.x = player.position.x + Math.sin(performance.now() / 1500) * 2.5;
       boss.position.z = player.position.z - 16;
-      boss.position.y = 2.8 + Math.sin(performance.now() / 420) * 0.22;
+      boss.position.y = 0.25 + Math.sin(performance.now() / 420) * 0.22;
     }
 
     if (performance.now() - lastEmit > 180) {
@@ -1191,6 +859,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         mapState: isMap001 ? map001Memory.state : isMap002 ? map002Memory.state : isMap003 ? map003Memory.state : isMap004 ? map004Memory.state : isMap005 ? map005Memory.state : isMap006 ? map006Memory.state : isMap007 ? map007Memory.state : isMap008 ? map008Memory.state : isMap009 ? map009Memory.state : isMap010 ? map010Memory.state : isMap011 ? map011Memory.state : isMap012 ? map012Memory.state : isMap013 ? map013Memory.state : isMap014 ? map014Memory.state : isMap015 ? map015Memory.state : "exploring",
         warning: isMap001 ? map001Warning : isMap002 ? map002Warning : isMap003 ? map003Warning : isMap004 ? map004Warning : isMap005 ? map005Warning : isMap006 ? map006Warning : isMap007 ? map007Warning : isMap008 ? map008Warning : isMap009 ? map009Warning : isMap010 ? map010Warning : isMap011 ? map011Warning : isMap012 ? map012Warning : isMap013 ? map013Warning : isMap014 ? map014Warning : isMap015 ? map015Warning : sceneTreatment ? (Math.floor(performance.now() / 7000) % 2 === 0 ? sceneTreatment.ambientEvent : sceneTreatment.hudPhrasing) : undefined,
         companionState: companionRuntime.state,
+        movementState,
+        speed: Number(currentSpeed.toFixed(2)),
       });
       lastEmit = performance.now();
     }

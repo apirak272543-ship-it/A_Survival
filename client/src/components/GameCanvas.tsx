@@ -18,7 +18,13 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
     const canvas = canvasRef.current;
     if (!canvas || startedRef.current) return;
     startedRef.current = true;
-    const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, adaptToDeviceRatio: true });
+    const engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true, adaptToDeviceRatio: false });
+    const resizeEngine = () => {
+      // Keep the browser game lightweight while preserving crisp pixel silhouettes.
+      engine.setHardwareScalingLevel(window.innerWidth <= 960 ? 1.25 : 1.15);
+      engine.resize();
+    };
+    resizeEngine();
     let handle: GameHandle | null = null;
     let cancelled = false;
 
@@ -31,7 +37,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       engine.runRenderLoop(() => game.scene.render());
     });
 
-    const onResize = () => engine.resize();
+    const onResize = () => resizeEngine();
     window.addEventListener("resize", onResize);
     return () => {
       cancelled = true;

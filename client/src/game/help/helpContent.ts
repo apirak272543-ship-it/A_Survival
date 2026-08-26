@@ -20,8 +20,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "expedition",
     eyebrow: "Explore · Fight · Gather",
     title: "ออกสำรวจอย่างปลอดภัย",
-    body: "จอยสติ๊กซ้ายใช้เดิน, ปุ่มดาบใช้โจมตี, ปุ่มสายฟ้าใช้ dash และปุ่ม pickaxe ใช้โต้ตอบ/เก็บทรัพยากร. กลับ Safe Zone เมื่อพลังชีวิตต่ำ.",
-    tips: ["เก็บทรัพยากรในระยะของปุ่มโต้ตอบ", "ดูชื่อ NPC/landmark ด้านบนเพื่อหา event zone", "Void Reaper ปรากฏเมื่อเงื่อนไข night event ครบ"],
+    body: "จอยสติ๊กซ้ายใช้เดินและลากไกลขึ้นเพื่อวิ่ง, ปุ่มดาบใช้โจมตี, ปุ่มสายฟ้าใช้ dash และปุ่ม pickaxe ใช้โต้ตอบ/เก็บทรัพยากร. บนคอมพิวเตอร์ใช้ WASD เดิน, Space โจมตี, Shift dash และ E โต้ตอบ.",
+    tips: ["แตะช่องลัด 1–3 เพื่อเลือกไอเทม หรือกดปุ่ม 1–3 บนคีย์บอร์ด", "กด I หรือ Tab เพื่อเปิดคลังไอเทม และ Esc เพื่อเปิดตั้งค่า/พักเกม", "เก็บทรัพยากรในระยะของปุ่มโต้ตอบ แล้วกลับ Safe Zone เมื่อพลังชีวิตต่ำ", "ดูชื่อ NPC/landmark ด้านบนเพื่อหา event zone", "Void Reaper ปรากฏเมื่อเงื่อนไข night event ครบ"],
   },
   {
     id: "home",
@@ -56,7 +56,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
 export const FIRST_RUN_HINTS = [
   { id: "identity", title: "Player ID ไม่ใช่รหัสผ่าน", body: "เลือก call-sign แล้วเซฟจะเริ่มบนอุปกรณ์ทันที", screen: "identity" },
   { id: "maps", title: "เตรียมแผนที่ก่อนเดินทาง", body: "ครั้งแรกเกมเตรียม module และ key art; รอบถัดไปใช้ cache ได้", screen: "maps" },
-  { id: "game", title: "ควบคุมด้วยสองมือ", body: "จอยซ้ายเดิน · ปุ่มขวาโจมตี, dash และเก็บทรัพยากร", screen: "game" },
+  { id: "game", title: "ควบคุมด้วยสองมือ", body: "จอยซ้ายเดิน/วิ่ง · ปุ่มขวาโจมตี, dash และเก็บทรัพยากร · ช่องลัดเลือกไอเทม", screen: "game" },
 ] as const;
 
 export function getHelpArticle(topic: HelpTopic) {

@@ -1,0 +1,23 @@
+{
+  "id": "arcane-frontier-voxel-pixel",
+  "version": "0.1.0",
+  "designSource": "google-gemini",
+  "format": "voxel-pixel-runtime",
+  "logicalResolution": { "width": 640, "height": 360 },
+  "tileSize": 16,
+  "textureSampling": "nearest",
+  "runtime": "babylonjs",
+  "assets": {
+    "survivor": "voxel/survivor-v1",
+    "companion": "voxel/cyber-fox-v1",
+    "enemy": "voxel/corrupted-husk-v1",
+    "elite": "voxel/obsidian-golem-v1",
+    "boss": "voxel/void-reaper-v1",
+    "resource": "voxel/ley-crystal-v1",
+    "terrain": "tiles/obsidian-frontier-v1"
+  },
+  "fallback": {
+    "remoteTextureFailure": "use-pack-voxel-material",
+    "missingAsset": "use-ink-cyan-silhouette"
+  }
+}
