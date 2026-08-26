@@ -73,7 +73,7 @@ export type TexturePackManifest = {
   displayName: string;
   textureSampling: "nearest" | "linear";
   entries: Record<string, {
-    kind: "texture";
+    kind: TextureAssetKind;
     path: string;
     mime: "image/png";
     sha256: string;
@@ -181,7 +181,7 @@ function stableEntryMap(entries: TexturePackManifest["entries"]) {
 
 function buildManifest(input: TexturePackInput, assets: BuiltTextureAsset[]) {
   const entries = stableEntryMap(Object.fromEntries(assets.map(asset => [asset.assetId, {
-    kind: "texture" as const,
+    kind: asset.kind,
     path: asset.relativePath,
     mime: "image/png" as const,
     sha256: asset.sha256,
@@ -298,7 +298,7 @@ export function validateTexturePackOutput(output: TexturePackOutput, input?: Tex
     if (asset.mime !== "image/png" || bytes.length < 32) issues.push(`built asset is not a valid PNG payload: ${asset.assetId}`);
     if (asset.sha256 !== createHash("sha256").update(bytes).digest("hex")) issues.push(`built asset digest mismatch: ${asset.assetId}`);
     const manifestEntry = output.manifest.entries[asset.assetId];
-    if (!manifestEntry || manifestEntry.sha256 !== asset.sha256 || manifestEntry.path !== asset.relativePath) issues.push(`manifest entry mismatch: ${asset.assetId}`);
+    if (!manifestEntry || manifestEntry.kind !== asset.kind || manifestEntry.sha256 !== asset.sha256 || manifestEntry.path !== asset.relativePath) issues.push(`manifest entry mismatch: ${asset.assetId}`);
   }
   if (new Set(Object.keys(output.manifest.entries)).size !== output.assets.length) issues.push("manifest and built asset counts differ");
   const { packSha256: _packSha256, ...manifestWithoutHash } = output.manifest;

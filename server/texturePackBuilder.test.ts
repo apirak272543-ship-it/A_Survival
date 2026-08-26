@@ -58,6 +58,8 @@ describe("Texture Pack Builder", () => {
     expect(output.assets.map(asset => asset.assetId)).toEqual(["frontier-scout", "weapon-spark"]);
     expect(output.manifest.id).toBe("a-survival-test-pack");
     expect(Object.keys(output.manifest.entries)).toHaveLength(2);
+    expect(output.manifest.entries["frontier-scout"]?.kind).toBe("skin");
+    expect(output.manifest.entries["weapon-spark"]?.kind).toBe("icon");
     expect(pngBytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     expect(pngBytes.readUInt32BE(16)).toBe(8);
     expect(pngBytes.readUInt32BE(20)).toBe(8);

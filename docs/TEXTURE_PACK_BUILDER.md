@@ -66,4 +66,4 @@ Focused test `pnpm exec vitest run server/texturePackBuilder.test.ts` ผ่า�
 
 ชื่อสถานะเดิม `procedural-starter-authored` เป็น provenance vocabulary ของ starter pack จึงถูกเก็บไว้ใน `provenance.json`; ใน `TextureAssetInput.source` แปลงเป็น `starter-authored` ซึ่งเป็น enum ของ Common Generator API. การแปลงนี้เป็น schema mapping ไม่ใช่การเปลี่ยนเจ้าของงานหรือการกล่าวอ้างว่าเป็น AI-generated.
 
-Migration command คืนผล 16 entries และ pack hash `f8abe22704a1d99290c770bcc028088d1c34b4a82c1a510bbcda6195efb0d4bb`. Focused migration tests ผ่าน `2` tests และ full regression หลังเพิ่ม migration ผ่าน `49` test files / `169` tests. Output pack ยังคง future-only และยังไม่ถูกนำเข้า playable Obsidian runtime.
+Migration command คืนผล 16 entries และ pack hash `70f7f239f9b675b834280c1ad1ecff903699e3d85105a949d1481a9e8b1a3fda`. Focused migration tests ผ่าน `2` tests และ full regression หลังเพิ่ม migration ผ่าน `49` test files / `169` tests. Output pack ยังคง future-only และยังไม่ถูกนำเข้า playable Obsidian runtime.

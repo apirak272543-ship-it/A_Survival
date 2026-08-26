@@ -123,3 +123,10 @@ Validation หลัง implementation รอบนี้ผ่าน full suite
 `server/creatorRouter.test.ts` ยืนยัน admin สามารถ build PNG/manifest, regular user ถูกปฏิเสธด้วย `FORBIDDEN`, unauthenticated caller ถูกปฏิเสธ และ artifact เดิมให้ content hash/output เดิมเมื่อ seed/input เดิม. Focused creator+texture tests ผ่าน `2` files / `8` tests; full regression ผ่าน `48` files / `167` tests; `pnpm check` และ production build ด้วย memory cap ผ่าน.
 
 การเชื่อมนี้เป็น **PARTIAL foundation** ไม่ใช่การประกาศว่า creator platform เสร็จ: role model ปัจจุบันมีเพียง `user/admin`, ยังไม่มี creator-specific permission, durable artifact/manifest storage, persistent registry, export package file จาก API หรือ runtime model/atlas attachment. Browser route ทดสอบได้ถึง template switching, pixel painting, local draft, validation และ player boundary แต่ไม่มี authenticated admin session ใน development จึงไม่อ้าง browser build mutation สำเร็จ. ปุ่ม build จะแสดง error ที่ตรวจสอบได้เมื่อไม่มี admin session และไม่เปิด generator control ใน player route.
+
+
+## 11. Asset-kind preservation correction — 27 สิงหาคม 2026
+
+ระหว่างตรวจ migrated output พบว่า manifest รุ่นแรกเก็บ `kind` เป็น generic `texture` แม้ Builder output มีชนิด `icon` และ `tile` อยู่แล้ว. จึงแก้ `TexturePackManifest` ให้เก็บ `TextureAssetKind` จริง (`icon`, `tile`, `skin`, `atlas`) และให้ `validateTexturePackOutput` ตรวจ kind ตรงกับ built asset จากนั้น regenerate pack output และเพิ่ม assertion ใน focused tests. Pack hash ที่ยืนยันล่าสุดคือ `70f7f239f9b675b834280c1ad1ecff903699e3d85105a949d1481a9e8b1a3fda`.
+
+Focused builder/creator/migration tests ผ่าน `3` files / `10` tests, full regression ผ่าน `49` files / `169` tests, `pnpm check`, production build และ `git diff --check` ผ่าน. ขอบเขตยังคงเดิม: pack เป็น Builder-owned future-only output, ไม่ถูก import เข้า Obsidian runtime และไม่ใช่หลักฐานว่า catalog 3,000 definitions มี final visual coverage แล้ว.
