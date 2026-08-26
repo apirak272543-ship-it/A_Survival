@@ -14,6 +14,9 @@ export type GameSettings = {
   sfxVolume: number;
   reducedMotion: boolean;
   touchPreference: "fixed" | "dynamic";
+  renderDistance: "near" | "balanced" | "far";
+  touchScale: number;
+  touchOpacity: number;
 };
 
 export type LocalGameSession = {
@@ -37,6 +40,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 80,
   reducedMotion: false,
   touchPreference: "dynamic",
+  renderDistance: "balanced",
+  touchScale: 1,
+  touchOpacity: 0.86,
 };
 
 function randomToken() {
@@ -154,7 +160,12 @@ export async function hydrateSession() {
 export function getSettings(): GameSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GameSettings>) } : DEFAULT_SETTINGS;
+    if (!raw) return DEFAULT_SETTINGS;
+    const candidate = JSON.parse(raw) as Partial<GameSettings>;
+    const renderDistance = candidate.renderDistance === "near" || candidate.renderDistance === "far" ? candidate.renderDistance : "balanced";
+    const touchScale = typeof candidate.touchScale === "number" ? Math.max(0.8, Math.min(1.25, candidate.touchScale)) : DEFAULT_SETTINGS.touchScale;
+    const touchOpacity = typeof candidate.touchOpacity === "number" ? Math.max(0.45, Math.min(1, candidate.touchOpacity)) : DEFAULT_SETTINGS.touchOpacity;
+    return { ...DEFAULT_SETTINGS, ...candidate, renderDistance, touchScale, touchOpacity };
   } catch {
     return DEFAULT_SETTINGS;
   }

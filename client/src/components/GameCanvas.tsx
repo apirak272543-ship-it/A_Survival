@@ -10,9 +10,10 @@ type GameCanvasProps = {
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
   companion?: CompanionConfig;
+  renderDistance?: "near" | "balanced" | "far";
 };
 
-export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, companion }: GameCanvasProps) {
+export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, companion, renderDistance }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
 
@@ -37,7 +38,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
         console.warn("Asset pack used fallback entries", pack.failedAssetIds);
       }
       if (cancelled) return;
-      const game = await createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion });
+      const game = await createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion, renderDistance });
       if (cancelled) {
         game.dispose();
         return;
@@ -57,7 +58,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       engine.dispose();
       startedRef.current = false;
     };
-  }, [mapId, onSnapshot, onReward, companion, reducedMotion]);
+  }, [mapId, onSnapshot, onReward, companion, reducedMotion, renderDistance]);
 
   return (
     <div className="game-viewport">

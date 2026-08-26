@@ -10,8 +10,7 @@ describe("Arcane Frontier curated map modules", () => {
     expect(new Set(firstFifteen.map(map => map.id)).size).toBe(15);
     firstFifteen.forEach(map => {
       expect(map.status).toBe("prototype");
-      expect(map.radiusMeters).toBeGreaterThanOrEqual(1000);
-      expect(map.radiusMeters).toBeLessThanOrEqual(1500);
+      expect(map.radiusMeters).toBe(500);
       expect(map.keyArt).toMatch(/^\/manus-storage\/|^https:\/\/image\.pollinations\.ai\//);
     });
   });

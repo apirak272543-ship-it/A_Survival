@@ -22,9 +22,29 @@ describe("Arcane asset pack manifest", () => {
   it("declares the original namespace and all articulated model entries", () => {
     expect(manifest.id).toBe("arcane-frontier-voxel-pixel");
     expect(manifest.namespace).toBe("af");
-    expect(manifest.version).toBe("0.2.0");
+    expect(manifest.version).toBe("0.3.0");
     for (const id of ["models.survivor", "models.companion", "models.enemy", "models.elite", "models.boss"]) {
       expect(manifest.entries[id]?.kind).toBe("model");
+    }
+  });
+
+  it("declares the Obsidian Frontier art slice as replaceable pack entries", () => {
+    for (const id of [
+      "art.obsidian.frontier-key-art",
+      "art.obsidian.survivor",
+      "art.obsidian.companion",
+      "art.obsidian.enemy",
+      "art.obsidian.crystal-fern",
+      "art.obsidian.spore-shrub",
+      "art.obsidian.glow-vine",
+      "art.obsidian.aether-ore",
+      "art.obsidian.shard-cluster",
+      "art.obsidian.lumen-bulb",
+      "art.obsidian.portal-ruin",
+      "art.obsidian.ancient-monolith",
+    ]) {
+      expect(manifest.entries[id]?.kind).toBe("texture");
+      expect(manifest.entries[id]?.path.startsWith("art/")).toBe(true);
     }
   });
 

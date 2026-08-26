@@ -34,7 +34,7 @@ tRPC server and database
 
 ## Map catalog
 
-Every expedition map carries `id`, `displayName`, `biome`, `radiusMeters`, `threatLevel`, `resourceBias`, `bundleKey`, `accentColor`, and `status`. The target design range is 1,000–1,500 metres measured outward from spawn; the initial playable implementation uses a 1,200 metre nominal radius with streamed/procedural sectors to preserve mobile performance.
+Every expedition map carries `id`, `displayName`, `biome`, `radiusMeters`, `threatLevel`, `resourceBias`, `bundleKey`, `accentColor`, and `status`. Each map targets approximately **500 metres radius from its centre**. The renderer selects a configurable visible window—Near 64m, Balanced 96m, or Far 128m—and keeps a small data/prefetch margin so mobile devices render only what they can support.
 
 | Map | Biome | Primary mood | Initial status |
 | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ Every expedition map carries `id`, `displayName`, `biome`, `radiusMeters`, `thre
 
 ## Equipment and combat model
 
-The game has no locked class. The currently equipped weapon supplies active attacks, movement trade-offs and status effects. The initial set covers a light melee blade/shield, plasma greatsword, dual rune pistols, void beam rifle, and bio-needler staff. Pets are independent companions with their own equipment slots and survival-oriented bonuses. The graphic preference model controls quality preset, particle/effect intensity, terrain detail, shadow setting, music volume, SFX volume, reduced motion and touch-control preference.
+The game has no locked class. The currently equipped weapon supplies active attacks, movement trade-offs and status effects. The initial set covers a light melee blade/shield, plasma greatsword, dual rune pistols, void beam rifle, and bio-needler staff. Pets are independent companions with their own equipment slots and survival-oriented bonuses. The graphic preference model controls quality preset, particle/effect intensity, render distance (Near/Balanced/Far), music volume, SFX volume, reduced motion and touch-control preference including size and opacity.
 
 ## Catalog, farming and item-instance rules
 
@@ -93,4 +93,4 @@ App Shell / PWA
 
 The App Shell owns DOM, route and safe-area concerns. The Pack Registry owns manifest metadata, cache and binary asset resolution. The Game Runtime owns Babylon objects and simulation ticks. World/Region owns chunk data and visible-region selection. Persistence owns IndexedDB and queued transactions. No layer may write another layer's storage or bypass the server integrity boundary. This preserves `LocalPlayerProfile`, `RoomSessionSnapshot` and `SharedWorldState` as separate concepts for the future local-first LAN contract.
 
-The first implementation of the blueprint is intentionally incremental: model files are separate GLB entries, item definitions carry `iconAssetId`, terrain is split into 16×16 chunk meshes, visible chunks are selected by a pure tested system, and the mobile HUD has an explicit `USE` action. Full worker streaming, authoritative multiplayer and runtime GLB animation clips remain planned rather than silently treated as complete.
+The first implementation of the blueprint is intentionally incremental: model files are separate GLB entries, item definitions carry `iconAssetId`, terrain is split into 16×16 chunk meshes, visible chunks are selected by a pure tested system, the render-distance preset controls the mesh pool, and the mobile HUD has an explicit `USE` action. Obsidian Frontier is delivered as the first complete visual slice; full worker streaming, authoritative multiplayer and runtime GLB animation clips remain planned rather than silently treated as complete.

@@ -28,10 +28,13 @@ import { MAP013_SULFUR_FALLS, MAP013_THERON_BOARDWALK, initialMap013Encounter, r
 import { MAP014_CITADEL_GATE, MAP014_WARDEN_POST, initialMap014Encounter, resolveMap014Encounter } from "@/game/map014/encounter";
 import { MAP015_PRIMAL_ANVIL, MAP015_FORGE_SHRINE, initialMap015Encounter, resolveMap015Encounter } from "@/game/map015/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
-import { createPixelTerrainChunks, createVoxelModel } from "@/game/assets/pixelPack";
+import { createBiomeDressing, createPixelTerrainChunks, createVoxelModel } from "@/game/assets/pixelPack";
+import { getBiomeVisualProfile } from "@/game/data/biomeProfiles";
 import { loadPackModel } from "@/game/assets/glbPack";
 import { canSpendStamina, createStaminaState, regenerateStamina, spendStamina, staminaPercent, type StaminaState } from "@/game/systems/staminaSystem";
-import { chunkKey, getVisibleChunkKeys } from "@/game/systems/visibleRegionSystem";
+import { chunkKey, getStreamingChunkKeys } from "@/game/systems/visibleRegionSystem";
+import { updatePixelTerrainStream } from "@/game/assets/pixelPack";
+import { getRenderDistanceConfig, type RenderDistancePreset } from "@/game/systems/renderDistance";
 
 export type GameSnapshot = {
   health: number;
@@ -72,6 +75,7 @@ type GameOptions = {
   onReward?: (reward: GameReward) => void;
   companion?: CompanionConfig;
   reducedMotion?: boolean;
+  renderDistance?: RenderDistancePreset;
 };
 
 type ArcaneControl =
@@ -111,8 +115,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const isMap014 = options.mapId === "map-014-magma-trench-bastion";
   const isMap015 = options.mapId === "map-015-heart-of-the-crucible";
   const sceneTreatment = getMapSceneTreatment(options.mapId);
-  const worldMetersPerUnit = 10;
-  const worldRadius = Math.max(100, Math.round((mapDefinition?.radiusMeters ?? 1200) / worldMetersPerUnit));
+  const visualProfile = getBiomeVisualProfile(options.mapId);
+  const renderDistance = getRenderDistanceConfig(options.renderDistance);
+  const worldMetersPerUnit = 1;
+  const worldRadius = Math.max(500, Math.round(mapDefinition?.radiusMeters ?? 500));
   const camera = new ArcRotateCamera("arcane-isometric-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
   camera.lowerRadiusLimit = 22;
   camera.upperRadiusLimit = 32;
@@ -169,30 +175,39 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   // compilation failures on constrained WebGL/mobile GPUs; emissive materials
   // still retain their readable base colors.
 
-  const terrainTiles = Math.min(96, Math.max(48, Math.floor(worldRadius * 0.8)));
-  const ground = createPixelTerrainChunks(scene, terrainTiles, terrainTiles, 2);
+  const terrainTiles = 128;
+  const ground = createPixelTerrainChunks(scene, terrainTiles, terrainTiles, 1, 16, visualProfile.terrainAssetIds, renderDistance);
   ground.position.y = -0.02;
-  ground.metadata = { ...ground.metadata, mapId: options.mapId, biome: mapDefinition?.biome ?? "Obsidian frontier", accent: mapAccent };
+  ground.metadata = { ...ground.metadata, mapId: options.mapId, biome: mapDefinition?.biome ?? "Obsidian frontier", accent: mapAccent, terrainFamily: visualProfile.terrainAssetIds };
+  const biomeDressing = createBiomeDressing(scene, visualProfile.decorations);
+  biomeDressing.metadata = { ...biomeDressing.metadata, mapId: options.mapId, biome: mapDefinition?.biome ?? "Obsidian frontier" };
+  const biomeResourceMeshes = biomeDressing.getChildMeshes().filter(mesh => mesh.metadata?.category === "resource");
   const terrainChunks = ground.getChildMeshes().filter(mesh => mesh.metadata?.chunk) as Array<AbstractMesh & { metadata: { chunk: { x: number; z: number } } }>;
   let lastTerrainVisibilityUpdate = -Infinity;
   const updateTerrainVisibility = (position: Vector3, now: number) => {
     if (now - lastTerrainVisibilityUpdate < 180) return;
     lastTerrainVisibilityUpdate = now;
-    const visible = getVisibleChunkKeys({ positionX: position.x, positionZ: position.z, terrainTiles, tileSize: 2, chunkSize: 16, radiusChunks: 3 });
-    terrainChunks.forEach(chunk => chunk.setEnabled(visible.has(chunkKey(chunk.metadata.chunk.x, chunk.metadata.chunk.z))));
-    ground.metadata = { ...ground.metadata, visibleChunkCount: visible.size, totalChunkCount: terrainChunks.length };
+    const visible = getStreamingChunkKeys({ positionX: position.x, positionZ: position.z, chunkWorldSize: 16, visibleRadiusMeters: renderDistance.visibleRadiusMeters, mapRadiusMeters: worldRadius });
+    updatePixelTerrainStream(ground, { x: position.x, z: position.z }, worldRadius);
+    terrainChunks.forEach(chunk => {
+      const chunkInfo = chunk.metadata?.chunk as { x?: number; z?: number } | undefined;
+      chunk.setEnabled(Boolean(chunk.metadata?.inMap && chunkInfo && visible.has(chunkKey(chunkInfo.x ?? 0, chunkInfo.z ?? 0))));
+    });
+    ground.metadata = { ...ground.metadata, visibleChunkCount: visible.size, totalChunkCount: terrainChunks.length, streamRadiusMeters: renderDistance.visibleRadiusMeters, prefetchRadiusMeters: renderDistance.prefetchRadiusMeters, renderDistancePreset: renderDistance.preset };
   };
-  for (let i = 0; i < 12; i += 1) {
-    const angle = (Math.PI * 2 * i) / 12;
-    const distance = 18 + (i % 3) * 8;
-    const pylon = createVoxelModel(scene, "landmark", { name: `pixel-frontier-marker-${i}`, scale: 0.62 + (i % 3) * 0.08 });
-    pylon.position = new Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-    pylon.scaling.y *= 1.2 + (i % 2) * 0.2;
-    const rune = createVoxelModel(scene, "resource", { name: `pixel-frontier-rune-${i}`, scale: 0.24 });
-    rune.position = pylon.position.add(new Vector3(0, 1.2, 0));
+  if (!isMap001) {
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (Math.PI * 2 * i) / 12;
+      const distance = 18 + (i % 3) * 8;
+      const pylon = createVoxelModel(scene, "landmark", { name: `pixel-frontier-marker-${i}`, scale: 0.62 + (i % 3) * 0.08 });
+      pylon.position = new Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+      pylon.scaling.y *= 1.2 + (i % 2) * 0.2;
+      const rune = createVoxelModel(scene, "resource", { name: `pixel-frontier-rune-${i}`, scale: 0.24 });
+      rune.position = pylon.position.add(new Vector3(0, 1.2, 0));
+    }
   }
 
-  if (sceneTreatment) {
+  if (sceneTreatment && !isMap001) {
     const landmark = createVoxelModel(scene, "landmark", { name: `${mapDefinition?.id ?? "frontier"}-landmark-voxel`, scale: 1.5 });
     landmark.position = new Vector3(-9, 0, -23);
     landmark.metadata = { sceneIdentity: true, kind: sceneTreatment.landmarkKind, label: sceneTreatment.landmarkLabel, assetPack: "arcane-frontier-voxel-pixel" };
@@ -218,13 +233,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     enemies.push(enemy);
   }
 
-  const resources = Array.from({ length: 10 }, (_, index) => {
+  const resources: AbstractMesh[] = [...biomeResourceMeshes, ...Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
     const resource = createVoxelModel(scene, "resource", { name: `pixel-resource-${index}`, scale: 0.95 + (index % 3) * 0.12 });
     resource.position = new Vector3(Math.cos(angle) * (7 + (index % 4) * 2), 0, Math.sin(angle) * (7 + (index % 4) * 2));
     resource.metadata = { assetPack: "arcane-frontier-voxel-pixel", interaction: "harvest" };
     return resource;
-  });
+  })];
 
   const boss = await loadPackModel(scene, "boss", { name: `${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, scale: 1.3 });
   boss.position = new Vector3(0, 0, -18);

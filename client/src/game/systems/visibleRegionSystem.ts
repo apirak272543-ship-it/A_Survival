@@ -29,3 +29,34 @@ export function getVisibleChunkKeys(input: VisibleRegionInput) {
   }
   return visible;
 }
+
+
+export type StreamingRegionInput = {
+  positionX: number;
+  positionZ: number;
+  chunkWorldSize: number;
+  visibleRadiusMeters: number;
+  mapRadiusMeters: number;
+};
+
+export function getStreamingChunkKeys(input: StreamingRegionInput) {
+  const chunkWorldSize = Math.max(0.001, input.chunkWorldSize);
+  const centerX = Math.floor(input.positionX / chunkWorldSize);
+  const centerZ = Math.floor(input.positionZ / chunkWorldSize);
+  const radiusChunks = Math.max(0, Math.ceil(input.visibleRadiusMeters / chunkWorldSize));
+  const mapChunkRadius = Math.max(0, Math.ceil(input.mapRadiusMeters / chunkWorldSize));
+  const visible = new Set<string>();
+
+  for (let z = centerZ - radiusChunks; z <= centerZ + radiusChunks; z += 1) {
+    for (let x = centerX - radiusChunks; x <= centerX + radiusChunks; x += 1) {
+      if (x >= -mapChunkRadius && x <= mapChunkRadius && z >= -mapChunkRadius && z <= mapChunkRadius) {
+        visible.add(chunkKey(x, z));
+      }
+    }
+  }
+  return visible;
+}
+
+export function getStreamingChunkCoordinate(position: number, chunkWorldSize: number) {
+  return Math.floor(position / Math.max(0.001, chunkWorldSize));
+}

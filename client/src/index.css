@@ -732,3 +732,9 @@
 .tactical-footer{border-top:1px solid rgb(255 255 255 / .09);border-bottom:0;color:#9fb9ca;font-size:.55rem}.tactical-footer span{display:flex;align-items:center;gap:.3rem}.tactical-footer svg{color:#5ff4ed;flex:none}
 @keyframes tactical-pulse{50%{transform:translate(-50%,-50%) scale(1.55);opacity:.55}}
 @media (max-width:700px) and (orientation:landscape){.tactical-scrim{padding:.4rem max(.45rem,var(--safe-right)) .4rem max(.45rem,var(--safe-left))}.tactical-sheet{width:min(94vw,760px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - .5rem)}.tactical-header,.tactical-footer{padding:.4rem .55rem}.tactical-header h3{font-size:.78rem}.tactical-map-canvas{min-height:180px}.tactical-footer{font-size:.45rem}}
+
+/* User-adjustable mobile controls: scaling never changes their safe-area anchors. */
+.game-controls { opacity: var(--touch-opacity, .86); }
+.game-controls .touch-stick, .game-controls .action-cluster { transform: scale(var(--touch-scale, 1)); }
+.game-controls .touch-stick { transform-origin: bottom left; }
+.game-controls .action-cluster { transform-origin: bottom right; }

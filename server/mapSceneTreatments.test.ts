@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MAP_SCENE_TREATMENTS } from "../client/src/game/data/mapSceneTreatments";
 
-describe("MAP_002–MAP_010 scene identity", () => {
-  it("covers exactly the nine curated prototype maps after MAP_001", () => {
-    expect(Object.keys(MAP_SCENE_TREATMENTS)).toHaveLength(14);
-    expect(Object.keys(MAP_SCENE_TREATMENTS)).not.toContain("obsidian-frontier");
-    
+describe("Arcane Frontier scene identity", () => {
+  it("covers all curated prototype map treatments including Obsidian Frontier", () => {
+    expect(Object.keys(MAP_SCENE_TREATMENTS)).toHaveLength(15);
+    expect(Object.keys(MAP_SCENE_TREATMENTS)).toContain("obsidian-frontier");
   });
 
   it("keeps treatment values mobile-safe and gives every map a unique landmark/event identity", () => {

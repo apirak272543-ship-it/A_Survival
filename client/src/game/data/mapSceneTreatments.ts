@@ -14,6 +14,7 @@ export type MapSceneTreatment = {
 };
 
 export const MAP_SCENE_TREATMENTS: Record<string, MapSceneTreatment> = {
+  "obsidian-frontier": { fogColor: "#111b38", fogDensity: 0.07, skyColor: "#07101f", lightColor: "#7fd8ff", lightIntensity: 0.72, terrainColor: "#171323", landmarkKind: "ruin", landmarkLabel: "Distress pod and Obsidian Gate", ambientEvent: "AETHER WIND · crystal growth detected", hudPhrasing: "สนามอีเทอร์: เสถียร | ตรวจพบแร่เรืองแสงและสัญญาณผู้รอดชีวิต" },
   "map-002-ashen-obsidian-plains": { fogColor: "#5b231c", fogDensity: 0.08, skyColor: "#38140f", lightColor: "#ffa07a", lightIntensity: 0.6, terrainColor: "#3a2118", landmarkKind: "spire", landmarkLabel: "Obsidian heat spires", ambientEvent: "ASH STORM · visibility dropping", hudPhrasing: "อุณหภูมิพื้นผิว: วิกฤต | ตรวจพบฝุ่นละอองซิลิกา" },
   "map-003-bioluminescent-caverns": { fogColor: "#050010", fogDensity: 0.15, skyColor: "#0b001a", lightColor: "#00ffff", lightIntensity: 0.3, terrainColor: "#071426", landmarkKind: "fungal", landmarkLabel: "Mycelial vault", ambientEvent: "SPORE RELEASE · air filter active", hudPhrasing: "ความเข้มข้นของสปอร์: สูง | ระบบกรองอากาศทำงาน" },
   "map-004-crystalline-spires": { fogColor: "#e6e6fa", fogDensity: 0.03, skyColor: "#dbe9f2", lightColor: "#ffffff", lightIntensity: 1.2, terrainColor: "#273042", landmarkKind: "crystal", landmarkLabel: "Resonance spires", ambientEvent: "CRYSTAL RESONANCE · refractive wave", hudPhrasing: "ดัชนีการหักเหแสง: สูงสุด | ตรวจพบคลื่นความถี่เสียงสะท้อน" },

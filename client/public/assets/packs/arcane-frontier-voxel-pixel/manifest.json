@@ -3,7 +3,7 @@
   "id": "arcane-frontier-voxel-pixel",
   "namespace": "af",
   "displayName": "Arcane Frontier Voxel Pixel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "designSource": "google-gemini-brief",
   "artStatus": "starter-authored-from-gemini-brief",
   "logicalResolution": {
@@ -193,7 +193,91 @@
       "mime": "image/png",
       "fallback": "terrain.obsidian",
       "sha256": "533f2f27a65e276490ec8ac4c39dfbd9ccda6fd17d066803aab4749bb4f4597c"
+    },
+    "art.obsidian.frontier-key-art": {
+      "kind": "texture",
+      "path": "art/obsidian-frontier-key-art.jpg",
+      "mime": "image/jpeg",
+      "fallback": "terrain.obsidian",
+      "sha256": "150d9c155c3639398324bd1f08f7d11482dcca6babdcab45864fb9667c913d44"
+    },
+    "art.obsidian.survivor": {
+      "kind": "texture",
+      "path": "art/obsidian-survivor.png",
+      "mime": "image/png",
+      "fallback": "entities.survivor",
+      "sha256": "9026adb42ab76d200a9b56144bb00b32ad060c8901b16dd7f0fe47c5fac2a06d"
+    },
+    "art.obsidian.companion": {
+      "kind": "texture",
+      "path": "art/obsidian-companion.png",
+      "mime": "image/png",
+      "fallback": "entities.companion",
+      "sha256": "b93b162ed783cd8e223b66bf422e619a94e87cae1c2094532fede8e0fbe4a03e"
+    },
+    "art.obsidian.enemy": {
+      "kind": "texture",
+      "path": "art/obsidian-enemy.png",
+      "mime": "image/png",
+      "fallback": "entities.enemy",
+      "sha256": "c871b9af3b22ffeb46702c81d7e118bd7840d747d6f49d2944a2af5bc05be818"
+    },
+    "art.obsidian.crystal-fern": {
+      "kind": "texture",
+      "path": "art/obsidian-crystal-fern.png",
+      "mime": "image/png",
+      "fallback": "terrain.crystal",
+      "sha256": "038651c3ccde09ed8737de7e32a7c22df3fd4216864e7d8e77f23257df8dde5c"
+    },
+    "art.obsidian.spore-shrub": {
+      "kind": "texture",
+      "path": "art/obsidian-spore-shrub.png",
+      "mime": "image/png",
+      "fallback": "terrain.moss",
+      "sha256": "6ac58582ddb1f7715e07446c438b9af8de35ccfd65cdae23d4f233891ef8a4ba"
+    },
+    "art.obsidian.glow-vine": {
+      "kind": "texture",
+      "path": "art/obsidian-glow-vine.png",
+      "mime": "image/png",
+      "fallback": "terrain.crystal",
+      "sha256": "0089c5e83142a3aac074753030ae940233ec4f83f4376c928d8738aec1514424"
+    },
+    "art.obsidian.aether-ore": {
+      "kind": "texture",
+      "path": "art/obsidian-aether-ore.png",
+      "mime": "image/png",
+      "fallback": "terrain.crystal",
+      "sha256": "10b2d6c0e74f19ac64160d2b285a5b527a21c30868a9f181f0fec05048eb7822"
+    },
+    "art.obsidian.shard-cluster": {
+      "kind": "texture",
+      "path": "art/obsidian-shard-cluster.png",
+      "mime": "image/png",
+      "fallback": "terrain.crystal",
+      "sha256": "745d17ed8a627ec96cb9006d6db41d28c7cfeee9af6549c86c68aa8a41ea973a"
+    },
+    "art.obsidian.lumen-bulb": {
+      "kind": "texture",
+      "path": "art/obsidian-lumen-bulb.png",
+      "mime": "image/png",
+      "fallback": "terrain.moss",
+      "sha256": "1072e12e1279d900be0c575e554294f1ae58fa455c32483a1da972462056b2ba"
+    },
+    "art.obsidian.portal-ruin": {
+      "kind": "texture",
+      "path": "art/obsidian-portal-ruin.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "d0596be0b0dc3721f5d6c9f0a9c1a1a05756d1b2d4ffe18b146394e1a167ce33"
+    },
+    "art.obsidian.ancient-monolith": {
+      "kind": "texture",
+      "path": "art/obsidian-ancient-monolith.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "1215621744b5e7d364b8cfa2fcd9fa90b7655a3a2990dd8116f2a5fa1a1d5567"
     }
   },
-  "packSha256": "767bed6c0c0b1c2c5b42af54f00d166ecae1a1282a266a1875f79a6308bbcc8d"
+  "packSha256": "47a8cf71c3441386045269859bf4a8c9401cfad7f1c730fb6af7091cab545a73"
 }

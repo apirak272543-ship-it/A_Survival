@@ -184,14 +184,14 @@ export const ITEM_CATALOG = Object.fromEntries(
 export const ALL_ITEMS = Object.values(ITEM_CATALOG).flat();
 
 export const MAP_CATALOG = [
-  { id: "obsidian-frontier", name: "Obsidian Frontier", biome: "Ruined alien volcanic frontier", radiusMeters: 1200, threat: 2, accent: "#00f3ff", status: "playable" },
-  { id: "ashen-hellscape", name: "Ashen Hellscape", biome: "Infernal world", radiusMeters: 1350, threat: 5, accent: "#ff4d6d", status: "catalog" },
-  { id: "mars-expanse", name: "Mars Expanse", biome: "Martian badlands", radiusMeters: 1500, threat: 4, accent: "#e76f51", status: "catalog" },
-  { id: "saharan-glass", name: "Saharan Glass", biome: "Crystal desert", radiusMeters: 1300, threat: 3, accent: "#f4a261", status: "catalog" },
-  { id: "congo-verdant", name: "Congo Verdant", biome: "Xenobotanical jungle", radiusMeters: 1450, threat: 4, accent: "#90be6d", status: "catalog" },
-  { id: "stonecrest-range", name: "Stonecrest Range", biome: "Rocky mountain", radiusMeters: 1250, threat: 3, accent: "#a8dadc", status: "catalog" },
-  { id: "wildpine-highlands", name: "Wildpine Highlands", biome: "Forest mountain", radiusMeters: 1400, threat: 4, accent: "#588157", status: "catalog" },
-  { id: "astral-drift", name: "Astral Drift", biome: "Fractured space frontier", radiusMeters: 1000, threat: 5, accent: "#9d4edd", status: "catalog" },
+  { id: "obsidian-frontier", name: "Obsidian Frontier", biome: "Ruined alien volcanic frontier", radiusMeters: 500, threat: 2, accent: "#00f3ff", status: "playable" },
+  { id: "ashen-hellscape", name: "Ashen Hellscape", biome: "Infernal world", radiusMeters: 500, threat: 5, accent: "#ff4d6d", status: "catalog" },
+  { id: "mars-expanse", name: "Mars Expanse", biome: "Martian badlands", radiusMeters: 500, threat: 4, accent: "#e76f51", status: "catalog" },
+  { id: "saharan-glass", name: "Saharan Glass", biome: "Crystal desert", radiusMeters: 500, threat: 3, accent: "#f4a261", status: "catalog" },
+  { id: "congo-verdant", name: "Congo Verdant", biome: "Xenobotanical jungle", radiusMeters: 500, threat: 4, accent: "#90be6d", status: "catalog" },
+  { id: "stonecrest-range", name: "Stonecrest Range", biome: "Rocky mountain", radiusMeters: 500, threat: 3, accent: "#a8dadc", status: "catalog" },
+  { id: "wildpine-highlands", name: "Wildpine Highlands", biome: "Forest mountain", radiusMeters: 500, threat: 4, accent: "#588157", status: "catalog" },
+  { id: "astral-drift", name: "Astral Drift", biome: "Fractured space frontier", radiusMeters: 500, threat: 5, accent: "#9d4edd", status: "catalog" },
 ] as const;
 
 export function getItemDefinition(definitionId: string) {
