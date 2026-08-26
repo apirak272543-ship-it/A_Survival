@@ -18,7 +18,7 @@ The visual target will be a 16:9 landscape scene of **Obsidian Frontier**, showi
 | Pet companion portrait | Lobby/Pet HUD art | Generated square asset | Planned |
 | Weapon glyphs | HUD and inventory categories | Procedural/CSS icon treatment for MVP | Planned |
 
-All final generated visual assets will be held outside the project source tree and referenced through managed storage URLs.
+The managed-storage/JPEG records below are historical presentation assets and are not the gameplay pack source of truth. Current gameplay visuals use the local, hash-verified `arcane-frontier-voxel-pixel` pack described in the section below. Future generated or artist-authored files may be added to that pack without changing gameplay code; each visible asset must be registered by logical asset ID and manifest entry.
 
 ## Generated asset record — MAP_001
 
@@ -84,3 +84,18 @@ The resource art needs an alpha/colour-key treatment before use directly over te
 | --- | --- |
 | Arcane Cyber Fox companion | `/manus-storage/arcane-cyber-fox_d0832d7b.jpg` |
 | Arcane Cyber Fox HUD icon | `/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg` |
+
+## Current modular gameplay pack — Arcane Frontier v0.2.0
+
+The authoritative gameplay pack is `client/public/assets/packs/arcane-frontier-voxel-pixel/`. Its `manifest.json` uses namespace `af`, nearest sampling, a 480×270 logical design surface, per-entry SHA-256 values and a deterministic `packSha256`. The pack currently contains separate PNG entity, terrain and item/icon files, five articulated starter GLB models, terrain/item/entity atlases, and declarative atlas/animation metadata. The runtime resolves logical IDs such as `models.survivor`, `entities.enemy`, `items.seed`, `terrain.obsidian`, `data.atlas` and `data.animations`; gameplay logic does not need to change when a registered file is replaced.
+
+| Pack domain | Current path | Runtime contract | Status |
+| --- | --- | --- | --- |
+| Entity textures | `textures/entities/*.png` | `entities.*` | Starter-authored from Gemini brief; nearest 32×32 PNG |
+| Terrain textures | `textures/terrain/*.png` | `terrain.*` | Starter-authored from Gemini brief; nearest 16×16 PNG |
+| Item icons | `icons/*.png` | `items.*` | Starter-authored from Gemini brief; displayed by hotbar asset IDs |
+| Articulated models | `models/*.glb` | `models.*` | Separate GLB files with embedded PNG; fallback-first loading |
+| Atlas metadata | `metadata/atlas.json` | `data.atlas` | Declarative logical-to-UV mapping for future batched materials |
+| Animation states | `metadata/animations.json` | `data.animations` | Declarative idle/walk/run/dash/attack/hurt/dead timing; GLB clips remain future work |
+
+The image-generation API was quota-blocked during the latest asset attempt, so the current files are explicitly **starter-authored from a Google/Gemini visual brief**, not falsely labelled as Gemini-generated images. When Gemini image generation or an artist pipeline becomes available, replacement files should preserve asset IDs, update the manifest hash, and pass the same visual, size, transparency and browser-loading checks.

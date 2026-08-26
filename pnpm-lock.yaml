@@ -25,6 +25,9 @@ importers:
       '@babylonjs/core':
         specifier: ^9.22.1
         version: 9.22.1
+      '@babylonjs/loaders':
+        specifier: ^9.22.2
+        version: 9.22.2(@babylonjs/core@9.22.1)(babylonjs-gltf2interface@9.22.2)
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.64.0(react@19.2.1))
@@ -545,6 +548,12 @@ packages:
 
   '@babylonjs/core@9.22.1':
     resolution: {integrity: sha512-Aa27Ngp3nGSAei4MKBOMpvy/qoXp+Pb0Ds4+peLCXTAO3NKkKL2jZj74zaD2EONefX41yttzMYdrInpKvZm/oQ==}
+
+  '@babylonjs/loaders@9.22.2':
+    resolution: {integrity: sha512-OhT6o+xhjT58FUAcOC5SuIpbFCkV6urV8JPRDlE5SgKIzZlc+T5JPLrdzJaoC4ZosgJFcHWFVQKomaByWLua6w==}
+    peerDependencies:
+      '@babylonjs/core': ^9.0.0
+      babylonjs-gltf2interface: ^9.0.0
 
   '@braintree/sanitize-url@7.1.1':
     resolution: {integrity: sha512-i1L7noDNxtFyL5DmZafWy1wRVhGehQmzZaz1HiN5e7iylJMSZR7ekOV7NsIqa5qBldlLrsKv4HbgFUVlQrz8Mw==}
@@ -2416,6 +2425,9 @@ packages:
 
   axios@1.12.2:
     resolution: {integrity: sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==}
+
+  babylonjs-gltf2interface@9.22.2:
+    resolution: {integrity: sha512-+91oRaxjzWja+//E0uestbku8OIWcrd3vfMFsINjZ7/MroAPrKIHW8/J95mOCSJhS8Vyr/T7otRE03AxEdopHA==}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -4947,6 +4959,11 @@ snapshots:
 
   '@babylonjs/core@9.22.1': {}
 
+  '@babylonjs/loaders@9.22.2(@babylonjs/core@9.22.1)(babylonjs-gltf2interface@9.22.2)':
+    dependencies:
+      '@babylonjs/core': 9.22.1
+      babylonjs-gltf2interface: 9.22.2
+
   '@braintree/sanitize-url@7.1.1': {}
 
   '@builder.io/jsx-loc-internals@0.0.1':
@@ -6785,6 +6802,8 @@ snapshots:
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
+
+  babylonjs-gltf2interface@9.22.2: {}
 
   bail@2.0.2: {}
 

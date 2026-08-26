@@ -3,12 +3,17 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import type { AssetPackManifest } from "@/game/assets/assetPackLoader";
+import { resolveAssetUrl } from "@/game/assets/assetPackLoader";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 
 export const PIXEL_PACK_MANIFEST = {
   id: "arcane-frontier-voxel-pixel",
-  version: "0.1.0",
+  basePath: "/assets/packs/arcane-frontier-voxel-pixel",
+  version: "0.2.0",
   designSource: "google-gemini",
   logicalResolution: { width: 640, height: 360 },
   tileSize: 16,
@@ -173,12 +178,40 @@ function resolveModelColor(model: VoxelModel, cell: Cell): PaletteKey {
   return cell.color;
 }
 
-function createPixelMaterial(scene: Scene, name: string) {
+const PIXEL_TEXTURE_ASSET_IDS: Partial<Record<PixelModelId, string>> = {
+  survivor: "entities.survivor",
+  companion: "entities.companion",
+  enemy: "entities.enemy",
+  elite: "entities.elite",
+  boss: "entities.boss",
+  resource: "entities.resource",
+  landmark: "terrain.crystal",
+};
+
+let activeAssetPackManifest: AssetPackManifest | null = null;
+
+export function setActiveAssetPackManifest(manifest: AssetPackManifest | null) {
+  activeAssetPackManifest = manifest;
+}
+
+function resolveTextureAssetUrl(assetId: string, fallbackPath: string) {
+  return activeAssetPackManifest ? resolveAssetUrl(activeAssetPackManifest, assetId) ?? fallbackPath : fallbackPath;
+}
+
+function createPixelMaterial(scene: Scene, name: string, textureAssetId?: string) {
   const material = new StandardMaterial(name, scene);
   material.diffuseColor = Color3.White();
   material.emissiveColor = new Color3(0.18, 0.18, 0.18);
   material.specularColor = Color3.Black();
   material.backFaceCulling = false;
+  if (textureAssetId) {
+    const fallbackPath = `${PIXEL_PACK_MANIFEST.basePath}/${textureAssetId.replace(/\./g, "/")}.png`;
+    const texture = new Texture(resolveTextureAssetUrl(textureAssetId, fallbackPath), scene, true, false, Texture.NEAREST_SAMPLINGMODE);
+    texture.wrapU = Texture.CLAMP_ADDRESSMODE;
+    texture.wrapV = Texture.CLAMP_ADDRESSMODE;
+    material.diffuseTexture = texture;
+    material.useAlphaFromDiffuseTexture = true;
+  }
   return material;
 }
 
@@ -199,6 +232,7 @@ export function createVoxelModel(scene: Scene, modelId: string, options: SceneVo
   const positions: number[] = [];
   const normals: number[] = [];
   const colors: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
   const addFace = (cell: Cell, face: (typeof FACE_DEFINITIONS)[number]) => {
     const centerX = (cell.x - (model.width - 1) / 2) * size;
@@ -210,6 +244,7 @@ export function createVoxelModel(scene: Scene, modelId: string, options: SceneVo
       positions.push(centerX + corner[0] * size * 0.5, centerY + corner[1] * size * 0.5, centerZ + corner[2] * size * 0.5);
       normals.push(face.normal[0], face.normal[1], face.normal[2]);
       colors.push(color.r, color.g, color.b, 1);
+      uvs.push(0, 1, 1, 1, 1, 0, 0, 0);
     });
     indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
   };
@@ -227,9 +262,11 @@ export function createVoxelModel(scene: Scene, modelId: string, options: SceneVo
   vertexData.positions = positions;
   vertexData.normals = normals;
   vertexData.colors = colors;
+  vertexData.uvs = uvs;
   vertexData.indices = indices;
   vertexData.applyToMesh(mesh, true);
-  mesh.material = options.material ?? createPixelMaterial(scene, `${model.id}-pixel-material`);
+  const textureAssetId = PIXEL_TEXTURE_ASSET_IDS[model.id as PixelModelId];
+  mesh.material = options.material ?? createPixelMaterial(scene, `${model.id}-pixel-material`, textureAssetId);
   mesh.position.set(options.position?.x ?? 0, options.position?.y ?? 0, options.position?.z ?? 0);
   mesh.scaling.setAll(options.scale ?? 1);
   mesh.metadata = { assetPack: PIXEL_PACK_MANIFEST.id, assetId: PIXEL_PACK_MANIFEST.assets[modelId as keyof typeof PIXEL_PACK_MANIFEST.assets] ?? `voxel/${model.id}-v1`, modelId };
@@ -266,9 +303,64 @@ export function createPixelTerrain(scene: Scene, width: number, depth: number, t
   vertexData.colors = colors;
   vertexData.indices = indices;
   vertexData.applyToMesh(mesh, true);
-  mesh.material = createPixelMaterial(scene, "pixel-terrain-material");
+  mesh.material = createPixelMaterial(scene, "pixel-terrain-material", "terrain.obsidian");
   mesh.metadata = { assetPack: PIXEL_PACK_MANIFEST.id, assetId: PIXEL_PACK_MANIFEST.assets.terrain };
   return mesh;
+}
+
+export const PIXEL_CHUNK_SIZE = 16;
+
+export function createPixelTerrainChunks(scene: Scene, width: number, depth: number, tileSize = 2, chunkSize = PIXEL_CHUNK_SIZE) {
+  const root = new TransformNode("pixel-terrain-root", scene);
+  const terrainColors = [paletteColor.void, paletteColor.ink, paletteColor.indigo, paletteColor.obsidian, paletteColor.ash];
+  const halfWidth = width / 2;
+  const halfDepth = depth / 2;
+  const columns = Math.ceil(width / chunkSize);
+  const rows = Math.ceil(depth / chunkSize);
+  let chunkCount = 0;
+
+  for (let chunkZ = 0; chunkZ < rows; chunkZ += 1) {
+    for (let chunkX = 0; chunkX < columns; chunkX += 1) {
+      const mesh = new Mesh(`pixel-terrain-chunk-${chunkX}-${chunkZ}`, scene);
+      const positions: number[] = [];
+      const normals: number[] = [];
+      const colors: number[] = [];
+      const indices: number[] = [];
+      let vertex = 0;
+      const startX = chunkX * chunkSize;
+      const startZ = chunkZ * chunkSize;
+      const endX = Math.min(width, startX + chunkSize);
+      const endZ = Math.min(depth, startZ + chunkSize);
+
+      for (let z = startZ; z < endZ; z += 1) {
+        for (let x = startX; x < endX; x += 1) {
+          const left = x * tileSize - halfWidth * tileSize;
+          const right = left + tileSize;
+          const top = z * tileSize - halfDepth * tileSize;
+          const bottom = top + tileSize;
+          const tile = terrainColors[(x * 17 + z * 31 + ((x ^ z) % 3)) % terrainColors.length]!;
+          positions.push(left, 0, top, right, 0, top, right, 0, bottom, left, 0, bottom);
+          for (let index = 0; index < 4; index += 1) normals.push(0, 1, 0);
+          for (let index = 0; index < 4; index += 1) colors.push(tile.r, tile.g, tile.b, 1);
+          indices.push(vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3);
+          vertex += 4;
+        }
+      }
+
+      const vertexData = new VertexData();
+      vertexData.positions = positions;
+      vertexData.normals = normals;
+      vertexData.colors = colors;
+      vertexData.indices = indices;
+      vertexData.applyToMesh(mesh, true);
+      mesh.material = createPixelMaterial(scene, "pixel-terrain-material", "terrain.obsidian");
+      mesh.metadata = { assetPack: PIXEL_PACK_MANIFEST.id, assetId: "terrain.obsidian", chunk: { x: chunkX, z: chunkZ, size: chunkSize } };
+      mesh.parent = root;
+      chunkCount += 1;
+    }
+  }
+  root.metadata = { assetPack: PIXEL_PACK_MANIFEST.id, assetId: "terrain.obsidian", chunkSize, chunkCount, width, depth };
+  return root;
 }
 
 export function getPixelPaletteColor(key: PaletteKey) {

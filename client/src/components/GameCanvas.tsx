@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig } from "@/game/scene";
+import { prepareAssetPack } from "@/game/assets/assetPackLoader";
+import { setActiveAssetPackManifest } from "@/game/assets/pixelPack";
 
 type GameCanvasProps = {
   mapId: string;
@@ -28,14 +30,22 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
     let handle: GameHandle | null = null;
     let cancelled = false;
 
-    createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion }).then(game => {
+    const startGame = async () => {
+      const pack = await prepareAssetPack();
+      setActiveAssetPackManifest(pack.manifest);
+      if (pack.failedAssetIds.length > 0) {
+        console.warn("Asset pack used fallback entries", pack.failedAssetIds);
+      }
+      if (cancelled) return;
+      const game = await createGameScene(engine, canvas, { mapId, onSnapshot, onReward, companion, reducedMotion });
       if (cancelled) {
         game.dispose();
         return;
       }
       handle = game;
       engine.runRenderLoop(() => game.scene.render());
-    });
+    };
+    void startGame().catch(error => console.error("[GameCanvas] scene startup failed", error));
 
     const onResize = () => resizeEngine();
     window.addEventListener("resize", onResize);
@@ -43,6 +53,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       cancelled = true;
       window.removeEventListener("resize", onResize);
       handle?.dispose();
+      setActiveAssetPackManifest(null);
       engine.dispose();
       startedRef.current = false;
     };

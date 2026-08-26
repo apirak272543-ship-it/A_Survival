@@ -65,3 +65,11 @@ catalog ข้อมูลต้องรองรับสูงสุด 400 �
 Lobby แสดงเวอร์ชันเริ่มต้น `100.1.1.1` แบบไม่เด่น กติกาเป็น `major.maps-systems.patch.events`: ชุดแรกสำหรับอัปเดตใหญ่ ชุดที่สองสำหรับแผนที่หรือระบบเกม ชุดที่สามสำหรับ patch/balance/fix และชุดที่สี่สำหรับ event Weekly event แสดงใน Lobby พร้อมเวลา เป้าหมาย และรางวัล
 
 เมื่อแผนที่หนึ่งเสร็จตามเกณฑ์ ต้อง commit และ push ไปยัง repository `apirak272543-ship-it/A_Survival` พร้อมข้อความ commit ระบุชื่อแผนที่ ต้องทดสอบ relationship/invariant ระหว่าง Player ID/profile/inventory/provenance, soil/seed/harvest, pet/equipment, transition/cache และ offline sync ก่อนเผยแพร่
+
+## Historical mobile voxel reference boundary (2026-08-26)
+
+The repository may use clean historical mobile voxel APKs and official public documentation as engineering case studies only. Static analysis can inform separation of app shell, platform adapter, game runtime, resource pack, atlas/metadata, HUD bindings, offline content and render budgets. It must never import, reproduce or adapt source code, package identifiers, branding, exact UI artwork, textures, models, UUIDs or proprietary algorithms from another game.
+
+All A_Survival visible content remains Gemini-first for art direction and UX. The current local pack is marked `starter-authored-from-gemini-brief` because the image-generation endpoint was quota-blocked during the latest attempt; it must not be described as Gemini-generated imagery. Replacements from Gemini or an artist must keep logical asset IDs and manifest contracts stable, pass hash/cache validation, and remain replaceable without gameplay-core edits.
+
+The current architecture blueprint is documented in `docs/MINECRAFT_PE_CASE_STUDY.md`, `docs/MINECRAFT_PE_RESEARCH_SOURCES.md` and `docs/A_SURVIVAL_ARCHITECTURE_BLUEPRINT.mmd`. These files contain no APK binaries.

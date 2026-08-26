@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
+import { isSafeUseItemPayload } from "./syncActionValidation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -227,7 +228,9 @@ export async function writeGameSyncBatch(input: {
         duplicateTxIds.push(transaction.txId);
         continue;
       }
-      if (transaction.actorId !== profile.deviceToken || !["place-structure", "move-structure", "rotate-structure", "recall-structure", "plant-seed", "harvest-crop", "equip-pet-item", "unequip-pet-item"].includes(transaction.actionType)) {
+      const supportedAction = ["place-structure", "move-structure", "rotate-structure", "recall-structure", "plant-seed", "harvest-crop", "equip-pet-item", "unequip-pet-item"].includes(transaction.actionType)
+        || (transaction.actionType === "use-item" && isSafeUseItemPayload(transaction.payload));
+      if (transaction.actorId !== profile.deviceToken || !supportedAction) {
         rejectedTxIds.push(transaction.txId);
         continue;
       }

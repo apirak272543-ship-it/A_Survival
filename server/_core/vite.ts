@@ -20,6 +20,11 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // Vite's custom middleware is paired with an Express SPA fallback in this
+  // server. Serve the asset-pack directory explicitly first so binary GLB
+  // files cannot be mistaken for navigation requests and rewritten to HTML.
+  const clientPublicPath = path.resolve(import.meta.dirname, "../..", "client", "public");
+  app.use(express.static(clientPublicPath, { index: false }));
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;

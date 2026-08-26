@@ -2,6 +2,7 @@ import { createStarterInstance, validateItemInstances, type ItemInstance } from 
 import { loadOfflineProfile, queueSessionPendingActions, saveOfflineProfile, type OfflineProfileRecord } from "./indexedDb";
 import type { HomeAction, HomeState } from "@/game/home/homeSystemV2";
 import type { VaultEquipment } from "@/game/integrity/vaultActions";
+import { DEFAULT_HOTBAR_BINDINGS, type HotbarBindings } from "@/game/systems/itemActionSystem";
 
 const SESSION_KEY = "arcane-frontier.session.v1";
 const SETTINGS_KEY = "arcane-frontier.settings.v1";
@@ -24,6 +25,7 @@ export type LocalGameSession = {
   currency: number;
   inventory: ItemInstance[];
   vaultEquipment: VaultEquipment;
+  hotbarBindings: HotbarBindings;
   home: HomeState;
   pendingActions: HomeAction[];
 };
@@ -63,6 +65,7 @@ export function createSession(playerId: string): LocalGameSession {
     currency: 240,
     inventory,
     vaultEquipment: {},
+    hotbarBindings: { 0: "sword-001", 1: "seed-001", 2: "structure-001", 3: "material-001" },
     home: {
       structures: [],
       plots: [
@@ -77,13 +80,50 @@ export function createSession(playerId: string): LocalGameSession {
   };
 }
 
+function defaultHome(): HomeState {
+  return {
+    structures: [],
+    plots: [
+      { id: "plot-1", soilId: "terra-loam" },
+      { id: "plot-2", soilId: "verdant-humus" },
+    ],
+    petName: "NOVA-7",
+    petFollowing: true,
+    petEquipment: {},
+  };
+}
+
+export function normalizeSession(candidate: Partial<LocalGameSession>): LocalGameSession | null {
+  if (typeof candidate.playerId !== "string" || !candidate.playerId || typeof candidate.deviceToken !== "string" || !candidate.deviceToken) return null;
+  if (!Array.isArray(candidate.inventory) || !validateItemInstances(candidate.inventory).valid) return null;
+  const fallbackHome = defaultHome();
+  const home = candidate.home ?? fallbackHome;
+  return {
+    playerId: candidate.playerId,
+    deviceToken: candidate.deviceToken,
+    createdAt: typeof candidate.createdAt === "number" ? candidate.createdAt : Date.now(),
+    lastMapId: candidate.lastMapId ?? "obsidian-frontier",
+    health: typeof candidate.health === "number" ? candidate.health : 100,
+    currency: typeof candidate.currency === "number" ? candidate.currency : 0,
+    inventory: candidate.inventory,
+    vaultEquipment: candidate.vaultEquipment ?? {},
+    hotbarBindings: { ...DEFAULT_HOTBAR_BINDINGS, ...(candidate.hotbarBindings ?? {}) },
+    home: {
+      ...fallbackHome,
+      ...home,
+      structures: home.structures ?? fallbackHome.structures,
+      plots: home.plots ?? fallbackHome.plots,
+      petEquipment: home.petEquipment ?? {},
+    },
+    pendingActions: candidate.pendingActions ?? [],
+  };
+}
+
 export function loadSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const session = JSON.parse(raw) as LocalGameSession;
-    if (!session.playerId || !session.deviceToken || !validateItemInstances(session.inventory).valid) return null;
-    return session;
+    return normalizeSession(JSON.parse(raw) as Partial<LocalGameSession>);
   } catch {
     return null;
   }
@@ -99,7 +139,8 @@ export function saveSession(session: LocalGameSession) {
 export async function hydrateSession() {
   try {
     const indexed = await loadOfflineProfile();
-    if (indexed && validateItemInstances(indexed.inventory).valid) return indexed as OfflineProfileRecord;
+    const normalized = indexed ? normalizeSession(indexed) : null;
+    if (indexed && normalized) return { ...indexed, ...normalized } as OfflineProfileRecord;
   } catch {
     // Browser privacy mode can disable IndexedDB; recover through the legacy local save.
   }

@@ -1,0 +1,95 @@
+flowchart TB
+  subgraph SHELL[Browser / Mobile App Shell]
+    APP[React App Router]
+    VP[VisualViewport + Safe-area Adapter]
+    PWA[PWA Service Worker + Cache Storage]
+    ID[Player ID + Local Profile]
+    GATE[Loading / Offline / Error Gates]
+    INPUT[Input Router<br/>Touch · Keyboard · Controller]
+  end
+
+  subgraph PACK[Replaceable Arcane Asset Packs]
+    MAN[manifest.json<br/>namespace · version · packSha256]
+    RES[Resolver<br/>assetId → path → fallback]
+    CACHE[Pack Cache + Hash Validation]
+    TEX[Textures<br/>terrain · entity · item · UI]
+    ATLAS[Atlas Metadata<br/>UV · variants · mip · frames]
+    MODEL[Models<br/>GLB · articulated nodes]
+    ANIM[Animation Data<br/>idle · walk · run · dash · attack]
+    FX[Effects + Audio<br/>particles · SFX · ambience]
+    MAPPACK[Map Modules<br/>biome · landmark · encounter]
+  end
+
+  subgraph RUNTIME[Framework-agnostic Game Runtime]
+    SESSION[Session Clock + Deterministic Seed]
+    WORLD[WorldModule]
+    GEN[GenerationRecipe]
+    CHUNK[Chunk / Region Store]
+    VISIBLE[Visible Region + Culling]
+    RENDER[Babylon Renderer]
+    VISUAL[Entity Visual Adapter]
+    PLAYER[Player Movement + Stamina]
+    COMBAT[Combat + Encounters]
+    ITEM[Inventory + Item Action]
+    MAPSTATE[Map State<br/>fog · waypoints · harvested]
+    FEEDBACK[Event Bus<br/>SFX · FX · UI feedback]
+  end
+
+  subgraph DATA[Persistence and Networking Boundary]
+    DB[IndexedDB<br/>profile · inventory · map state]
+    QUEUE[Offline Sync Queue + Integrity]
+    TRANSPORT[Transport Interface]
+    LAN[Future LAN/WebRTC/Online Adapter]
+  end
+
+  APP --> VP
+  APP --> GATE
+  APP --> INPUT
+  APP --> ID
+  GATE --> PWA
+  ID --> DB
+  INPUT --> PLAYER
+  INPUT --> ITEM
+  INPUT --> MAPSTATE
+  PWA --> CACHE
+  MAN --> RES
+  RES --> CACHE
+  CACHE --> TEX
+  CACHE --> ATLAS
+  CACHE --> MODEL
+  CACHE --> ANIM
+  CACHE --> FX
+  CACHE --> MAPPAK
+  RES --> RENDER
+  RES --> VISUAL
+  SESSION --> WORLD
+  SESSION --> PLAYER
+  SESSION --> COMBAT
+  GEN --> WORLD
+  WORLD --> CHUNK
+  CHUNK --> VISIBLE
+  VISIBLE --> RENDER
+  PLAYER --> COMBAT
+  COMBAT --> ITEM
+  PLAYER --> VISUAL
+  VISUAL --> MODEL
+  VISUAL --> ANIM
+  RENDER --> FEEDBACK
+  COMBAT --> FEEDBACK
+  ITEM --> FEEDBACK
+  MAPPAK --> WORLD
+  MAPSTATE --> DB
+  WORLD --> MAPSTATE
+  DB --> QUEUE
+  QUEUE --> TRANSPORT
+  TRANSPORT -. future .-> LAN
+  FEEDBACK --> APP
+
+  classDef shell fill:#10223b,stroke:#5ff4ed,color:#e9ffff;
+  classDef pack fill:#24183f,stroke:#bd8cff,color:#fff;
+  classDef runtime fill:#1a2c28,stroke:#6dcc87,color:#effff4;
+  classDef data fill:#3a2520,stroke:#ffc857,color:#fff6dc;
+  class APP,VP,PWA,ID,GATE,INPUT shell;
+  class MAN,RES,CACHE,TEX,ATLAS,MODEL,ANIM,FX,MAPPAK pack;
+  class SESSION,WORLD,GEN,CHUNK,VISIBLE,RENDER,VISUAL,PLAYER,COMBAT,ITEM,MAPSTATE,FEEDBACK runtime;
+  class DB,QUEUE,TRANSPORT,LAN data;

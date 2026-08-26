@@ -62,3 +62,35 @@ Farming uses five readable soil groups—Terra Loam, Ashen Volcanic, Red Dune, V
 ## Data integrity boundary
 
 Player ID is an identifier, not a secret. The prototype binds the initial local device to a generated device token and stores local actions as a chained log. The server validates source type, amount, item instance ID, stack limit, enhancement cap and parent event when syncing. This creates auditability and detects basic fabricated records, but browser-side data cannot be treated as cheat-proof in a production game. A production release needs server-authoritative simulation or server-issued signed action tickets for valuable rewards.
+
+## Runtime blueprint learned from historical mobile voxel analysis
+
+The historical APK analysis is a design reference only. A_Survival keeps an independent browser architecture with no imported code, names, package identifiers or proprietary assets. The main boundary is:
+
+```text
+App Shell / PWA
+├── React route state, landscape/safe-area layout, error boundary, service worker
+├── Player ID and local-first session bootstrap
+└── GameCanvas
+    ├── Asset Pack Registry / Resolver
+    │   ├── manifest validation, namespace, version and dependency checks
+    │   ├── assetId → relative path resolution, SHA-256 and Cache Storage
+    │   └── fallback and future override-stack policy
+    ├── Babylon Game Runtime
+    │   ├── scene/camera/lights, input bridge and render loop
+    │   ├── player/pet/enemy/pickup entity roots
+    │   ├── stamina/combat/encounter state machines
+    │   └── feedback hooks for effects/audio without owning React layout
+    ├── World / Region Runtime
+    │   ├── deterministic map catalog and terrain chunk boundaries
+    │   ├── visible-region culling around the player
+    │   └── future worker-backed generation and streamed region persistence
+    └── Persistence / Transport Boundary
+        ├── IndexedDB world/map state and offline action queue
+        ├── tRPC sync with device-token and integrity checks
+        └── future LAN/online transport interface; no MMO authority claim yet
+```
+
+The App Shell owns DOM, route and safe-area concerns. The Pack Registry owns manifest metadata, cache and binary asset resolution. The Game Runtime owns Babylon objects and simulation ticks. World/Region owns chunk data and visible-region selection. Persistence owns IndexedDB and queued transactions. No layer may write another layer's storage or bypass the server integrity boundary. This preserves `LocalPlayerProfile`, `RoomSessionSnapshot` and `SharedWorldState` as separate concepts for the future local-first LAN contract.
+
+The first implementation of the blueprint is intentionally incremental: model files are separate GLB entries, item definitions carry `iconAssetId`, terrain is split into 16×16 chunk meshes, visible chunks are selected by a pure tested system, and the mobile HUD has an explicit `USE` action. Full worker streaming, authoritative multiplayer and runtime GLB animation clips remain planned rather than silently treated as complete.

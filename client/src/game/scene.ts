@@ -1,11 +1,10 @@
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import "@babylonjs/core/Legacy/legacy";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
-import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
@@ -29,7 +28,10 @@ import { MAP013_SULFUR_FALLS, MAP013_THERON_BOARDWALK, initialMap013Encounter, r
 import { MAP014_CITADEL_GATE, MAP014_WARDEN_POST, initialMap014Encounter, resolveMap014Encounter } from "@/game/map014/encounter";
 import { MAP015_PRIMAL_ANVIL, MAP015_FORGE_SHRINE, initialMap015Encounter, resolveMap015Encounter } from "@/game/map015/encounter";
 import { resolveCompanionRuntime, type CompanionRuntimeState } from "@/game/home/homeSystemV2";
-import { createPixelTerrain, createVoxelModel } from "@/game/assets/pixelPack";
+import { createPixelTerrainChunks, createVoxelModel } from "@/game/assets/pixelPack";
+import { loadPackModel } from "@/game/assets/glbPack";
+import { canSpendStamina, createStaminaState, regenerateStamina, spendStamina, staminaPercent, type StaminaState } from "@/game/systems/staminaSystem";
+import { chunkKey, getVisibleChunkKeys } from "@/game/systems/visibleRegionSystem";
 
 export type GameSnapshot = {
   health: number;
@@ -41,6 +43,8 @@ export type GameSnapshot = {
   companionState?: CompanionRuntimeState;
   movementState?: "idle" | "walk" | "run" | "dash";
   speed?: number;
+  stamina?: number;
+  exhausted?: boolean;
 };
 
 export type GameReward = {
@@ -74,7 +78,8 @@ type ArcaneControl =
   | { type: "move"; x: number; y: number }
   | { type: "attack" }
   | { type: "interact" }
-  | { type: "dash" };
+  | { type: "dash" }
+  | { type: "use-item"; slot: number };
 
 function material(scene: Scene, name: string, color: string, glow = 0) {
   const result = new StandardMaterial(name, scene);
@@ -117,6 +122,35 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   scene.activeCamera = camera;
   camera.attachControl(canvas, false);
   camera.inputs.clear();
+  let cameraPan = { x: 0, z: 0 };
+  let panning = false;
+  let lastPanPoint: { x: number; y: number } | null = null;
+  const onCameraWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    camera.radius = Math.max(8, Math.min(24, camera.radius + event.deltaY * 0.018));
+  };
+  const onCameraPointerDown = (event: PointerEvent) => {
+    if (event.button !== 1 && !event.shiftKey) return;
+    panning = true;
+    lastPanPoint = { x: event.clientX, y: event.clientY };
+    canvas.setPointerCapture?.(event.pointerId);
+  };
+  const onCameraPointerMove = (event: PointerEvent) => {
+    if (!panning || !lastPanPoint) return;
+    const dx = event.clientX - lastPanPoint.x;
+    const dy = event.clientY - lastPanPoint.y;
+    lastPanPoint = { x: event.clientX, y: event.clientY };
+    cameraPan = { x: Math.max(-8, Math.min(8, cameraPan.x - dx * 0.025)), z: Math.max(-8, Math.min(8, cameraPan.z + dy * 0.025)) };
+  };
+  const stopCameraPan = () => {
+    panning = false;
+    lastPanPoint = null;
+  };
+  canvas.addEventListener("wheel", onCameraWheel, { passive: false });
+  canvas.addEventListener("pointerdown", onCameraPointerDown);
+  canvas.addEventListener("pointermove", onCameraPointerMove);
+  canvas.addEventListener("pointerup", stopCameraPan);
+  canvas.addEventListener("pointercancel", stopCameraPan);
 
   const skyLight = new HemisphericLight("arcane-sky", new Vector3(0.3, 1, 0.2), scene);
   skyLight.intensity = sceneTreatment ? Math.min(0.9, sceneTreatment.lightIntensity + 0.15) : 0.88;
@@ -131,14 +165,23 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     skyLight.diffuse = Color3.FromHexString(sceneTreatment.lightColor);
     keyLight.diffuse = Color3.FromHexString(sceneTreatment.lightColor);
   }
-  const glow = new GlowLayer("arcane-glow", scene, { blurKernelSize: 32 });
-  glow.intensity = 0.82;
+  // Keep the pixel scene free of post-process dependencies. This avoids shader
+  // compilation failures on constrained WebGL/mobile GPUs; emissive materials
+  // still retain their readable base colors.
 
   const terrainTiles = Math.min(96, Math.max(48, Math.floor(worldRadius * 0.8)));
-  const ground = createPixelTerrain(scene, terrainTiles, terrainTiles, 2);
+  const ground = createPixelTerrainChunks(scene, terrainTiles, terrainTiles, 2);
   ground.position.y = -0.02;
   ground.metadata = { ...ground.metadata, mapId: options.mapId, biome: mapDefinition?.biome ?? "Obsidian frontier", accent: mapAccent };
-
+  const terrainChunks = ground.getChildMeshes().filter(mesh => mesh.metadata?.chunk) as Array<AbstractMesh & { metadata: { chunk: { x: number; z: number } } }>;
+  let lastTerrainVisibilityUpdate = -Infinity;
+  const updateTerrainVisibility = (position: Vector3, now: number) => {
+    if (now - lastTerrainVisibilityUpdate < 180) return;
+    lastTerrainVisibilityUpdate = now;
+    const visible = getVisibleChunkKeys({ positionX: position.x, positionZ: position.z, terrainTiles, tileSize: 2, chunkSize: 16, radiusChunks: 3 });
+    terrainChunks.forEach(chunk => chunk.setEnabled(visible.has(chunkKey(chunk.metadata.chunk.x, chunk.metadata.chunk.z))));
+    ground.metadata = { ...ground.metadata, visibleChunkCount: visible.size, totalChunkCount: terrainChunks.length };
+  };
   for (let i = 0; i < 12; i += 1) {
     const angle = (Math.PI * 2 * i) / 12;
     const distance = 18 + (i % 3) * 8;
@@ -156,23 +199,24 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   }
 
   const player = new TransformNode("voxel-survivor", scene);
-  const heroArt = createVoxelModel(scene, "survivor", { name: "survivor-voxel-model", scale: 1.08 });
+  const heroArt = await loadPackModel(scene, "survivor", { name: "survivor-pack-model", scale: 1.08 });
   heroArt.parent = player;
   heroArt.position.y = 0.04;
   const pet = new TransformNode("voxel-arcane-cyber-fox", scene);
   pet.position = new Vector3(-1.8, 0, -1.2);
-  const petArt = createVoxelModel(scene, "companion", { name: "arcane-cyber-fox-voxel-model", scale: 1.12 });
+  const petArt = await loadPackModel(scene, "companion", { name: "arcane-cyber-fox-pack-model", scale: 1.12 });
   petArt.parent = pet;
   petArt.position.y = 0.02;
 
-  const enemies = Array.from({ length: 7 }, (_, index) => {
-    const enemy = createVoxelModel(scene, "enemy", { name: `${regularMonster.toLowerCase().replaceAll(" ", "-")}-${index}`, scale: 1.12 });
+  const enemies: AbstractMesh[] = [];
+  for (let index = 0; index < 7; index += 1) {
+    const enemy = await loadPackModel(scene, "enemy", { name: `${regularMonster.toLowerCase().replaceAll(" ", "-")}-${index}`, scale: 1.12 });
     const angle = (Math.PI * 2 * index) / 7;
     enemy.position = new Vector3(Math.cos(angle) * (10 + index * 1.2), 0, Math.sin(angle) * (10 + index * 1.2));
-    enemy.metadata = { health: 30, alive: true, encounterName: regularMonster, assetPack: "arcane-frontier-voxel-pixel" };
+    enemy.metadata = { health: 30, alive: true, encounterName: regularMonster, assetPack: "arcane-frontier-voxel-pixel", source: "glb-pack" };
     if ((isMap002 || isMap006 || isMap007 || isMap008 || isMap009 || isMap010) && index > 4) enemy.setEnabled(false);
-    return enemy;
-  });
+    enemies.push(enemy);
+  }
 
   const resources = Array.from({ length: 10 }, (_, index) => {
     const angle = (Math.PI * 2 * index) / 10 + 0.3;
@@ -182,7 +226,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     return resource;
   });
 
-  const boss = createVoxelModel(scene, "boss", { name: `${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, scale: 1.3 });
+  const boss = await loadPackModel(scene, "boss", { name: `${eventBoss.toLowerCase().replaceAll(" ", "-")}-event-boss`, scale: 1.3 });
   boss.position = new Vector3(0, 0, -18);
   boss.metadata = { health: 420, alive: true, encounterName: eventBoss, assetPack: "arcane-frontier-voxel-pixel" };
   boss.setEnabled(false);
@@ -195,7 +239,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   monolith.position = new Vector3(MAP001_MONOLITH.x, 0, MAP001_MONOLITH.z);
   monolith.setEnabled(false);
 
-  const elite = createVoxelModel(scene, "elite", { name: "obsidian-golem-elite", scale: 1.28 });
+  const elite = await loadPackModel(scene, "elite", { name: "obsidian-golem-elite", scale: 1.28 });
   elite.position = new Vector3(9, 0, -10);
   elite.metadata = { health: 180, alive: true, encounterName: "Obsidian Golem", elite: true };
   elite.setEnabled(false);
@@ -401,6 +445,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let enemySpeedMultiplier = 1;
   let playerSpeedMultiplier = 1;
   let currentSpeed = 0;
+  let stamina: StaminaState = createStaminaState();
   let pendingMapInteraction = false;
   let map001Warning: string | undefined;
   let map002Warning: string | undefined;
@@ -422,8 +467,17 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const control = (event as CustomEvent<ArcaneControl>).detail;
     if (!control) return;
     if (control.type === "move") move = { x: control.x, y: control.y };
-    if (control.type === "attack") attackPulse = 0.32;
-    if (control.type === "dash") dashPulse = 0.25;
+    if (control.type === "attack") {
+      const result = spendStamina(stamina, "attack");
+      if (result.accepted) {
+        stamina = result.state;
+        attackPulse = 0.32;
+      }
+    }
+    if (control.type === "dash" && canSpendStamina(stamina, "dash")) {
+      stamina = spendStamina(stamina, "dash").state;
+      dashPulse = 0.25;
+    }
     if (control.type === "interact") {
       pendingMapInteraction = true;
       resources.forEach(resource => {
@@ -523,7 +577,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const movement = new Vector3(move.x + keyboardX, 0, move.y - keyboardY);
     const inputMagnitude = Math.min(1, movement.length());
     const isMoving = inputMagnitude > 0.08;
-    const targetSpeed = dashPulse > 0 ? 12.4 : inputMagnitude > 0.72 ? 4.8 : 3.35;
+    if (isMoving && inputMagnitude > 0.72 && dashPulse <= 0) {
+      stamina = spendStamina(stamina, "sprint", dt).state;
+    } else {
+      stamina = regenerateStamina(stamina, dt, !isMoving);
+    }
+    const sprintPenalty = stamina.exhausted && inputMagnitude > 0.72 && dashPulse <= 0 ? 0.5 : 1;
+    const targetSpeed = dashPulse > 0 ? 12.4 : inputMagnitude > 0.72 ? 4.8 * sprintPenalty : 3.35;
     currentSpeed += (isMoving ? targetSpeed * playerSpeedMultiplier : 0 - currentSpeed) * Math.min(1, dt * (isMoving ? 10 : 14));
     if (isMoving) {
       movement.normalize();
@@ -532,7 +592,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       player.position.z = Math.max(-worldRadius, Math.min(worldRadius, player.position.z));
       player.rotation.y = Math.atan2(movement.x, movement.z);
     }
-    const cameraTarget = new Vector3(player.position.x, 0.5, player.position.z);
+    updateTerrainVisibility(player.position, performance.now());
+    const cameraTarget = new Vector3(player.position.x + cameraPan.x, 0.5, player.position.z + cameraPan.z);
     camera.target = Vector3.Lerp(camera.target, cameraTarget, Math.min(1, dt * 5.4));
     dashPulse = Math.max(0, dashPulse - dt);
     attackPulse = Math.max(0, attackPulse - dt);
@@ -596,7 +657,6 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     scene.clearColor = new Color4(sky.r, sky.g, sky.b, 1);
     skyLight.diffuse = Color3.FromHexString(sceneTreatment?.lightColor ?? lighting.ambient);
     keyLight.diffuse = Color3.FromHexString(sceneTreatment?.lightColor ?? lighting.directional);
-    glow.intensity = options.reducedMotion ? 0.45 : 0.65 + lighting.motionIntensity * 0.32;
     if (isMap001) {
       const encounter = resolveMap001Encounter(map001Memory, { x: player.position.x, z: player.position.z, health, phase: lighting.phase, interacted: pendingMapInteraction, now: performance.now() });
       map001Memory = encounter.memory;
@@ -861,6 +921,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         companionState: companionRuntime.state,
         movementState,
         speed: Number(currentSpeed.toFixed(2)),
+        stamina: staminaPercent(stamina),
+        exhausted: stamina.exhausted,
       });
       lastEmit = performance.now();
     }
@@ -872,6 +934,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       window.removeEventListener("arcane-control", handleControl);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      canvas.removeEventListener("wheel", onCameraWheel);
+      canvas.removeEventListener("pointerdown", onCameraPointerDown);
+      canvas.removeEventListener("pointermove", onCameraPointerMove);
+      canvas.removeEventListener("pointerup", stopCameraPan);
+      canvas.removeEventListener("pointercancel", stopCameraPan);
       scene.dispose();
     },
   };

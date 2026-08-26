@@ -1,0 +1,52 @@
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { isAssetPackManifest, resolveAssetUrl } from "../client/src/game/assets/assetPackLoader";
+
+type ManifestEntry = { kind: string; path: string; sha256?: string; fallback?: string };
+type Manifest = { id: string; namespace: string; version: string; entries: Record<string, ManifestEntry>; packSha256?: string };
+
+const packRoot = resolve(process.cwd(), "client/public/assets/packs/arcane-frontier-voxel-pixel");
+const manifest = JSON.parse(readFileSync(resolve(packRoot, "manifest.json"), "utf8")) as Manifest;
+
+function sha256(filePath: string) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function sha256Text(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+describe("Arcane asset pack manifest", () => {
+  it("declares the original namespace and all articulated model entries", () => {
+    expect(manifest.id).toBe("arcane-frontier-voxel-pixel");
+    expect(manifest.namespace).toBe("af");
+    expect(manifest.version).toBe("0.2.0");
+    for (const id of ["models.survivor", "models.companion", "models.enemy", "models.elite", "models.boss"]) {
+      expect(manifest.entries[id]?.kind).toBe("model");
+    }
+  });
+
+  it("keeps every entry inside the pack and matches its file digest", () => {
+    for (const entry of Object.values(manifest.entries)) {
+      expect(entry.path.startsWith("/")).toBe(false);
+      const filePath = resolve(packRoot, entry.path);
+      expect(filePath.startsWith(packRoot)).toBe(true);
+      expect(existsSync(filePath)).toBe(true);
+      expect(entry.sha256).toBe(sha256(filePath));
+    }
+  });
+
+  it("uses a deterministic hash over the ordered manifest entry digests", () => {
+    const expected = sha256Text(Object.values(manifest.entries).map(entry => entry.sha256 ?? "").join(""));
+    expect(manifest.packSha256).toBe(expected);
+  });
+
+  it("rejects unsafe paths and resolves a custom pack base without leaving it", () => {
+    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "data", path: "../secret.json" } } })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "script", path: "safe.json" } } })).toBe(false);
+    const custom = { ...manifest, basePath: "/assets/packs/custom-pack" };
+    expect(resolveAssetUrl(custom, "models.survivor")).toBe("http://localhost/assets/packs/custom-pack/models/survivor.glb");
+  });
+});

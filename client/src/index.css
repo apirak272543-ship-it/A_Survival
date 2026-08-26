@@ -652,6 +652,41 @@
   border-bottom: 3px solid rgb(0 0 0 / .3);
 }
 
+.hotbar-pack-icon {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.quick-slots button small {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  color: #d9ffff;
+  font-size: .42rem;
+  font-weight: 900;
+  text-shadow: 0 1px 2px #020711;
+}
+
+.skill-button.use {
+  right: calc(100% + .45rem);
+  bottom: 2px;
+  width: min(12vw, 48px);
+  height: min(12vw, 48px);
+  border-radius: .48rem;
+  background: linear-gradient(145deg, rgb(20 57 69 / .94), rgb(4 23 36 / .92));
+  border-color: rgb(95 244 237 / .58);
+  box-shadow: 0 0 16px rgb(95 244 237 / .22), inset 0 -3px 0 rgb(0 0 0 / .28);
+}
+
+.skill-button.use:focus-visible,
+.quick-slots button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 .quick-slots button.active {
   color: #06131e;
   background: linear-gradient(145deg, #e3ffff, #5ff4ed 58%, #70a8ff);
@@ -684,3 +719,16 @@
     height: 2.1rem;
   }
 }
+
+/* --- Familiar tactical map overlay --- */
+.tactical-scrim{position:fixed;inset:0;z-index:78;display:grid;place-items:center;padding:max(1rem,var(--safe-top)) max(1rem,var(--safe-right)) max(1rem,var(--safe-bottom)) max(1rem,var(--safe-left));background:rgb(2 5 14 / .82);backdrop-filter:blur(9px)}
+.tactical-sheet{width:min(760px,94vw);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 1rem);display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;color:#ddfaff;border:1px solid rgb(95 244 237 / .34);border-radius:1rem;background:linear-gradient(145deg,rgb(7 19 39 / .98),rgb(13 7 35 / .98));box-shadow:0 24px 80px rgb(0 0 0 / .5),0 0 45px rgb(95 244 237 / .12)}
+.tactical-header,.tactical-footer{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem .85rem;border-bottom:1px solid rgb(255 255 255 / .09)}
+.tactical-header h3{margin:.15rem 0 0;color:#fff;font-size:1.05rem}.tactical-actions{display:flex;align-items:center;gap:.38rem}.tactical-actions b{min-width:3rem;text-align:center;color:#94fff6;font-size:.58rem}
+.tactical-map-canvas{position:relative;min-height:240px;overflow:hidden;cursor:crosshair;background:radial-gradient(circle at 50% 50%,rgb(66 111 132 / .3),transparent 20%),linear-gradient(135deg,#0d1b2c,#161133 52%,#071c28);transform:scale(var(--map-zoom));transform-origin:center}
+.tactical-grid{position:absolute;inset:-25%;opacity:.45;background:repeating-linear-gradient(0deg,transparent 0 30px,rgb(95 244 237 / .18) 31px 32px),repeating-linear-gradient(90deg,transparent 0 30px,rgb(95 244 237 / .18) 31px 32px);transform:perspective(500px) rotateX(47deg) rotateZ(-13deg) scale(1.2)}
+.tactical-safe-zone{position:absolute;left:25%;top:19%;width:50%;height:62%;border:1px dashed color-mix(in srgb,var(--map-accent) 75%,white);border-radius:50%;box-shadow:0 0 35px color-mix(in srgb,var(--map-accent) 28%,transparent),inset 0 0 28px color-mix(in srgb,var(--map-accent) 10%,transparent)}
+.tactical-player,.tactical-resource,.tactical-threat,.tactical-waypoint{position:absolute;z-index:2;width:11px;height:11px;transform:translate(-50%,-50%);border:2px solid #06101d;border-radius:2px;box-shadow:0 0 14px currentColor}.tactical-player{color:#fff;background:#5ff4ed}.tactical-resource{color:#9dffb7;background:#6dcc87;border-radius:50%}.tactical-threat{color:#ff748f;background:#ef476f;border-radius:50%}.tactical-waypoint{color:#ffc857;background:#ffc857;border-radius:50%;animation:tactical-pulse 1.2s ease-in-out infinite}
+.tactical-footer{border-top:1px solid rgb(255 255 255 / .09);border-bottom:0;color:#9fb9ca;font-size:.55rem}.tactical-footer span{display:flex;align-items:center;gap:.3rem}.tactical-footer svg{color:#5ff4ed;flex:none}
+@keyframes tactical-pulse{50%{transform:translate(-50%,-50%) scale(1.55);opacity:.55}}
+@media (max-width:700px) and (orientation:landscape){.tactical-scrim{padding:.4rem max(.45rem,var(--safe-right)) .4rem max(.45rem,var(--safe-left))}.tactical-sheet{width:min(94vw,760px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - .5rem)}.tactical-header,.tactical-footer{padding:.4rem .55rem}.tactical-header h3{font-size:.78rem}.tactical-map-canvas{min-height:180px}.tactical-footer{font-size:.45rem}}

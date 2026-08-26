@@ -33,3 +33,9 @@ A_Survival ใช้รูปแบบการควบคุมที่คุ
 ## Asset contract
 
 Gameplay ใช้ `arcane-frontier-voxel-pixel` เป็น pack หลักใน `client/src/game/assets/pixelPack.ts` และมี manifest แยกที่ `client/public/assets/packs/arcane-frontier-voxel-pixel/manifest.json` Game core อ้างอิง logical asset IDs ไม่สร้าง remote texture plane สำหรับตัวละคร ศัตรู resource และ landmark หาก pack หรือภาพเสริมล้มเหลว UI ต้องซ่อน broken image และใช้ pixel-safe fallback แทน
+
+## Mobile hotbar action update — 2026-08-26
+
+Hotbar interaction is now deliberately two-step on touch: **แตะหนึ่งครั้งเพื่อเลือก slot** และกดปุ่ม **USE** ที่ตำแหน่งคงที่ใน action cluster เพื่อใช้ item ปัจจุบัน. ระบบไม่พึ่ง double-tap เพราะ gesture ดังกล่าวไม่สม่ำเสมอบนหน้าจอสัมผัสและอาจชนกับ browser zoom/accessibility behavior. Item icon และ quantity มาจาก `ItemDefinition.iconAssetId` และ manifest-resolved pack entry; เมื่อไม่มี asset ระบบแสดง fallback icon ที่อ่านได้.
+
+`use-item` offline action ส่งเฉพาะ `slot`, `instanceId` และ `definitionId` ที่ผ่านรูปแบบจำกัด; server sync ตรวจ actor/device token และ payload boundary ก่อนเก็บ transaction. การตรวจนี้ยังเป็น audit/integrity boundary ไม่ใช่ server-authoritative combat หรือ anti-cheat เต็มรูปแบบ.

@@ -23,6 +23,8 @@ export type ItemDefinition = {
   tags: string[];
   soilId?: SoilId;
   effect: string;
+  iconAssetId?: string;
+  modelAssetId?: string;
 };
 
 export type ItemProvenance = {
@@ -131,6 +133,14 @@ const categoryNames: Record<ItemCategory, string[]> = {
 
 const soilForSeed = (index: number): SoilId => SOILS[index % SOILS.length]!.id;
 
+function iconAssetIdForCategory(category: ItemCategory) {
+  if (category === "sword") return "items.blade";
+  if (category === "bow" || category === "ranged") return "items.energy";
+  if (category === "seed") return "items.seed";
+  if (category === "material" || category === "furniture" || category === "decoration" || category === "structure") return "items.buildingCube";
+  return "items.energy";
+}
+
 function createCategory(category: ItemCategory): ItemDefinition[] {
   return Array.from({ length: CATALOG_LIMIT_PER_CATEGORY }, (_, index) => {
     const ordinal = index + 1;
@@ -150,6 +160,7 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
       equippable,
       tags: category === "seed" ? ["plant", ...(seedSoil?.compatiblePlantTags ?? [])] : [category, tier],
       soilId,
+      iconAssetId: iconAssetIdForCategory(category),
       effect:
         category === "sword"
           ? "โจมตีระยะประชิดและสะสมรอยแยกพลังงาน"

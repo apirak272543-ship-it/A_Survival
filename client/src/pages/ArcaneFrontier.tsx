@@ -53,6 +53,8 @@ import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpC
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
 import { resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
+import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
+import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
 type Screen = DirectRouteScreen;
@@ -61,7 +63,7 @@ const SCREEN_HINTS: Partial<Record<Screen, { topic: HelpTopic; text: string }>> 
   identity: { topic: "identity", text: "Player ID ไม่ใช่รหัสผ่าน · เซฟเริ่มบนอุปกรณ์นี้ทันที" },
   maps: { topic: "offline", text: "ครั้งแรกเตรียม map module และ key art · รอบถัดไปใช้ cache ได้" },
   home: { topic: "home", text: "เลือกเมล็ดที่ตรงสีดิน แล้วปลูก/เก็บเกี่ยวได้แม้ออฟไลน์" },
-  game: { topic: "expedition", text: "จอยซ้ายเดิน · ปุ่มขวาโจมตี, dash และเก็บทรัพยากร" },
+  game: { topic: "expedition", text: "จอยซ้ายเดิน · แตะช่องเพื่อเลือก · กด USE เพื่อใช้ · ปุ่มขวาโจมตีและ dash" },
 };
 
 function getInitialScreen(): Screen {
@@ -178,6 +180,20 @@ function HelpSheet({ topic, setTopic, close }: { topic: HelpTopic; setTopic: (to
   </section></div>;
 }
 
+function TacticalMapSheet({ map, snapshot, close }: { map: typeof MAP_REGISTRY[number]; snapshot: GameSnapshot; close: () => void }) {
+  const [zoom, setZoom] = useState(1);
+  const [waypoint, setWaypoint] = useState<{ x: number; y: number } | null>(null);
+  return <div className="tactical-scrim" onPointerDown={close}>
+    <section className="tactical-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Tactical map">
+      <header className="tactical-header"><div><p className="eyebrow">Tactical map · {map.biome}</p><h3>{map.name}</h3></div><div className="tactical-actions"><button className="icon-button" onClick={() => setZoom(current => Math.max(.8, Number((current - .15).toFixed(2))))} aria-label="ซูมออก">−</button><b>{Math.round(zoom * 100)}%</b><button className="icon-button" onClick={() => setZoom(current => Math.min(1.8, Number((current + .15).toFixed(2))))} aria-label="ซูมเข้า">+</button><button className="icon-button" onClick={close} aria-label="ปิดแผนที่"><X size={18} /></button></div></header>
+      <div className="tactical-map-canvas" style={{ "--map-zoom": zoom, "--map-accent": map.accent } as React.CSSProperties} onPointerDown={event => { const rect = event.currentTarget.getBoundingClientRect(); setWaypoint({ x: Math.round(((event.clientX - rect.left) / rect.width) * 100), y: Math.round(((event.clientY - rect.top) / rect.height) * 100) }); }}>
+        <span className="tactical-grid" /><span className="tactical-player" style={{ left: "50%", top: "50%" }} /><span className="tactical-safe-zone" /><span className="tactical-resource" style={{ left: "31%", top: "38%" }} /><span className="tactical-resource" style={{ left: "70%", top: "62%" }} /><span className="tactical-threat" style={{ left: "64%", top: "35%" }} /><span className="tactical-threat" style={{ left: "39%", top: "69%" }} />{waypoint && <span className="tactical-waypoint" style={{ left: `${waypoint.x}%`, top: `${waypoint.y}%` }} />}
+      </div>
+      <footer className="tactical-footer"><span><MapIcon size={14} /> แตะบนแผนที่เพื่อวาง waypoint</span><span><Crosshair size={14} /> {snapshot.enemies} threats · {snapshot.resources} resources · fog {snapshot.mapState ?? "exploring"}</span></footer>
+    </section>
+  </div>;
+}
+
 function IntegritySheet({ report, syncAttention, close }: { report: IntegrityReport; syncAttention: boolean; close: () => void }) {
   const quarantined = report.quarantinedInstanceIds.length;
   return <div className="settings-scrim help-scrim" onPointerDown={close}><section className="settings-sheet help-sheet integrity-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="สถานะความสอดคล้องของคลังไอเทม">
@@ -230,6 +246,7 @@ export default function ArcaneFrontier() {
   const [showHelp, setShowHelp] = useState(false);
   const [showIntegrity, setShowIntegrity] = useState(getIntegrityDemoEnabled);
   const [showVault, setShowVault] = useState(getVaultDemoEnabled);
+  const [showTacticalMap, setShowTacticalMap] = useState(false);
   const [syncAttention, setSyncAttention] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic>("identity");
   const [contextHint, setContextHint] = useState<{ topic: HelpTopic; text: string } | null>(null);
@@ -237,6 +254,7 @@ export default function ArcaneFrontier() {
   const [cachedMapIds, setCachedMapIds] = useState<Set<string>>(() => new Set());
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
+  const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedHomeSeedId, setSelectedHomeSeedId] = useState<string | null>(null);
   const [selectedHomeObjectId, setSelectedHomeObjectId] = useState<string | null>(null);
@@ -264,6 +282,14 @@ export default function ArcaneFrontier() {
   useEffect(() => saveSettings(settings), [settings]);
 
   useEffect(() => {
+    let active = true;
+    void loadAssetPackManifest(DEFAULT_ASSET_PACK_MANIFEST).then(manifest => {
+      if (active) setAssetPackManifest(manifest);
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     const onShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select")) return;
@@ -274,6 +300,10 @@ export default function ArcaneFrontier() {
       if (screen === "game" && (event.key.toLowerCase() === "i" || event.key === "Tab")) {
         event.preventDefault();
         setShowVault(true);
+      }
+      if (screen === "game" && event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        setShowTacticalMap(current => !current);
       }
       if (screen === "game" && event.key === "Escape") {
         event.preventDefault();
@@ -521,6 +551,17 @@ export default function ArcaneFrontier() {
     return { following: bonus.following, lootRadius: bonus.lootRadius, resourceYieldMultiplier: bonus.resourceYieldMultiplier, damageMitigation: bonus.damageMitigation };
   }, [safeHome]);
   const openHelp = (topic: HelpTopic) => { setHelpTopic(topic); setShowHelp(true); };
+  const getPackIconUrl = (assetId?: string) => assetPackManifest && assetId ? resolveAssetUrl(assetPackManifest, assetId) : undefined;
+  const useHotbarSlot = (slot: HotbarSlot) => {
+    if (!session) return;
+    const result = dispatchHotbarAction(session.inventory, session.hotbarBindings ?? {}, slot);
+    if (!result.accepted) return setToast(result.message);
+    if (result.kind === "consume") {
+      updateSession({ inventory: result.inventory, pendingActions: session.pendingActions.concat({ id: `use-item-${Date.now()}`, type: "use-item", createdAt: Date.now(), payload: { slot, instanceId: result.instance?.instanceId, definitionId: result.definitionId } }) });
+    }
+    setToast(result.message);
+    dispatchControl({ type: "use-item", slot });
+  };
   const equipVaultInstance = (instanceId: string) => {
     if (!session) return;
     const target = session.inventory.find(instance => instance.instanceId === instanceId);
@@ -544,6 +585,7 @@ export default function ArcaneFrontier() {
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
     {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} toast={message => setToast(message)} />}
+    {showTacticalMap && screen === "game" && <TacticalMapSheet map={activeMap} snapshot={gameSnapshot} close={() => setShowTacticalMap(false)} />}
     {contextHint && <button className="context-help-hint" onClick={() => { openHelp(contextHint.topic); setContextHint(null); }}><CircleHelp size={15} /><span>{contextHint.text}</span><X size={13} /></button>}
     {hasIntegrityAttention && integrityReport && <button className="integrity-banner" onClick={() => setShowIntegrity(true)}><ShieldAlert size={16} /><span>{integrityBannerCopy}</span><b>ดูรายละเอียด</b></button>}
 
@@ -594,14 +636,14 @@ export default function ArcaneFrontier() {
     </section>}
 
     {screen === "game" && session && <section className="game-screen"><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} />
-      <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
+      <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src="/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg" alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ANOMALY DETECTED · {activeMap.eventBossName ?? "Unknown anomaly"} may emerge</span></div>
       {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>
-      <div className="quick-slots" aria-label="ช่องลัดไอเทม"><button className={activeHotbarSlot === 0 ? "active" : ""} onClick={() => setActiveHotbarSlot(0)} aria-label="ช่องไอเทม 1 · เมล็ดและอาหาร"><span>1</span><Wheat size={18} /></button><button className={activeHotbarSlot === 1 ? "active" : ""} onClick={() => setActiveHotbarSlot(1)} aria-label="ช่องไอเทม 2 · พลังงาน"><span>2</span><Zap size={18} /></button><button className={activeHotbarSlot === 2 ? "active" : ""} onClick={() => setActiveHotbarSlot(2)} aria-label="ช่องไอเทม 3 · วัตถุดิบ"><span>3</span><Box size={18} /></button></div>
-      <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })} aria-label="แดช · Shift"><Zap size={20} /><small>SHIFT</small></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })} aria-label="โต้ตอบและเก็บของ · E"><Pickaxe size={20} /><small>E</small></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })} aria-label="โจมตี · Space"><Sword size={28} /><span>ATTACK</span></button></div></div>
+      <div className="quick-slots" aria-label="ช่องลัดไอเทม">{([0, 1, 2] as const).map(slot => { const instance = session ? getHotbarInstance(session.inventory, session.hotbarBindings ?? {}, slot) : undefined; const definition = instance ? getItemDefinition(instance.definitionId) : undefined; const iconUrl = getPackIconUrl(definition?.iconAssetId); const fallbackIcon = slot === 0 ? <Wheat size={18} /> : slot === 1 ? <Zap size={18} /> : <Box size={18} />; return <button key={slot} className={activeHotbarSlot === slot ? "active" : ""} onClick={() => setActiveHotbarSlot(slot)} aria-label={`ช่องไอเทม ${slot + 1}${definition ? ` · ${definition.name}` : " · ว่าง"} · แตะเพื่อเลือก`}>{iconUrl ? <img className="hotbar-pack-icon" src={iconUrl} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : fallbackIcon}<span>{slot + 1}</span>{instance && instance.quantity > 1 && <small>×{instance.quantity}</small>}</button>; })}</div>
+      <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button use" onPointerDown={() => useHotbarSlot(activeHotbarSlot as HotbarSlot)} aria-label="ใช้ไอเท็มที่เลือก"><Box size={20} /><small>USE</small></button><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })} aria-label="แดช · Shift"><Zap size={20} /><small>SHIFT</small></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })} aria-label="โต้ตอบและเก็บของ · E"><Pickaxe size={20} /><small>E</small></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })} aria-label="โจมตี · Space"><Sword size={28} /><span>ATTACK</span></button></div></div>
       <div className="game-footer"><button onClick={() => transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" })}><Menu size={18} /> Exit expedition</button><span><Crosshair size={15} /> {gameSnapshot.enemies} hostiles · {gameSnapshot.resources} resources</span><button onClick={() => setShowSettings(true)}><Settings2 size={18} /></button></div>
     </section>}
   </main>;

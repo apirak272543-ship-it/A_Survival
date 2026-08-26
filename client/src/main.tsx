@@ -81,9 +81,21 @@ createRoot(document.getElementById("root")!).render(
 );
 
 if ("serviceWorker" in navigator) {
+  const requestOfflineSync = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const syncManager = registration as ServiceWorkerRegistration & { sync?: { register: (tag: string) => Promise<void> } };
+      await syncManager.sync?.register("arcane-sync");
+    } catch {
+      // Background Sync is optional; the existing online queue can still flush directly.
+    }
+  };
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(error => {
+    navigator.serviceWorker.register("/sw.js").then(() => {
+      if (navigator.onLine) void requestOfflineSync();
+    }).catch(error => {
       console.warn("[PWA] Service worker registration failed", error);
     });
   });
+  window.addEventListener("online", () => void requestOfflineSync());
 }

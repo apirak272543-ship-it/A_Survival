@@ -1,23 +1,199 @@
 {
+  "schemaVersion": 1,
   "id": "arcane-frontier-voxel-pixel",
-  "version": "0.1.0",
-  "designSource": "google-gemini",
-  "format": "voxel-pixel-runtime",
-  "logicalResolution": { "width": 640, "height": 360 },
+  "namespace": "af",
+  "displayName": "Arcane Frontier Voxel Pixel",
+  "version": "0.2.0",
+  "designSource": "google-gemini-brief",
+  "artStatus": "starter-authored-from-gemini-brief",
+  "logicalResolution": {
+    "width": 480,
+    "height": 270
+  },
   "tileSize": 16,
   "textureSampling": "nearest",
-  "runtime": "babylonjs",
-  "assets": {
-    "survivor": "voxel/survivor-v1",
-    "companion": "voxel/cyber-fox-v1",
-    "enemy": "voxel/corrupted-husk-v1",
-    "elite": "voxel/obsidian-golem-v1",
-    "boss": "voxel/void-reaper-v1",
-    "resource": "voxel/ley-crystal-v1",
-    "terrain": "tiles/obsidian-frontier-v1"
+  "dependencies": [],
+  "entries": {
+    "entities.survivor": {
+      "kind": "texture",
+      "path": "textures/entities/survivor.png",
+      "mime": "image/png",
+      "fallback": "entities.survivor",
+      "sha256": "bc90d010baa304a2f54da27ee6425e6ae895ea6fda6e3c8ee34dee67873bcb78"
+    },
+    "entities.companion": {
+      "kind": "texture",
+      "path": "textures/entities/companion.png",
+      "mime": "image/png",
+      "fallback": "entities.companion",
+      "sha256": "710b1e7edcbbd6a8fb4d59d9cc2dc89c55c0abdca05893aac9e8fa90c057ad30"
+    },
+    "entities.enemy": {
+      "kind": "texture",
+      "path": "textures/entities/enemy.png",
+      "mime": "image/png",
+      "fallback": "entities.enemy",
+      "sha256": "78b6d02c0f98a044b2f7d45e59614fe6ec73fe5a9e99daf79795e2b4fcbd35c2"
+    },
+    "entities.elite": {
+      "kind": "texture",
+      "path": "textures/entities/elite.png",
+      "mime": "image/png",
+      "fallback": "entities.enemy",
+      "sha256": "a49d5ffb33c24e6d4ef0cc1bd6249621b314a47ee6b21104b2a6a813d552cdca"
+    },
+    "entities.boss": {
+      "kind": "texture",
+      "path": "textures/entities/boss.png",
+      "mime": "image/png",
+      "fallback": "entities.elite",
+      "sha256": "c2f69d78739f8a7440299427e442700e8b392f8eff92b7b23b421ca12656d58e"
+    },
+    "entities.resource": {
+      "kind": "texture",
+      "path": "textures/entities/resource.png",
+      "mime": "image/png",
+      "fallback": "entities.resource",
+      "sha256": "d1fe8545be451d5d1441d7045e972e14d5b732a085f72f73ff9530895acc4450"
+    },
+    "items.blade": {
+      "kind": "texture",
+      "path": "icons/blade.png",
+      "mime": "image/png",
+      "fallback": "items.energy",
+      "sha256": "82f8366c72bc6076c80be1be317efe18b3d80faba0d679963b3a42a2a15641de"
+    },
+    "items.energy": {
+      "kind": "texture",
+      "path": "icons/energy.png",
+      "mime": "image/png",
+      "fallback": "items.blade",
+      "sha256": "f9e91356882ea5fb10bf248890702dd360b8e5abf349c4e8c426001e03a8a893"
+    },
+    "items.buildingCube": {
+      "kind": "texture",
+      "path": "icons/building-cube.png",
+      "mime": "image/png",
+      "fallback": "items.energy",
+      "sha256": "267861630a003be18271e824ad6c3d97c7ef3b780535f4e08a5634b76cb920dc"
+    },
+    "items.seed": {
+      "kind": "texture",
+      "path": "icons/seed.png",
+      "mime": "image/png",
+      "fallback": "items.energy",
+      "sha256": "ae69d051b8378cb2cdcb7816571e20b803434211e950b6fed8ba4ec4dd907419"
+    },
+    "items.potion": {
+      "kind": "texture",
+      "path": "icons/potion.png",
+      "mime": "image/png",
+      "fallback": "items.energy",
+      "sha256": "183eb781d0087a02eb37da8e6017b9503610ff5d201e7f66c76f50cd98cfabc5"
+    },
+    "models.survivor": {
+      "kind": "model",
+      "path": "models/survivor.glb",
+      "mime": "model/gltf-binary",
+      "fallback": "entities.survivor",
+      "sha256": "efe118c6a6729371d425da92384c81faf403cf5b0d5af783a7f87fcf15922945"
+    },
+    "models.companion": {
+      "kind": "model",
+      "path": "models/companion.glb",
+      "mime": "model/gltf-binary",
+      "fallback": "entities.companion",
+      "sha256": "b437a4a8b737eee7dbbbe0d385b008bbad3e1cbfb7483947619a36c84e0b8900"
+    },
+    "models.enemy": {
+      "kind": "model",
+      "path": "models/enemy.glb",
+      "mime": "model/gltf-binary",
+      "fallback": "entities.enemy",
+      "sha256": "d0d69ada4a75708ffb7ad96a43f3b1d4937c666c92346f814832a3e145620dd0"
+    },
+    "models.elite": {
+      "kind": "model",
+      "path": "models/elite.glb",
+      "mime": "model/gltf-binary",
+      "fallback": "models.enemy",
+      "sha256": "27f7714b7e7babbd9616603ef139809ef9df2a361fb047da430de3cda45395d6"
+    },
+    "models.boss": {
+      "kind": "model",
+      "path": "models/boss.glb",
+      "mime": "model/gltf-binary",
+      "fallback": "models.elite",
+      "sha256": "5febc3be60e1109b88b4493598fa3ab905b7872ce232c31d7042cef27d1f50a9"
+    },
+    "atlases.terrain": {
+      "kind": "texture",
+      "path": "textures/terrain/atlas.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "36ef235c1a474a863903a8828d9b71250ea8756d3f8305b90b1e85fb8e950bc5"
+    },
+    "atlases.items": {
+      "kind": "texture",
+      "path": "icons/atlas.png",
+      "mime": "image/png",
+      "fallback": "items.energy",
+      "sha256": "ec9878946e75fef8fb2a55b12aa7017b55027524ff5f0c3cd7ad59f15feeb0ef"
+    },
+    "atlases.entities": {
+      "kind": "texture",
+      "path": "textures/entities/atlas.png",
+      "mime": "image/png",
+      "fallback": "entities.enemy",
+      "sha256": "d155aab8c6b593819d3178459b1db1f398aa3d289332bbf89322f267897e77fb"
+    },
+    "data.atlas": {
+      "kind": "data",
+      "path": "metadata/atlas.json",
+      "mime": "application/json",
+      "sha256": "e48597bf21bc6f7cfcf4c449e5ba75f794481014055473735c28162bdd8ee9fa"
+    },
+    "data.animations": {
+      "kind": "data",
+      "path": "metadata/animations.json",
+      "mime": "application/json",
+      "sha256": "aee5989e75657dd42c65077e54783a6ca15f983aa5cccb0475424c988aa7e814"
+    },
+    "terrain.obsidian": {
+      "kind": "texture",
+      "path": "textures/terrain/obsidian.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "6b5503865537c5f3627e5f57305345501b40ca759c2fff1a43c14df04693db7a"
+    },
+    "terrain.ash": {
+      "kind": "texture",
+      "path": "textures/terrain/ash.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "1b309694acaf90e56d38e4f350f45762c43afcee59ccce3e522f9eb3cb591229"
+    },
+    "terrain.moss": {
+      "kind": "texture",
+      "path": "textures/terrain/moss.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "1bca511151f4e9b29a2aca0dcb1c447a90b0c57d002cc47283b54015b46b7ba4"
+    },
+    "terrain.crystal": {
+      "kind": "texture",
+      "path": "textures/terrain/crystal.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "38927bfa86d15d01f91442cea34d8105f40c4655da8d4c5f91231e99f18baa0b"
+    },
+    "terrain.void": {
+      "kind": "texture",
+      "path": "textures/terrain/void.png",
+      "mime": "image/png",
+      "fallback": "terrain.obsidian",
+      "sha256": "533f2f27a65e276490ec8ac4c39dfbd9ccda6fd17d066803aab4749bb4f4597c"
+    }
   },
-  "fallback": {
-    "remoteTextureFailure": "use-pack-voxel-material",
-    "missingAsset": "use-ink-cyan-silhouette"
-  }
+  "packSha256": "767bed6c0c0b1c2c5b42af54f00d166ecae1a1282a266a1875f79a6308bbcc8d"
 }

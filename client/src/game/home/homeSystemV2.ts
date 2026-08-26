@@ -32,7 +32,7 @@ export type HomeState = {
 
 export type HomeAction = {
   id: string;
-  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item" | "toggle-pet-follow";
+  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item" | "toggle-pet-follow" | "use-item";
   createdAt: number;
   payload: Record<string, unknown>;
 };

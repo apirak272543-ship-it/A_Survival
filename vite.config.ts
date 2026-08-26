@@ -167,6 +167,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    target: "es2022",
+    minify: "esbuild",
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@babylonjs")) return "vendor-babylon";
+          if (id.includes("react") || id.includes("react-dom")) return "vendor-react";
+          if (id.includes("@trpc") || id.includes("@tanstack")) return "vendor-trpc";
+          return "vendor-common";
+        },
+      },
+    },
   },
   server: {
     host: true,

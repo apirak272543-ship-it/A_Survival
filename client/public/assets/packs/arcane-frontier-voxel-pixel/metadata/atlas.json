@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "sampling": "nearest",
+  "padding": 0,
+  "atlases": {
+    "terrain": {
+      "path": "textures/terrain/atlas.png",
+      "tileSize": 16,
+      "width": 80,
+      "height": 16
+    },
+    "items": {
+      "path": "icons/atlas.png",
+      "tileSize": 16,
+      "width": 80,
+      "height": 16
+    },
+    "entities": {
+      "path": "textures/entities/atlas.png",
+      "tileSize": 32,
+      "width": 192,
+      "height": 32
+    }
+  },
+  "assets": {
+    "terrain.obsidian": {
+      "atlas": "textures/terrain/atlas.png",
+      "pixelRect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.0,
+        0,
+        0.2,
+        1
+      ],
+      "source": "textures/terrain/obsidian.png"
+    },
+    "terrain.ash": {
+      "atlas": "textures/terrain/atlas.png",
+      "pixelRect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.2,
+        0,
+        0.4,
+        1
+      ],
+      "source": "textures/terrain/ash.png"
+    },
+    "terrain.moss": {
+      "atlas": "textures/terrain/atlas.png",
+      "pixelRect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.4,
+        0,
+        0.6,
+        1
+      ],
+      "source": "textures/terrain/moss.png"
+    },
+    "terrain.crystal": {
+      "atlas": "textures/terrain/atlas.png",
+      "pixelRect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.6,
+        0,
+        0.8,
+        1
+      ],
+      "source": "textures/terrain/crystal.png"
+    },
+    "terrain.void": {
+      "atlas": "textures/terrain/atlas.png",
+      "pixelRect": [
+        64,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.8,
+        0,
+        1.0,
+        1
+      ],
+      "source": "textures/terrain/void.png"
+    },
+    "items.blade": {
+      "atlas": "icons/atlas.png",
+      "pixelRect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.0,
+        0,
+        0.2,
+        1
+      ],
+      "source": "icons/blade.png"
+    },
+    "items.energy": {
+      "atlas": "icons/atlas.png",
+      "pixelRect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.2,
+        0,
+        0.4,
+        1
+      ],
+      "source": "icons/energy.png"
+    },
+    "items.building-cube": {
+      "atlas": "icons/atlas.png",
+      "pixelRect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.4,
+        0,
+        0.6,
+        1
+      ],
+      "source": "icons/building-cube.png"
+    },
+    "items.seed": {
+      "atlas": "icons/atlas.png",
+      "pixelRect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.6,
+        0,
+        0.8,
+        1
+      ],
+      "source": "icons/seed.png"
+    },
+    "items.potion": {
+      "atlas": "icons/atlas.png",
+      "pixelRect": [
+        64,
+        0,
+        16,
+        16
+      ],
+      "uv": [
+        0.8,
+        0,
+        1.0,
+        1
+      ],
+      "source": "icons/potion.png"
+    },
+    "entities.survivor": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.0,
+        0,
+        0.16666666666666666,
+        1
+      ],
+      "source": "textures/entities/survivor.png"
+    },
+    "entities.companion": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        32,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.16666666666666666,
+        0,
+        0.3333333333333333,
+        1
+      ],
+      "source": "textures/entities/companion.png"
+    },
+    "entities.enemy": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        64,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.3333333333333333,
+        0,
+        0.5,
+        1
+      ],
+      "source": "textures/entities/enemy.png"
+    },
+    "entities.elite": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        96,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.5,
+        0,
+        0.6666666666666666,
+        1
+      ],
+      "source": "textures/entities/elite.png"
+    },
+    "entities.boss": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        128,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.6666666666666666,
+        0,
+        0.8333333333333334,
+        1
+      ],
+      "source": "textures/entities/boss.png"
+    },
+    "entities.resource": {
+      "atlas": "textures/entities/atlas.png",
+      "pixelRect": [
+        160,
+        0,
+        32,
+        32
+      ],
+      "uv": [
+        0.8333333333333334,
+        0,
+        1.0,
+        1
+      ],
+      "source": "textures/entities/resource.png"
+    }
+  }
+}
