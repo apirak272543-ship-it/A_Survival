@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig, type BlockActionHandler } from "@/game/scene";
+import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig, type BlockActionHandler, type FarmActionHandler } from "@/game/scene";
 import { prepareAssetPack } from "@/game/assets/assetPackLoader";
 import { setActiveAssetPackManifest } from "@/game/assets/pixelPack";
 
@@ -12,16 +13,19 @@ type GameCanvasProps = {
   onReward?: (reward: GameReward) => void;
   onBlockAction?: BlockActionHandler;
   onBlockMessage?: (message: string) => void;
+  onFarmAction?: FarmActionHandler;
+  onFarmMessage?: (message: string) => void;
   worldBlockOverrides?: WorldBlockOverrides;
+  worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
   renderDistance?: "near" | "balanced" | "far";
 };
 
-export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance }: GameCanvasProps) {
+export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
-  const latestPropsRef = useRef<GameCanvasProps>({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance });
-  latestPropsRef.current = { mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, worldBlockOverrides, companion, renderDistance };
+  const latestPropsRef = useRef<GameCanvasProps>({ mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance });
+  latestPropsRef.current = { mapId, reducedMotion, onSnapshot, onReward, onBlockAction, onBlockMessage, onFarmAction, onFarmMessage, worldBlockOverrides, worldFarmState, companion, renderDistance };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,7 +49,7 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       }
       if (cancelled) return;
       const latest = latestPropsRef.current;
-      const game = await createGameScene(engine, canvas, { mapId: latest.mapId, onSnapshot: latest.onSnapshot, onReward: latest.onReward, onBlockAction: latest.onBlockAction, onBlockMessage: latest.onBlockMessage, worldBlockOverrides: latest.worldBlockOverrides, companion: latest.companion, reducedMotion: latest.reducedMotion, renderDistance: latest.renderDistance });
+      const game = await createGameScene(engine, canvas, { mapId: latest.mapId, onSnapshot: latest.onSnapshot, onReward: latest.onReward, onBlockAction: latest.onBlockAction, onBlockMessage: latest.onBlockMessage, onFarmAction: latest.onFarmAction, onFarmMessage: latest.onFarmMessage, worldBlockOverrides: latest.worldBlockOverrides, worldFarmState: latest.worldFarmState, companion: latest.companion, reducedMotion: latest.reducedMotion, renderDistance: latest.renderDistance });
       if (cancelled) {
         game.dispose();
         return;
@@ -65,7 +69,8 @@ export default function GameCanvas({ mapId, reducedMotion, onSnapshot, onReward,
       engine.dispose();
       startedRef.current = false;
     };
-  }, [mapId, onSnapshot, onReward, onBlockAction, onBlockMessage, companion, reducedMotion, renderDistance]);
+  // The scene reads callback/state values from latestPropsRef; only lifecycle-level options recreate Babylon.
+  }, [mapId, reducedMotion, renderDistance]);
 
   return (
     <div className="game-viewport">

@@ -11,12 +11,12 @@ describe("Arcane hotbar item actions", () => {
     expect(result.inventory).toEqual([sword]);
   });
 
-  it("consumes a seed instance and removes it at quantity one", () => {
+  it("keeps a seed instance until contextual world planting accepts it", () => {
     const seed = createStarterInstance("seed-001", 2);
     const result = dispatchHotbarAction([seed], { 1: "seed-001" }, 1);
     expect(result.accepted).toBe(true);
-    expect(result.kind).toBe("consume");
-    expect(result.inventory).toEqual([]);
+    expect(result.kind).toBe("plant");
+    expect(result.inventory).toEqual([seed]);
     expect(result.instance?.instanceId).toBe(seed.instanceId);
   });
 

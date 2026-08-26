@@ -32,7 +32,7 @@ export type HomeState = {
 
 export type HomeAction = {
   id: string;
-  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item" | "toggle-pet-follow" | "use-item" | "block-place" | "block-break";
+  type: "place-structure" | "move-structure" | "rotate-structure" | "recall-structure" | "plant-seed" | "harvest-crop" | "equip-pet-item" | "unequip-pet-item" | "toggle-pet-follow" | "use-item" | "block-place" | "block-break" | "plant-world-seed" | "harvest-world-crop";
   createdAt: number;
   payload: Record<string, unknown>;
 };

@@ -11,7 +11,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
-import { getItemDefinition } from "@/game/data/catalog";
+import { getItemDefinition, type ItemInstance } from "@/game/data/catalog";
 import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
 import { MAP002_JAX_CAMP, MAP002_PYROCLASTIC_ALTAR, initialMap002Encounter, resolveMap002Encounter } from "@/game/map002/encounter";
@@ -38,6 +38,8 @@ import { updatePixelTerrainStream } from "@/game/assets/pixelPack";
 import { getRenderDistanceConfig, type RenderDistancePreset } from "@/game/systems/renderDistance";
 import { blockKey, getBlockDefinition, getPlaceableBlockModule, getBlockToolForItem, type BlockTool } from "@/game/data/blockModules";
 import { breakBlockAt, getAdjacentSupportModule, getWorldBlockAt, normalizeWorldBlockOverrides, placeBlockAt, type BlockCoordinate, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import { getWorldFarmCropStage, getWorldFarmPlant, normalizeWorldFarmState, planHarvestWorldPlant, planPlantWorldSeed, type WorldFarmState } from "@/game/systems/worldFarmSystem";
+import type { WorldPlantEffect } from "@/game/tools/plantCatalogGenerator";
 
 export type GameSnapshot = {
   health: number;
@@ -74,6 +76,21 @@ export type BlockActionEvent = {
 
 export type BlockActionHandler = (event: BlockActionEvent) => boolean;
 
+export type FarmActionEvent = {
+  type: "plant" | "harvest";
+  mapId: string;
+  plotId: string;
+  state: WorldFarmState;
+  coordinate: BlockCoordinate;
+  seedInstanceId?: string;
+  seedDefinitionId?: string;
+  reward?: ItemInstance;
+  effect?: WorldPlantEffect;
+  message: string;
+};
+
+export type FarmActionHandler = (event: FarmActionEvent) => boolean;
+
 export type CompanionConfig = {
   following: boolean;
   lootRadius: number;
@@ -92,7 +109,10 @@ type GameOptions = {
   onReward?: (reward: GameReward) => void;
   onBlockAction?: BlockActionHandler;
   onBlockMessage?: (message: string) => void;
+  onFarmAction?: FarmActionHandler;
+  onFarmMessage?: (message: string) => void;
   worldBlockOverrides?: WorldBlockOverrides;
+  worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
   reducedMotion?: boolean;
   renderDistance?: RenderDistancePreset;
@@ -247,6 +267,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let activeBlockTool: BlockTool = "hand";
   const worldBlockMeshes = new Map<string, AbstractMesh>();
   const blockMaterials = new Map<string, StandardMaterial>();
+  let worldFarmState = normalizeWorldFarmState(options.worldFarmState);
+  const worldFarmPlotMeshes = new Map<string, AbstractMesh>();
+  const worldFarmCropMeshes = new Map<string, AbstractMesh>();
+  const farmMaterials = new Map<string, StandardMaterial>();
+  let lastFarmVisualUpdate = -Infinity;
+  let activeItemInstanceId: string | undefined;
+  let activeItemDefinitionId: string | undefined;
   const initialWorldBlocks: Array<{ coordinate: BlockCoordinate; moduleId: string }> = [
     { coordinate: { x: 0, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
     { coordinate: { x: -1, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
@@ -282,6 +309,33 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     mesh.setEnabled(true);
     worldBlockMeshes.set(key, mesh);
   };
+  const getFarmMaterial = (key: string, color: string) => {
+    const existing = farmMaterials.get(key);
+    if (existing) return existing;
+    const farmMaterial = material(scene, `farm-material-${key}`, color, 0.05);
+    farmMaterials.set(key, farmMaterial);
+    return farmMaterial;
+  };
+  const syncWorldFarmVisuals = (now = Date.now()) => {
+    if (!isMap001 || now - lastFarmVisualUpdate < 220) return;
+    lastFarmVisualUpdate = now;
+    Object.values(worldFarmState).forEach(plot => {
+      const plotMesh = worldFarmPlotMeshes.get(plot.id) ?? MeshBuilder.CreateBox(`farm-plot-${plot.id}`, { width: 0.9, depth: 0.9, height: 0.1 }, scene);
+      plotMesh.position.set(plot.coordinate.x, 0.06, plot.coordinate.z);
+      plotMesh.material = getFarmMaterial(`soil-${plot.soilId}`, plot.soilId === "ashen-volcanic" ? "#5a3c42" : "#8f6442");
+      plotMesh.metadata = { ...(plotMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, soilId: plot.soilId, solid: false, partial: true };
+      plotMesh.setEnabled(true);
+      worldFarmPlotMeshes.set(plot.id, plotMesh);
+      const stage = getWorldFarmCropStage(plot, now);
+      const cropMesh = worldFarmCropMeshes.get(plot.id) ?? MeshBuilder.CreateBox(`farm-crop-${plot.id}`, { width: 0.42, depth: 0.42, height: 0.22 }, scene);
+      cropMesh.position.set(plot.coordinate.x, stage === "empty" ? 0 : stage === "mature" ? 0.62 : stage === "young" ? 0.46 : stage === "sprout" ? 0.3 : 0.18, plot.coordinate.z);
+      cropMesh.scaling.set(1, stage === "mature" ? 2.4 : stage === "young" ? 1.7 : stage === "sprout" ? 1.1 : 0.65, 1);
+      cropMesh.material = getFarmMaterial(`stage-${stage}`, stage === "mature" ? "#b8df75" : stage === "young" ? "#66c27a" : stage === "sprout" ? "#4fa58a" : "#6b4e39");
+      cropMesh.metadata = { ...(cropMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, farmStage: stage, solid: false, partial: true };
+      cropMesh.setEnabled(stage !== "empty");
+      worldFarmCropMeshes.set(plot.id, cropMesh);
+    });
+  };
   if (isMap001) {
     initialWorldBlocks.forEach(({ coordinate, moduleId }) => {
       const resolved = readSceneBlockAt(coordinate);
@@ -291,6 +345,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       const [x, y, z] = key.split(":").map(Number);
       if ([x, y, z].every(Number.isFinite) && moduleId) syncWorldBlockMesh({ x, y, z }, moduleId);
     });
+    syncWorldFarmVisuals();
   }
 
   const enemies: AbstractMesh[] = [];
@@ -561,6 +616,54 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     return nearest;
   };
 
+  const nearestWorldFarmPlot = () => {
+    let nearest: { plotId: string; distance: number } | undefined;
+    Object.values(worldFarmState).forEach(plot => {
+      const distance = Vector3.Distance(new Vector3(plot.coordinate.x, 0, plot.coordinate.z), player.position);
+      if (distance <= 6 && (!nearest || distance < nearest.distance)) nearest = { plotId: plot.id, distance };
+    });
+    return nearest;
+  };
+
+  const applyFarmAction = (event: FarmActionEvent) => {
+    const accepted = options.onFarmAction?.(event) ?? true;
+    if (!accepted) return false;
+    worldFarmState = event.state;
+    return true;
+  };
+
+  const plantNearestWorldFarmPlot = () => {
+    if (!isMap001 || !activeItemInstanceId || !activeItemDefinitionId || getItemDefinition(activeItemDefinitionId)?.category !== "seed") return false;
+    const target = nearestWorldFarmPlot();
+    if (!target) {
+      options.onFarmMessage?.("เดินเข้าใกล้แปลงดินเพื่อปลูกหรือเก็บเกี่ยว");
+      return false;
+    }
+    const plot = worldFarmState[target.plotId];
+    if (!plot) return false;
+    const plan = planPlantWorldSeed({ mapId: options.mapId, state: worldFarmState, plotId: plot.id, seedDefinitionId: activeItemDefinitionId, seedInstanceId: activeItemInstanceId });
+    if (!plan.accepted || !plan.plot || !plan.plant) {
+      options.onFarmMessage?.(plan.reason ?? plan.message);
+      return false;
+    }
+    return applyFarmAction({ type: "plant", mapId: options.mapId, plotId: plot.id, state: plan.state, coordinate: plot.coordinate, seedInstanceId: activeItemInstanceId, seedDefinitionId: activeItemDefinitionId, message: plan.message });
+  };
+
+  const harvestNearestWorldFarmPlot = () => {
+    if (!isMap001) return false;
+    const target = nearestWorldFarmPlot();
+    if (!target) {
+      options.onFarmMessage?.("เดินเข้าใกล้แปลงดินเพื่อเก็บเกี่ยว");
+      return false;
+    }
+    const plan = planHarvestWorldPlant({ mapId: options.mapId, state: worldFarmState, plotId: target.plotId });
+    if (!plan.accepted || !plan.plot || !plan.reward) {
+      if (plan.reason && worldFarmState[target.plotId]?.plantId) options.onFarmMessage?.(plan.reason);
+      return false;
+    }
+    return applyFarmAction({ type: "harvest", mapId: options.mapId, plotId: target.plotId, state: plan.state, coordinate: plan.plot.coordinate, reward: plan.reward, effect: plan.effect, message: plan.message });
+  };
+
   const applyBlockAction = (event: BlockActionEvent) => {
     const accepted = options.onBlockAction?.(event) ?? true;
     if (!accepted) return false;
@@ -629,15 +732,25 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       dashPulse = 0.25;
     }
     if (control.type === "use-item") {
+      activeItemInstanceId = control.itemInstanceId;
+      activeItemDefinitionId = control.itemDefinitionId;
       const selectedTool = control.itemDefinitionId ? getBlockToolForItem(control.itemDefinitionId) : null;
       activeBlockTool = selectedTool ?? "hand";
-      if (control.itemDefinitionId) options.onBlockMessage?.(selectedTool ? `เลือกเครื่องมือ: ${selectedTool}` : "เลือกมือเปล่า");
+      if (control.itemDefinitionId) options.onBlockMessage?.(selectedTool ? `เลือกเครื่องมือ: ${selectedTool}` : getItemDefinition(control.itemDefinitionId)?.category === "seed" ? "เลือกเมล็ด · กด E ใกล้แปลงเพื่อปลูก" : "เลือกมือเปล่า");
       if (control.itemInstanceId && control.itemDefinitionId && getPlaceableBlockModule(control.itemDefinitionId)) {
         const placed = placeSelectedWorldBlock(control.itemInstanceId, control.itemDefinitionId);
         if (!placed) options.onBlockMessage?.("วางไม่ได้: ต้องวางบนบล็อกทึบและตำแหน่งต้องว่าง");
       }
     }
     if (control.type === "interact") {
+      if (harvestNearestWorldFarmPlot()) {
+        pendingMapInteraction = false;
+        return;
+      }
+      if (plantNearestWorldFarmPlot()) {
+        pendingMapInteraction = false;
+        return;
+      }
       if (breakNearestWorldBlock()) {
         pendingMapInteraction = false;
         return;
@@ -756,6 +869,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       player.rotation.y = Math.atan2(movement.x, movement.z);
     }
     updateTerrainVisibility(player.position, performance.now());
+    syncWorldFarmVisuals(Date.now());
     const cameraTarget = new Vector3(player.position.x + cameraPan.x, 0.5, player.position.z + cameraPan.z);
     camera.target = Vector3.Lerp(camera.target, cameraTarget, Math.min(1, dt * 5.4));
     dashPulse = Math.max(0, dashPulse - dt);
@@ -814,6 +928,23 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         lastDamage = performance.now();
       }
     });
+
+    if (isMap001) {
+      Object.values(worldFarmState).forEach(plot => {
+        if (getWorldFarmCropStage(plot, Date.now()) !== "mature") return;
+        const effect = getWorldFarmPlant(plot)?.effect;
+        if (effect?.kind !== "repel") return;
+        const origin = new Vector3(plot.coordinate.x, 0, plot.coordinate.z);
+        enemies.forEach(enemy => {
+          if (!enemy.metadata?.alive) return;
+          const delta = enemy.position.subtract(origin);
+          const distance = delta.length();
+          if (distance <= 0 || distance > effect.radius) return;
+          delta.normalize();
+          enemy.position.addInPlace(delta.scale(dt * 1.35));
+        });
+      });
+    }
 
     const lighting = getWorldLighting(options.mapId);
     const sky = Color3.FromHexString(sceneTreatment?.skyColor ?? lighting.sky);

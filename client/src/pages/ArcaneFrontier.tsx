@@ -48,13 +48,14 @@ import {
   type GameSettings,
   type LocalGameSession,
 } from "@/game/storage/session";
-import type { BlockActionEvent, GameSnapshot } from "@/game/scene";
+import type { BlockActionEvent, FarmActionEvent, GameSnapshot } from "@/game/scene";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
 import { RUNTIME_MAP_ID, isRuntimeMapAllowed, resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
 import { consumeOneFromStack, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 
@@ -259,6 +260,7 @@ export default function ArcaneFrontier() {
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
   const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
+  const [worldFarmState, setWorldFarmState] = useState<WorldFarmState>({});
   const [worldBlockStateReady, setWorldBlockStateReady] = useState(false);
   const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -299,10 +301,12 @@ export default function ArcaneFrontier() {
     void loadOfflineMapState(RUNTIME_MAP_ID, session.playerId).then(state => {
       if (!active) return;
       setWorldBlockOverrides(state.worldBlockOverrides);
+      setWorldFarmState(state.worldFarmState);
       setWorldBlockStateReady(true);
     }).catch(() => {
       if (active) {
         setWorldBlockOverrides({});
+        setWorldFarmState({});
         setWorldBlockStateReady(true);
       }
     });
@@ -539,12 +543,36 @@ export default function ArcaneFrontier() {
       updateSession({ pendingActions: session.pendingActions.concat({ id: `block-break-${Date.now()}`, type: "block-break", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, coordinate: event.coordinate }, }) });
     }
     setWorldBlockOverrides(event.overrides);
-    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
     setToast(event.message);
     return true;
-  }, [session]);
+  }, [session, worldFarmState]);
 
   const blockMessageHandler = useCallback((message: string) => setToast(message), []);
+  const farmMessageHandler = useCallback((message: string) => setToast(message), []);
+
+  const farmActionHandler = useCallback((event: FarmActionEvent) => {
+    if (!session || event.mapId !== RUNTIME_MAP_ID) return false;
+    if (event.type === "plant" && event.seedInstanceId) {
+      const consumed = consumeOneFromStack(session.inventory, event.seedInstanceId);
+      if (!consumed.accepted) {
+        setToast(consumed.reason);
+        return false;
+      }
+      updateSession({ inventory: consumed.inventory, pendingActions: session.pendingActions.concat({ id: `plant-world-${Date.now()}`, type: "plant-world-seed", createdAt: Date.now(), payload: { mapId: event.mapId, plotId: event.plotId, seedDefinitionId: event.seedDefinitionId, seedInstanceId: event.seedInstanceId, coordinate: event.coordinate }, }) });
+    } else if (event.type === "harvest" && event.reward) {
+      if (session.inventory.some(item => item.provenance.eventId === event.reward!.provenance.eventId)) return false;
+      const reward = event.reward;
+      updateSession({ inventory: session.inventory.concat(reward), pendingActions: session.pendingActions.concat({ id: `harvest-world-${Date.now()}`, type: "harvest-world-crop", createdAt: Date.now(), payload: { mapId: event.mapId, plotId: event.plotId, rewardInstanceId: reward.instanceId, coordinate: event.coordinate }, }) });
+      const restoreAmount = event.effect?.kind === "restore" ? Math.min(event.effect.amount, event.effect.cap, 12) : 0;
+      if (restoreAmount > 0) setGameSnapshot(current => ({ ...current, health: Math.min(100, current.health + restoreAmount) }));
+      if (event.effect?.kind === "repel") setToast(`${event.message} · แรงผลักทำงาน ${event.effect.radius} บล็อกแบบไม่ทำลาย`);
+    }
+    setWorldFarmState(event.state);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    if (!event.effect || event.effect.kind !== "repel") setToast(event.message);
+    return true;
+  }, [session, worldBlockOverrides]);
 
   const snapshotHandler = useCallback((next: GameSnapshot) => {
     setGameSnapshot(next);
@@ -689,7 +717,7 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onBlockMessage={blockMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
+    {screen === "game" && session && <section className="game-screen" style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}>{worldBlockStateReady ? <GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} companion={companionConfig} /> : <div className="game-state-loading" role="status">กำลังโหลดสถานะบล็อกของผู้เล่น...</div>}
       <div className="game-top-bar"><div className="game-status"><HealthBar label="VITAL" value={gameSnapshot.health} tone="health" /><HealthBar label="AETHER" value={76} tone="shield" /><HealthBar label="STAMINA" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "NIGHT CYCLE" : "DAY CYCLE"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button><button className="game-icon-button" onClick={() => setShowSettings(true)} aria-label="เปิดตั้งค่า" title="Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src={obsidianCompanionArt ?? "/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg"} alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "following" : "resting")} · LOOT {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> Controls</button>

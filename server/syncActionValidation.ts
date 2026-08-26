@@ -8,6 +8,8 @@ const DEFINITION_ID_PATTERN = /^(sword|bow|ranged|seed|material|furniture|decora
 const INSTANCE_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 const BLOCK_MODULE_ID_PATTERN = /^(terrain|obstacle|structure|flora|storage)\.[A-Za-z0-9._-]+$/;
 const OBSIDIAN_MAP_ID = "obsidian-frontier";
+const FARM_PLOT_ID_PATTERN = /^farm-plot-0[1-4]$/;
+const WORLD_PLANT_ID_PATTERN = /^world-plant-\d{3}$/;
 
 export function isSafeUseItemPayload(payload: Record<string, unknown>): payload is UseItemSyncPayload {
   return Number.isInteger(payload.slot)
@@ -39,4 +41,28 @@ export function isSafeBlockBreakPayload(payload: Record<string, unknown>) {
     && typeof payload.moduleId === "string"
     && BLOCK_MODULE_ID_PATTERN.test(payload.moduleId)
     && isSafeBlockCoordinate(payload.coordinate);
+}
+
+export function isSafePlantWorldSeedPayload(payload: Record<string, unknown>) {
+  return payload.mapId === OBSIDIAN_MAP_ID
+    && typeof payload.plotId === "string"
+    && FARM_PLOT_ID_PATTERN.test(payload.plotId)
+    && typeof payload.plantId === "string"
+    && WORLD_PLANT_ID_PATTERN.test(payload.plantId)
+    && typeof payload.seedDefinitionId === "string"
+    && /^seed-\d{3}$/.test(payload.seedDefinitionId)
+    && typeof payload.seedInstanceId === "string"
+    && INSTANCE_ID_PATTERN.test(payload.seedInstanceId)
+    && isSafeBlockCoordinate(payload.coordinate)
+    && Number.isFinite(Number(payload.plantedAt));
+}
+
+export function isSafeHarvestWorldCropPayload(payload: Record<string, unknown>) {
+  return payload.mapId === OBSIDIAN_MAP_ID
+    && typeof payload.plotId === "string"
+    && FARM_PLOT_ID_PATTERN.test(payload.plotId)
+    && typeof payload.rewardInstanceId === "string"
+    && INSTANCE_ID_PATTERN.test(payload.rewardInstanceId)
+    && isSafeBlockCoordinate(payload.coordinate)
+    && Number.isFinite(Number(payload.harvestedAt));
 }

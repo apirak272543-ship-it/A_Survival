@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
+import { normalizeWorldFarmState, createDefaultWorldFarmState, type WorldFarmState } from "@/game/systems/worldFarmSystem";
 
 export const OFFLINE_QUEUE_LIMIT = 1000;
 
@@ -27,11 +28,12 @@ export type OfflineMapState = {
   fogOfWar: string;
   harvestedNodes: Record<string, number>;
   worldBlockOverrides: Record<string, string | null>;
+  worldFarmState: WorldFarmState;
   updatedAt: number;
 };
 
 export function defaultOfflineMapState(mapId: string, playerId: string): OfflineMapState {
-  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: {}, updatedAt: Date.now() };
+  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: {}, worldFarmState: createDefaultWorldFarmState(), updatedAt: Date.now() };
 }
 
 export function normalizeOfflineMapState(candidate: Partial<OfflineMapState>, mapId: string, playerId: string): OfflineMapState {
@@ -45,6 +47,7 @@ export function normalizeOfflineMapState(candidate: Partial<OfflineMapState>, ma
     fogOfWar: typeof candidate.fogOfWar === "string" ? candidate.fogOfWar : "",
     harvestedNodes: candidate.harvestedNodes && typeof candidate.harvestedNodes === "object" ? candidate.harvestedNodes : {},
     worldBlockOverrides,
+    worldFarmState: normalizeWorldFarmState(candidate.worldFarmState),
     updatedAt: typeof candidate.updatedAt === "number" ? candidate.updatedAt : Date.now(),
   };
 }
