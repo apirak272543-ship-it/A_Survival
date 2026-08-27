@@ -197,6 +197,19 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews story progression runtime state against quest progression without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.storyProgressionContractPreview({ seed: "story-runtime-router-seed", completedQuestCount: 20 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "story-runtime-router-seed", questGeneratorVersion: "1.0.0", runtimeStoryVersion: "1.0.0", completedQuestCount: 20, questCount: 40 });
+    expect(result.runtimeSummary).toMatchObject({ playableMapId: "obsidian-frontier", completedQuestCount: 20, questsPerPlayableMap: 20, currentQuestId: null, completedMapIndex: 1, nextMapReadyIndex: 2, futureMapsRuntimeImportAllowed: false });
+    expect(result.summary).toMatchObject({ currentQuestMatch: true, completedQuestPrefixMatch: true, playableMapContractMatch: true, nextMapReadyIndex: 2, nextMapRuntimeImportAllowed: false, futureMapsRuntimeImportAllowed: false, unresolvedReferenceCount: 0 });
+    expect(result.generated.nextMap).toMatchObject({ mapId: "story-map-002", runtimeStatus: "planned", runtimeImportAllowed: false });
+    expect(result.graph.valid).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews MAP_001 encounter story gate against quest progression without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "map001-story-gate-router-seed", mapCount: 2 });
@@ -391,6 +404,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "blocked-seed", mapCount: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.storyProgressionContractPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -418,6 +432,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "blocked-seed", mapCount: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.storyProgressionContractPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
