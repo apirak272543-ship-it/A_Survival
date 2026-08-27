@@ -30,6 +30,7 @@ describe("plant asset provenance dependency graph", () => {
       version: "0.3.0",
       packIntegrityVerified: true,
       provenanceVerified: true,
+      durableRegistryVerified: false,
       entryCount: 39,
     });
     expect(first.summary.logicalContentAssetIds).toEqual(["a-survival.content.plant", "a-survival.content.seed"]);
@@ -45,8 +46,10 @@ describe("plant asset provenance dependency graph", () => {
     expect(first.summary.unresolvedReferenceTypes["content-asset-binding"]).toBe(2);
     expect(first.summary.unresolvedReferenceTypes["asset-integrity"]).toBe(0);
     expect(first.summary.unresolvedReferenceTypes["asset-provenance"]).toBe(0);
+    expect(first.summary.unresolvedReferenceTypes["durable-registry"]).toBe(1);
     expect(first.graph.valid).toBe(false);
     expect(first.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "runtime-asset:a-survival.content.plant")).toBe(true);
+    expect(first.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "registry:asset-pack:arcane-frontier-voxel-pixel")).toBe(true);
     expect(first.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
@@ -104,6 +107,19 @@ describe("plant asset provenance dependency graph", () => {
       expect.objectContaining({ referenceType: "asset-provenance", referenceId: "arcane-frontier-voxel-pixel" }),
     ]));
     expect(output.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "provenance:pack.arcane-frontier-voxel-pixel")).toBe(true);
+  });
+
+  it("accepts an explicitly supplied durable registry snapshot without fabricating one by default", () => {
+    const sources = readActivePlantAssetProvenanceSources();
+    const output = buildPlantAssetProvenanceDependencyGraphFromSources(
+      { seed: "plant-asset-durable-registry-seed", samplePlantCount: 4 },
+      { ...sources, durableRegistry: { registryId: "asset-registry.arcane-frontier.v1", contentHash: "a".repeat(64) } },
+    );
+
+    expect(output.runtimePack.durableRegistryVerified).toBe(true);
+    expect(output.summary.unresolvedReferenceTypes["durable-registry"]).toBe(0);
+    expect(output.nodes.some(node => node.key === "registry:asset-pack:arcane-frontier-voxel-pixel")).toBe(true);
+    expect(output.graph.issues.some(issue => issue.dependencyKey === "registry:asset-pack:arcane-frontier-voxel-pixel")).toBe(false);
   });
 
   it("changes the audit hash when the seed or file-backed input changes", () => {

@@ -50,10 +50,16 @@ export type RuntimeAssetFileState = {
   sha256?: string;
 };
 
+export type DurableAssetRegistrySnapshot = {
+  registryId: string;
+  contentHash: string;
+};
+
 export type PlantAssetProvenanceSources = {
   manifest: RuntimeAssetPackManifest;
   fileStates: Record<string, RuntimeAssetFileState>;
   provenance: AssetCredit | null;
+  durableRegistry: DurableAssetRegistrySnapshot | null;
 };
 
 type PlantAssetReferenceType =
@@ -64,6 +70,7 @@ type PlantAssetReferenceType =
   | "asset-integrity"
   | "asset-provenance"
   | "pack-integrity"
+  | "durable-registry"
   | "definition-binding";
 
 export type PlantAssetProvenanceReference = {
@@ -113,6 +120,7 @@ export type PlantAssetProvenanceDependencyGraphOutput = {
     entryCount: number;
     packIntegrityVerified: boolean;
     provenanceVerified: boolean;
+    durableRegistryVerified: boolean;
   };
   plantAssetStatuses: PlantAssetStatus[];
   summary: {
@@ -195,6 +203,7 @@ export function readActivePlantAssetProvenanceSources(): PlantAssetProvenanceSou
     manifest,
     fileStates,
     provenance: getAssetCredit(`pack.${manifest.id}`) ?? null,
+    durableRegistry: null,
   };
 }
 
@@ -259,6 +268,7 @@ function collectUnresolvedReferenceTypes(unresolvedReferences: PlantAssetProvena
     "asset-integrity",
     "asset-provenance",
     "pack-integrity",
+    "durable-registry",
     "definition-binding",
   ];
   return Object.fromEntries(referenceTypes.map(type => [type, unresolvedReferences.filter(reference => reference.referenceType === type).length])) as Record<PlantAssetReferenceType, number>;
@@ -341,7 +351,9 @@ export function buildPlantAssetProvenanceDependencyGraphFromSources(input: Plant
   const packNode = buildRuntimePackNode(pack, rulesVersion);
   const packIntegrityVerified = packIntegrityMatches(pack, sources.fileStates);
   const provenanceVerified = provenanceMatchesPack(sources.provenance, pack);
+  const durableRegistryVerified = Boolean(sources.durableRegistry);
   const provenanceKey = `provenance:pack.${pack.id}`;
+  const durableRegistryKey = `registry:asset-pack:${pack.id}`;
   const provenanceNode: DependencyGraphNode | null = provenanceVerified && sources.provenance
     ? {
         key: provenanceKey,
@@ -363,6 +375,23 @@ export function buildPlantAssetProvenanceDependencyGraphFromSources(input: Plant
   if (!packIntegrityVerified) {
     packNode.dependencies.push(missingDependency(`asset-pack-integrity:${pack.id}@${pack.version}`, "other"));
     pushUnresolved(unresolvedReferences, packNode.key, "pack-integrity", pack.id, "active asset pack packSha256 does not match the ordered manifest entry digests");
+  }
+  if (sources.durableRegistry) {
+    const durableRegistryNode: DependencyGraphNode = {
+      key: durableRegistryKey,
+      kind: "other",
+      generatorId: "asset.registry",
+      generatorVersion: "1.0.0",
+      schemaVersion: "a-survival.asset-registry.v1",
+      seed: pack.id,
+      rulesVersion,
+      contentHash: sources.durableRegistry.contentHash,
+      dependencies: [],
+    };
+    packNode.dependencies.push(dependencyFor(durableRegistryNode));
+  } else {
+    packNode.dependencies.push(missingDependency(durableRegistryKey, "other"));
+    pushUnresolved(unresolvedReferences, packNode.key, "durable-registry", pack.id, "active asset pack has no durable registry snapshot binding; in-memory metadata is not a durable registry");
   }
 
   const logicalContentAssetIds = CONTENT_ASSET_CATEGORIES.map(category => `a-survival.content.${category}`);
@@ -402,7 +431,20 @@ export function buildPlantAssetProvenanceDependencyGraphFromSources(input: Plant
     if (entry && entryIsVerified && entry.kind !== EXPECTED_RUNTIME_ASSET_KIND) pushUnresolved(unresolvedReferences, `asset:${assetId}`, "asset-binding", assetId, `active asset-pack entry kind ${entry.kind} is incompatible with the required texture binding`);
   }
 
-  const nodes: DependencyGraphNode[] = [catalogNode, ...Array.from(logicalContentAssetNodeById.values()), packNode, ...(provenanceNode ? [provenanceNode] : []), ...Array.from(runtimeEntryNodes.values())];
+  const durableRegistryNode = sources.durableRegistry
+    ? ({
+        key: durableRegistryKey,
+        kind: "other",
+        generatorId: "asset.registry",
+        generatorVersion: "1.0.0",
+        schemaVersion: "a-survival.asset-registry.v1",
+        seed: pack.id,
+        rulesVersion,
+        contentHash: sources.durableRegistry.contentHash,
+        dependencies: [],
+      } satisfies DependencyGraphNode)
+    : null;
+  const nodes: DependencyGraphNode[] = [catalogNode, ...Array.from(logicalContentAssetNodeById.values()), packNode, ...(provenanceNode ? [provenanceNode] : []), ...(durableRegistryNode ? [durableRegistryNode] : []), ...Array.from(runtimeEntryNodes.values())];
   for (const assetId of logicalContentAssetIds) {
     const logicalAssetNode = logicalContentAssetNodeById.get(assetId);
     if (!logicalAssetNode) continue;
@@ -517,6 +559,7 @@ export function buildPlantAssetProvenanceDependencyGraphFromSources(input: Plant
     manifest: pack,
     fileStates: runtimeAssetIds.map(assetId => ({ assetId, fileState: sources.fileStates[assetId] ?? null })),
     provenance: sources.provenance,
+    durableRegistry: sources.durableRegistry,
   } as never);
   return {
     artifact: {
@@ -539,6 +582,7 @@ export function buildPlantAssetProvenanceDependencyGraphFromSources(input: Plant
       entryCount: Object.keys(pack.entries).length,
       packIntegrityVerified,
       provenanceVerified,
+      durableRegistryVerified,
     },
     plantAssetStatuses: statuses,
     summary: {
