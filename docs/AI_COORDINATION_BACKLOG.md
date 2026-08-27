@@ -15,11 +15,11 @@
 
 | Claim state ที่สงวนอยู่ | Owner | Task ID | ขอบเขต |
 |---|---|---|---|
-| `RESERVED` | AI-1 | `AI1-PERF-001` | T-01 และ S-04: performance profile → visibility/telemetry/profiler; ห้ามแก้ Workbench/shared router |
-| `RESERVED` | AI-2 | `AI2-CONTENT-001` | F-01–F-06, T-03 และ T-04 ในสาย content/provenance; ห้ามสร้าง binary asset หรือแก้ Workbench/router |
+| `AVAILABLE` | AI-1/AI-2/AI-0 | `AI1-PERF-001` | T-01 และ S-04: performance profile → visibility/telemetry/profiler; เป็นงานที่ worker ใดก็เลือกได้เมื่อ exact files ไม่ชน |
+| `AVAILABLE` | AI-1/AI-2/AI-0 | `AI2-CONTENT-001` | F-01–F-06, T-03 และ T-04 ในสาย content/provenance; เป็นงานที่ worker ใดก็เลือกได้เมื่อ exact files ไม่ชน; ห้ามสร้าง binary asset หรือแก้ Workbench/router |
 | `DONE` | AI-0 | `MAIN-REWARD-INVENTORY-001` | T-07 sub-checkpoint: quest reward → inventory capacity dry-run, implementation `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` |
 
-ณ การตรวจล่าสุดยังไม่พบ remote branch/PR ของ AI-1 หรือ AI-2 ใน `origin`; จึงถือ reservation ของสอง task เป็น **ทะเบียนการจองที่รอหลักฐาน** ไม่ใช่การรับรองว่างานเสร็จ. AI-0 จะเปลี่ยนเป็น `DONE` ก็ต่อเมื่อมี branch/PR, commit SHA, diff และ test evidence ที่ตรวจได้.
+ณ การตรวจล่าสุดยังไม่พบ remote branch/PR ของ AI-1 หรือ AI-2 ใน `origin`; reservation แบบจำกัดสายงานเดิมจึงถูก **ปล่อยกลับเป็น AVAILABLE**. ตั้งแต่นี้ AI-1 และ AI-2 ใช้ autonomous worker instructions เลือกงานจาก backlog ทั้งหมดได้ ไม่ต้องรอข้อความมอบหมายราย Task แต่ต้อง claim exact files ก่อนเริ่ม. AI-0 จะเปลี่ยนเป็น `DONE` ก็ต่อเมื่อมี branch/PR, commit SHA, diff และ test evidence ที่ตรวจได้.
 
 ## กติกาเลือกและจองงาน
 
@@ -56,28 +56,28 @@
 | `G-02` | hard spatial bounds/surface/height/slope/water/overlap/clearance/support repair | `PENDING` | `AVAILABLE` | AI-0 | spatial validator/repair owner and tests; no destructive DDL | G-01 | reject-before-export and repair evidence |
 | `G-03` | no generator/editor/player generator UI | `VERIFIED` | `DONE` | AI-0 | route/UI guard tests; do not reopen without regression | G-04 | player route has no generator control |
 | `G-04` | reusable Content Generation Suite definition/model/texture/skin/variant/gameplay | `PARTIAL` | `AVAILABLE` | AI-0 | `commonGeneratorApi.ts`, plugins, registry/orchestrator; no player route | G-01,G-05,T-04 | durable orchestrator and per-domain contracts |
-| `G-05` | manifest/assetId/SHA/provenance-backed assets and reference-only unknown license | `PARTIAL` | `RESERVED` | AI-2 | `assetProvenance.ts`, content/asset manifest/provenance tests; no PNG/GLB generation | V-03,V-04 | every runtime asset has exact manifest/provenance |
+| `G-05` | manifest/assetId/SHA/provenance-backed assets and reference-only unknown license | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | `assetProvenance.ts`, content/asset manifest/provenance tests; no PNG/GLB generation | V-03,V-04 | every runtime asset has exact manifest/provenance |
 | `G-06` | optional one AI NPC/map, server-only/on-demand/default disabled | `PENDING` | `AVAILABLE` | AI-0 | server NPC provider adapter/toggle/fallback; no browser secret/background loop | G-01,G-05 | max-one bounded server action with disabled default |
-| `F-01` | plant catalog ~300 by biome/soil and data-extensible | `PARTIAL` | `RESERVED` | AI-2 | `plantCatalog.ts`, plant generator/content graph/tests; no graphical asset generation | G-05 | distribution and asset coverage evidence |
-| `F-02` | plant soil/block/biome planting/growth/harvest | `PARTIAL` | `RESERVED` | AI-2 | `worldFarmSystem.ts`, plant/content graph tests; do not touch Workbench/router | F-01,B-01 | family coverage and world distribution |
-| `F-03` | seed/sprout/young/mature and mature-only reward | `PARTIAL` | `RESERVED` | AI-2 | farm stage/runtime tests and elapsed-time rehydration owner | F-02 | full stage/profile coverage |
-| `F-04` | capped fictional healing/buff/repel/damage; cactus thorn | `PARTIAL` | `RESERVED` | AI-2 | plant effect/hazard owner and disclosure tests; no medical claim | F-02,F-03 | universal effect/cactus hazard proof |
-| `F-05` | non-lethal repel radius/stacking/duration | `PARTIAL` | `RESERVED` | AI-2 | farm repel owner/tests/browser evidence; no auto-kill | F-04 | enemy-near-farm behavior and stacking/duration |
-| `F-06` | seed/plant collected from world can replant | `PARTIAL` | `RESERVED` | AI-2 | harvest reward/planting chain owner/tests; preserve atomic consume | F-02,F-03 | end-to-end seed return/replant chain |
+| `F-01` | plant catalog ~300 by biome/soil and data-extensible | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | `plantCatalog.ts`, plant generator/content graph/tests; no graphical asset generation | G-05 | distribution and asset coverage evidence |
+| `F-02` | plant soil/block/biome planting/growth/harvest | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | `worldFarmSystem.ts`, plant/content graph tests; do not touch Workbench/router | F-01,B-01 | family coverage and world distribution |
+| `F-03` | seed/sprout/young/mature and mature-only reward | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | farm stage/runtime tests and elapsed-time rehydration owner | F-02 | full stage/profile coverage |
+| `F-04` | capped fictional healing/buff/repel/damage; cactus thorn | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | plant effect/hazard owner and disclosure tests; no medical claim | F-02,F-03 | universal effect/cactus hazard proof |
+| `F-05` | non-lethal repel radius/stacking/duration | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | farm repel owner/tests/browser evidence; no auto-kill | F-04 | enemy-near-farm behavior and stacking/duration |
+| `F-06` | seed/plant collected from world can replant | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | harvest reward/planting chain owner/tests; preserve atomic consume | F-02,F-03 | end-to-end seed return/replant chain |
 | `F-07` | universal plant/tree/ecology/farm engine | `PENDING` | `AVAILABLE` | AI-0 | deferred engine design/generator; new files must be reserved first | F-01–F-06,G-01 | environment/nutrients/pests/seasons/lifecycle contract |
 | `S-01` | first-person/overhead/side camera choice in-map | `PARTIAL` | `AVAILABLE` | AI-0 | `cameraModes.ts`, in-map settings, camera bridge; no player map policy change | M-01 | touch/collision/device-size acceptance |
 | `S-02` | separate global vs in-map settings | `PARTIAL` | `AVAILABLE` | AI-0 | global/in-map settings UI and persistence; no creator controls | S-01,M-01 | all entry routes and pause/focus behavior |
 | `S-03` | view distance 5–50 step 5 and target FPS 5..60+120 disclaimer | `PARTIAL` | `AVAILABLE` | AI-1 | camera/performance profile owner; no benchmark claim | S-01,T-01 | all values persist and streaming policy is explicit |
-| `S-04` | adaptive performance tiers/WebGL/LOD/culling/pooling/hysteresis/sleep-wake | `PARTIAL` | `RESERVED` | AI-1 | performance profile/visibility/telemetry/profiler owner; no Workbench/shared route edits | S-03,T-01 | capability detection/controller/real-device benchmark |
+| `S-04` | adaptive performance tiers/WebGL/LOD/culling/pooling/hysteresis/sleep-wake | `PARTIAL` | `AVAILABLE` | AI-1/AI-2/AI-0 | performance profile/visibility/telemetry/profiler owner; no Workbench/shared route edits | S-03,T-01 | capability detection/controller/real-device benchmark |
 | `C-01` | discovered-only Codex with categories/detail | `PENDING` | `AVAILABLE` | AI-0 | Vault/Codex UI and discovery persistence; player UI allowed, no creator tools | B-06,B-07 | discovered-only/empty/duplicate tests |
 | `C-02` | category-specific item detail damage/plant/stack/usage | `PARTIAL` | `AVAILABLE` | AI-0 | Vault/item detail owner; no claim beyond real catalog | C-01,B-06 | category detail and long-press boundary |
-| `C-03` | hidden Credits/Supporters with runtime/reference-only split | `PENDING` | `RESERVED` | AI-2 | `assetProvenance.ts`, Credits UI/provenance docs; no unknown-license runtime | V-04,G-05 | credits navigation and provenance display |
+| `C-03` | hidden Credits/Supporters with runtime/reference-only split | `PENDING` | `AVAILABLE` | AI-2/AI-1/AI-0 | `assetProvenance.ts`, Credits UI/provenance docs; no unknown-license runtime | V-04,G-05 | credits navigation and provenance display |
 | `L-01` | Thai default colloquial copy, no over-formal wording | `PARTIAL` | `AVAILABLE` | AI-0 | copy/content files and UI review; Creator tools remain Thai | all UI owners | screen-by-screen language audit |
 | `L-02` | adult rating/policy, colloquial dialogue/voice with safety copy | `PENDING` | `AVAILABLE` | AI-0 | rating/policy/voice provenance docs; no voice generation without scope | L-01,Q-01 | policy labels and reviewed provenance |
-| `T-01` | performance tool generate-once/cache/chunk/culling/LOD/pooling | `PARTIAL` | `RESERVED` | AI-1 | performance profile/telemetry/profiler owner; no player profiler UI | S-04,M-02 | controlled capture/export and registry/cache contract |
+| `T-01` | performance tool generate-once/cache/chunk/culling/LOD/pooling | `PARTIAL` | `AVAILABLE` | AI-1/AI-2/AI-0 | performance profile/telemetry/profiler owner; no player profiler UI | S-04,M-02 | controlled capture/export and registry/cache contract |
 | `T-02` | procedural animation/motion generator | `PARTIAL` | `AVAILABLE` | AI-0 | `animationProfileGenerator.ts`, motion/skeleton profile tests; no asset generation claim | G-04,T-04 | skeleton/variation/wind/retarget/LOD contract |
-| `T-03` | universal item/equipment/combat/crafting/assembly logic | `PARTIAL` | `RESERVED` | AI-2 | item/content/provenance owner; no Workbench/router or gameplay mutation without new scope | B-04,B-06,G-04 | crafting/equipment/combat transactions and tool-aware runtime |
-| `T-04` | Common Generator API / Game Creation Engine all domains | `PARTIAL` | `RESERVED` | AI-2 | generator/asset provenance adapter scope; no matrix edit on AI branch | G-04,G-05,T-01 | plugin/orchestrator/registry/export/runtime publish contract |
+| `T-03` | universal item/equipment/combat/crafting/assembly logic | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | item/content/provenance owner; no Workbench/router or gameplay mutation without new scope | B-04,B-06,G-04 | crafting/equipment/combat transactions and tool-aware runtime |
+| `T-04` | Common Generator API / Game Creation Engine all domains | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | generator/asset provenance adapter scope; no matrix edit on AI branch | G-04,G-05,T-01 | plugin/orchestrator/registry/export/runtime publish contract |
 | `T-05` | Thai no-code drag/drop/pixel/mob editor with validation/register/export | `PARTIAL` | `AVAILABLE` | AI-0 | `CreatorStudio`, `CreatorDomainWorkbench`, creator registry; shared UI lock | T-04,G-05 | durable atlas/model/package/publish approval |
 | `T-06` | structure/building generator placement/asset/biome/road/interior/mob rules | `PARTIAL` | `AVAILABLE` | AI-0 | `structureGenerator.ts`, blueprints/placement tests; no player generator UI | G-01,G-02,T-04 | reusable assets, road/interior and world instance |
 | `T-07` | story/quest/map 1–100, 20 quests/map, rewards/items/abilities, item detail | `PARTIAL` | `AVAILABLE` | AI-0 | `questProgressionGenerator.ts`, `storyProgressionSystem.ts`, event/reward/inventory contracts; existing read-only checkpoints are DONE, next dispatch requires new reservation | O-02,O-03,B-06,C-02,G-04 | canonical event owners, authoritative reward/ability transaction, map unlock persistence, UX dialogue/cutscene |
@@ -88,7 +88,7 @@
 
 ## Current next pick
 
-`NEXT-QUEST-REWARD-DISPATCH-001` อยู่สถานะ **DONE** ใน implementation `333078e3f78e3647ba6643f98b76493dc982b726`; pure item-only atomic transition และ read-only preview ผ่านแล้ว แต่ persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers. งานต่อยอดที่ AI-0 จองอยู่คือ `NEXT-QUEST-REWARD-PERSISTENCE-001` บน base `4542ce9` เพื่อเพิ่ม bounded pending-action/validation contract เท่านั้น โดยยังไม่เรียกจาก gameplay หรือเขียน persistence ใน preview. AI-1 ควรทำ `AI1-PERF-001`; AI-2 ควรทำ `AI2-CONTENT-001`. หากทั้งสองตัวไม่มี branch/PR/SHA ให้ใช้ `WAITING_EVIDENCE` ไม่ใช่ `DONE`.
+`NEXT-QUEST-REWARD-DISPATCH-001` อยู่สถานะ **DONE** ใน implementation `333078e3f78e3647ba6643f98b76493dc982b726`; pure item-only atomic transition และ read-only preview ผ่านแล้ว แต่ persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers. งานต่อยอด `NEXT-QUEST-REWARD-PERSISTENCE-001` ของ AI-0 อยู่ระหว่าง reviewบน base `4542ce9` เพื่อเพิ่ม bounded pending-action/validation contract เท่านั้น โดยยังไม่เรียกจาก gameplay หรือเขียน persistence ใน preview. ตั้งแต่นี้ AI-1 และ AI-2 ไม่ถูกจำกัดให้อยู่ในสายงานเดิม แต่เลือก `AVAILABLE` task ใดก็ได้ตาม autonomous worker instructions, dependency และ exclusive file lock. หากไม่มีงานที่ปลอดภัยให้รับ ให้ส่ง blocker/evidence แทนการสร้างงานสมมติ.
 
 ## Claim template
 

@@ -1,3 +1,6 @@
+> **LEGACY HANDOFF — ไม่ใช่คำสั่ง scope ปัจจุบัน**
+> งานเดิมในไฟล์นี้เป็นเพียงบริบท performance. ให้ใช้ [`AI_COMMAND_01_AUTONOMOUS_WORKER_2026-08-27.md`](./AI_COMMAND_01_AUTONOMOUS_WORKER_2026-08-27.md) เป็นคำสั่งปัจจุบัน ซึ่งอนุญาตให้เลือกงานจาก backlog ทั้งหมดและทำต่อเนื่องหลังส่งแต่ละ checkpoint
+
 # AI Handoff 01 — Runtime Performance และ Visibility
 
 ## วิธีใช้ไฟล์นี้

@@ -13,7 +13,7 @@
 | 🟡 RESERVED | จองแล้ว รอเริ่มหรือรอส่งหลักฐาน | owner รับงานแล้ว แต่ยังไม่มีหลักฐานเสร็จครบ |
 | 🔴 BLOCKED | ติด blocker | ห้ามแก้ด้วยการเดาหรือปิด blocker; ต้องรายงานเหตุผลและ dependency ที่ขาด |
 | ⚪ WAITING_EVIDENCE | อ้างว่าทำแล้วแต่ repository ยังไม่มีหลักฐานรับงาน | ต้องส่ง branch/PR/SHA/diff/test summary ก่อน AI-0 จะเปลี่ยนเป็น DONE |
-| ⬜ AVAILABLE | ยังไม่มี owner | AI-0 เป็นผู้มอบหมายและต้องลงทะเบียนก่อนเริ่ม |
+| ⬜ AVAILABLE | ยังไม่มี owner | AI-0, AI-1 หรือ AI-2 เลือกได้ตาม autonomous worker instructions แต่ต้อง claim และลงทะเบียนก่อนเริ่ม |
 
 ## สถานะ repository ณ 2026-08-27
 
@@ -21,23 +21,27 @@
 |---|---|
 | Repository | `apirak272543-ship-it/A_Survival` |
 | Branch หลัก | `main` |
-| Latest implementation checkpoint | `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` (`origin/main` ก่อน docs correction) |
+| Latest integration checkpoint | `c0299b02ea173d47a20abbf91e2b7f884b82671f` (docs correction; pending-action implementation `05b27c1a16e51f741256d7b08d57e5ee579bb9eb`) |
 | Recovery ref ที่ต้องรักษา | `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2` |
 | Stash | ว่าง ณ การตรวจล่าสุด |
 | Dev/test process | ไม่พบ process ที่ต้องหยุด ณ การตรวจล่าสุด |
-| สถานะล่าสุด | quest reward → inventory checkpoint ถูก push แล้ว; registry และ matrix กำลังบันทึกผลรับงานใน docs correction commit |
+| สถานะล่าสุด | pending-action contract ถูก push แล้วใน `05b27c1`; registry อยู่ระหว่าง review; browser boundary smoke เก็บหลักฐานและหยุด dev server แล้ว |
 
 ## ทะเบียนงานและ file reservation
 
 | Task ID | Owner | สถานะ | ขอบเขตและไฟล์ที่จอง | Base/commit evidence | การกระทำถัดไป |
 |---|---|---|---|---|---|
 | `MAIN-REWARD-INVENTORY-001` | AI-0 / Main Integrator | 🟢 DONE | `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`, `server/creatorRouter.ts`, `server/creatorRouter.test.ts`, `client/src/pages/CreatorDomainWorkbench.tsx`, reward inventory browser/docs evidence | Base `d282e8e`; implementation `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` | รอออกแบบ checkpoint ใหม่ `NEXT-QUEST-REWARD-DISPATCH-001`; ห้ามตีความ dry-run เป็นการแจก reward จริง |
-| `AI1-PERF-001` | AI-1 | 🟡 RESERVED | Performance profile → runtime visibility/telemetry/profiler; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_01_RUNTIME_PERFORMANCE.md`; ห้ามแก้ Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-1 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded pure checkpoint, ส่ง evidence กลับ AI-0 |
-| `AI2-CONTENT-001` | AI-2 | 🟡 RESERVED | Content generator / plant / asset provenance และ Credits/Supporters provenance; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_02_CONTENT_PROVENANCE.md`; ห้ามสร้าง PNG/GLB, แก้ Workbench/router, map policy, authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-2 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded provenance checkpoint, ส่ง evidence กลับ AI-0 |
+| `AI1-PERF-001` | AI-1 ตาม autonomous worker | ⬜ AVAILABLE | Performance profile → runtime visibility/telemetry/profiler; ใช้เป็นงานที่เลือกได้จาก backlog ไม่ใช่ข้อจำกัดถาวร; ห้ามแก้ Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | ยังไม่พบ remote branch หรือ PR ของ AI-1; reservation เดิมถูกปล่อย | AI-1 เลือกได้เมื่อ dependency พร้อม โดยต้องประกาศ claim และ exact files ก่อนเริ่ม |
+| `AI2-CONTENT-001` | AI-2 ตาม autonomous worker | ⬜ AVAILABLE | Content generator / plant / asset provenance และ Credits/Supporters provenance; ใช้เป็นงานที่เลือกได้จาก backlog ไม่ใช่ข้อจำกัดถาวร; ห้ามสร้าง PNG/GLB, แก้ Workbench/router, map policy, authority หรือไฟล์ใน reservation ของ AI-0 | ยังไม่พบ remote branch หรือ PR ของ AI-2; reservation เดิมถูกปล่อย | AI-2 เลือกได้เมื่อ dependency พร้อม โดยต้องประกาศ claim และ exact files ก่อนเริ่ม |
 | `NEXT-QUEST-REWARD-DISPATCH-001` | AI-0 / Main Integrator | 🟢 DONE | `client/src/game/systems/questRewardDispatchSystem.ts`, `server/generators/questRewardDispatchDependencyGraph.ts`, router/Workbench/tests/evidence ตาม implementation commit | Base `959d3d3`; implementation `333078e3f78e3647ba6643f98b76493dc982b726` | pure item-only atomic transition และ read-only preview ผ่าน; persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers และต้องเปิดงานใหม่แยก reservation |
 | `NEXT-QUEST-REWARD-PERSISTENCE-001` | AI-0 / Main Integrator | 🟣 IN_REVIEW | `client/src/game/home/homeSystemV2.ts` (HomeAction union), `server/syncActionValidation.ts`, `client/src/game/systems/questRewardPendingAction.ts`, `server/questRewardPendingAction.test.ts`, related dependency preview/router/Workbench files only if required | Base `4542ce9`; implementation `05b27c1a16e51f741256d7b08d57e5ee579bb9eb`; files remain exclusively reserved by AI-0; no AI-1/AI-2 branch may edit them | bounded pending-action payload และ server shape validator ถูก pushแล้ว; ต้องตรวจ full suite/build/browser boundary และยืนยันว่าไม่มี gameplay caller หรือ persistence mutation ก่อนเปลี่ยนเป็น DONE |
 | `NEXT-PERF-CAPABILITY-001` | AI-1 หรือ AI-0 ตามการมอบหมาย | ⬜ AVAILABLE | ตรวจ capability/benchmark หรือ profiler contract ต่อจาก T-01 โดยไม่อ้าง mobile acceptance หากไม่มี device evidence | ยังไม่มี reservation | AI-0 จะมอบหมายหลัง AI-1 ส่ง evidence ของ `AI1-PERF-001` |
 | `NEXT-ASSET-PROVENANCE-001` | AI-2 หรือ AI-0 ตามการมอบหมาย | ⬜ AVAILABLE | เชื่อม plant/item/asset provenance กับ manifest หรือ required blockers ต่อจาก T-04/F-01 โดยไม่สร้าง graphical assets | ยังไม่มี reservation | AI-0 จะมอบหมายหลัง AI-2 ส่ง evidence ของ `AI2-CONTENT-001` |
+
+## Autonomous worker instructions
+
+AI-1 และ AI-2 ได้รับอนุญาตให้ทำงานต่อเนื่องจาก backlog กลางตามไฟล์คำสั่ง [`AI_COMMAND_01_AUTONOMOUS_WORKER_2026-08-27.md`](./AI_COMMAND_01_AUTONOMOUS_WORKER_2026-08-27.md) และ [`AI_COMMAND_02_AUTONOMOUS_WORKER_2026-08-27.md`](./AI_COMMAND_02_AUTONOMOUS_WORKER_2026-08-27.md). รายการเดิม `AI1-PERF-001` และ `AI2-CONTENT-001` เป็นเพียงงานแนะนำที่ถูกปล่อย reservation แล้ว ไม่ใช่การจำกัดสายงาน. ทั้งสองตัวต้องอ่าน backlog ทั้งหมด เลือกเฉพาะ `AVAILABLE`, claim exact files, commit/push branch ตัวเอง และเริ่ม checkpoint ถัดไปหลังส่งหลักฐาน; AI-0 ยังคงเป็นผู้ review/merge และผู้แก้ registry บน `main`
 
 ## File ownership rules
 
