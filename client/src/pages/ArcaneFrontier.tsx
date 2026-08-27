@@ -212,8 +212,8 @@ function InMapSettingsSheet({ settings, setSettings, close }: { settings: InMapS
     <div className="setting-stack">
       <label><span>มุมมองการเล่น</span><select value={settings.cameraMode} onChange={event => update("cameraMode", event.target.value as InMapSettings["cameraMode"])}>{CAMERA_MODE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label} · {option.description}</option>)}</select></label>
       <label><span>ระยะมองเห็น <b>{settings.viewDistanceBlocks} บล็อก</b></span><select value={settings.viewDistanceBlocks} onChange={event => update("viewDistanceBlocks", Number(event.target.value) as InMapSettings["viewDistanceBlocks"])}>{VIEW_DISTANCE_BLOCKS.map(blocks => <option key={blocks} value={blocks}>{blocks} บล็อก</option>)}</select></label>
-      <label><span>เป้าหมายเฟรมเรต <b>{settings.targetFps} FPS</b></span><select value={settings.targetFps} onChange={event => update("targetFps", Number(event.target.value) as InMapSettings["targetFps"])}>{TARGET_FPS_OPTIONS.map(fps => <option key={fps} value={fps}>{fps} FPS{fps === 120 ? " · ถ้าอุปกรณ์รองรับ" : " · เป้าหมาย ไม่ใช่การรับประกัน"}</option>)}</select></label>
-      <p className="settings-note">มุมมองและระยะนี้บันทึกแยกตามผู้เล่นกับแผนที่ ส่วน FPS เป็นค่าเป้าหมายของเกม ไม่ใช่ผลทดสอบประสิทธิภาพของเครื่อง</p>
+      <label><span>เป้าหมายเฟรมเรต <b>{settings.targetFps} FPS</b></span><select value={settings.targetFps} onChange={event => update("targetFps", Number(event.target.value) as InMapSettings["targetFps"])}>{TARGET_FPS_OPTIONS.map(fps => <option key={fps} value={fps}>{fps} FPS{fps === 120 ? " · high-refresh advisory · ไม่รับประกัน" : " · เป้าหมาย ไม่ใช่การรับประกัน"}</option>)}</select></label>
+      <p className="settings-note">มุมมองและระยะนี้บันทึกแยกตามผู้เล่นกับแผนที่ ส่วน FPS เป็นค่าเป้าหมายของเกม ไม่ใช่ผลทดสอบประสิทธิภาพของเครื่อง; 120 FPS เป็น high-refresh advisory เท่านั้น อุปกรณ์จริงอาจทำได้ต่ำกว่านี้</p>
     </div>
   </section></div>;
 }
