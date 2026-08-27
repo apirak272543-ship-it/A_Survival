@@ -39,10 +39,11 @@
 | Branch/worktree | `ai-2/block-persistence-b05` / `/home/ubuntu/A_Survival_ai2` |
 | Base SHA ที่ checkout จริง | `f3eea8c80ee86f72ecf2f726ea8aaff5623c9a55` (`origin/main` หลัง fetch ล่าสุด) |
 | Files reserved | `server/generators/blockPersistenceDependencyGraph.ts`, `server/blockPersistenceDependencyGraph.test.ts`, `docs/AI_HANDOFF_B05_BLOCK_PERSISTENCE_REPORT.md` |
-| Implementation commit | `fc5ff2f` (full SHA จะถูกยืนยันหลัง report commit) |
+| Implementation commit | `fc5ff2f` / `fc5ff2f3dce451486d7b36c2bcfb13bb26ba2c7c` |
 | Remote branch | `origin/ai-2/block-persistence-b05` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md`; AI-0 เป็น owner ของทั้งสองไฟล์ |
-| Git status | clean ก่อน report commit; implementation `git diff --check` ผ่าน |
+| Report commit | `ddc87771863c9f21eeb8f48ef314c2af09b86a88`; final docs SHA amendment is reported in the PR completion comment |
+| Git status | clean before this final report SHA amendment; implementation `git diff --check` ผ่าน |
 | Recovery refs/stash | ไม่แตะต้อง; ไม่มี reset, revert, force checkout, force push, recovery-ref deletion หรือ stash manipulation |
 
 ## Validation evidence
@@ -63,4 +64,4 @@ Build warnings ที่ตรวจพบจริงและไม่ได�
 
 Checkpoint นี้ยังไม่ปิด B-05 ทั้งข้อเป็น `VERIFIED` เพราะยังไม่ได้แก้/ทดสอบ owner runtime แบบ end-to-end, browser IndexedDB reload, cross-map reconnect, multi-device conflict หรือ production persistence. การเพิ่ม authoritative write, queue/reconciliation หรือ service-worker behavior ต้องเปิด checkpoint ใหม่พร้อม exact reservations และรักษา invariant ว่ามีเพียง `obsidian-frontier` ที่ playable/selectable/cache-eligible/offline-write ได้
 
-AI-0 ควรตรวจ diff ของ commit `fc5ff2f`, ตรวจ report และเปลี่ยนสถานะ task ตามหลักฐานจริง. หาก report commit ทำให้ full implementation SHA เปลี่ยน ให้ใช้ final report commit SHA เป็น branch head และคง `fc5ff2f` เป็น implementation evidence
+AI-0 ควรตรวจ diff ของ implementation `fc5ff2f3dce451486d7b36c2bcfb13bb26ba2c7c` และ report commit `ddc87771863c9f21eeb8f48ef314c2af09b86a88` รวมถึง final docs SHA amendment ที่ระบุใน PR completion comment, ตรวจ report และเปลี่ยนสถานะ task ตามหลักฐานจริง. Implementation และ report เป็นคนละ isolated commits บน branch เดียวกัน
