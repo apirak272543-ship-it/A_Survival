@@ -80,6 +80,7 @@ describe("creator texture router", () => {
   it("exposes deterministic no-code previews without importing them into the player runtime", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const world = await caller.creator.world.preview({ seed: 9107, radius: 8, difficulty: "normal" });
+    const animation = await caller.creator.animation.preview({ id: "survivor.default", displayName: "Survivor Default Motion", assetId: "animation.survivor.default", assetSource: "starter-authored", provenanceRef: "procedural-starter-authored", seed: "animation-preview" });
     const block = await caller.creator.block.preview({ blockId: "terrain.obsidian" });
     const structure = await caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "creator-structure", minPlacementScore: 0 });
     const item = await caller.creator.item.preview({
@@ -99,6 +100,8 @@ describe("creator texture router", () => {
 
     expect(world).toMatchObject({ previewOnly: true, mapId: "obsidian-frontier", metadata: { playerFacingWorldGenerationUi: false } });
     expect(world.counts.blocks).toBeGreaterThan(0);
+    expect(animation).toMatchObject({ previewOnly: true, output: { schemaVersion: "a-survival.animation-profile.v1", id: "survivor.default", states: { idle: { loop: true }, dead: { visible: false, loop: false } } } });
+    expect(animation.preview.assetRefs).toEqual([{ assetId: "animation.survivor.default", kind: "animation", source: "starter-authored", provenanceRef: "procedural-starter-authored" }]);
     expect(block).toMatchObject({ previewOnly: true, runtimeImportAllowed: false, definition: { id: "terrain.obsidian", kind: "terrain", assetId: "terrain.obsidian" } });
     expect(structure.previewOnly).toBe(true);
     expect(structure.output.schemaVersion).toBe("a-survival.structure-generation.v1");
@@ -114,6 +117,7 @@ describe("creator texture router", () => {
     const caller = appRouter.createCaller(createContext("user"));
 
     await expect(caller.creator.world.preview({ seed: 1, radius: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.animation.preview({ id: "blocked.animation", displayName: "Blocked Animation", assetId: "animation.blocked", assetSource: "reference-only", provenanceRef: "blocked-test", seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.block.preview({ blockId: "terrain.obsidian" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.item.preview({

@@ -16,6 +16,10 @@ import {
   validateStructureGenerationOutput,
 } from "./generators/structureGenerator";
 import {
+  createAnimationProfileRegistry,
+  type AnimationProfileInput,
+} from "./generators/animationProfileGenerator";
+import {
   generateUniversalItem,
   type ItemElement,
   type ItemFamily,
@@ -157,6 +161,16 @@ function buildNoCodeItemInput(input: ItemPreviewRequest) {
   };
 }
 
+const animationPreviewSchema = z.object({
+  id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/),
+  displayName: z.string().trim().min(3).max(120),
+  assetId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/),
+  assetSource: z.enum(["generated", "starter-authored", "provided", "reference-only"]),
+  provenanceRef: z.string().trim().min(1).max(512),
+  fps: z.number().int().min(1).max(60).default(12),
+  seed: z.string().trim().min(1).max(128),
+});
+
 const structurePreviewSchema = z.object({
   mapId: z.literal(DEFAULT_GENERATOR_MAP_ID),
   blueprintId: z.string().trim().regex(/^[a-z0-9][a-z0-9.-]{2,63}$/),
@@ -265,6 +279,21 @@ export const creatorRouter = router({
         counts: { blocks: world.blocks.length, terrain: world.terrain.length, water: world.water.length, caves: world.caves.length, resources: world.resources.length, structures: world.structures.length, spawnPoints: world.spawnPoints.length },
         sampleBlockIds: Array.from(new Set(world.blocks.slice(0, 24).map(block => block.blockId))),
       };
+    }),
+  }),
+  animation: router({
+    preview: adminProcedure.input(animationPreviewSchema).mutation(({ input }) => {
+      const registry = createAnimationProfileRegistry();
+      const animationInput: AnimationProfileInput = {
+        id: input.id,
+        displayName: input.displayName,
+        assetId: input.assetId,
+        assetSource: input.assetSource,
+        provenanceRef: input.provenanceRef,
+        fps: input.fps,
+      };
+      const artifact = registry.generate("animation.profile", animationInput, { seed: input.seed, generatedAt: 0 });
+      return { previewOnly: true as const, output: artifact.output, preview: registry.preview(artifact) };
     }),
   }),
   block: router({
