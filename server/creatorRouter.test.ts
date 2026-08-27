@@ -197,6 +197,20 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews MAP_001 encounter story gate against quest progression without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "map001-story-gate-router-seed", mapCount: 2 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "map001-story-gate-router-seed", mapCount: 2, questCount: 40, playableMapIndex: 1, nextMapIndex: 2, nextMapRuntimeImportAllowed: false, questGeneratorVersion: "1.0.0", encounterOwnerVersion: "1.0.0" });
+    expect(result.summary).toMatchObject({ playableMapQuestCount: 20, nextMapId: "story-map-002", nextMapPrerequisiteCount: 20, encounterEventCount: 2, encounterCompletionSupported: false, gateReady: false, futureMapRuntimeImportAllowed: false });
+    expect(result.gate.requiredQuestIds).toHaveLength(20);
+    expect(result.unresolvedReferences.some(reference => reference.referenceType === "encounter-completion")).toBe(true);
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews MAP_001 encounter events against world spawn and loot context without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.map001EncounterPreview({ seed: "map001-encounter-router-seed", radius: 32, sampleSpawnCount: 64 });
@@ -376,6 +390,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.structureSpawnReconciliationPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["compound-frontier-farm"], sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "blocked-seed", mapCount: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -402,6 +417,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.structureSpawnReconciliationPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["compound-frontier-farm"], sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.map001StoryGatePreview({ seed: "blocked-seed", mapCount: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
