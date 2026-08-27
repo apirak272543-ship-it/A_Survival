@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAP_REGISTRY } from "../client/src/game/data/maps";
-import { prepareMapModule } from "../client/src/game/storage/mapCache";
+import { hasCachedMapModule, prepareMapModule } from "../client/src/game/storage/mapCache";
 
 type FakeCache = { match: (key: string) => Promise<Response | undefined>; put: (key: string, response: Response) => Promise<void> };
 
@@ -48,7 +48,7 @@ describe("map cache preparation", () => {
   it("does not create a new map module offline when it was never cached", async () => {
     installCacheHarness(false);
     const phases: string[] = [];
-    const result = await prepareMapModule(MAP_REGISTRY[1]!, update => phases.push(update.phase));
+    const result = await prepareMapModule(MAP_REGISTRY[0]!, update => phases.push(update.phase));
     expect(result.offline).toBe(true);
     expect(result.ready).toBe(false);
     expect(phases).toContain("ออฟไลน์: แผนที่ยังไม่พร้อม");
@@ -57,11 +57,22 @@ describe("map cache preparation", () => {
 
   it("opens a previously cached map offline without fetching", async () => {
     installCacheHarness(true);
-    const map = MAP_REGISTRY[2]!;
+    const map = MAP_REGISTRY[0]!;
     await prepareMapModule(map);
     Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true });
     const result = await prepareMapModule(map);
     expect(result).toMatchObject({ cached: true, offline: true, ready: true });
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("denies future map cache preparation and lookup before any cache or network work", async () => {
+    installCacheHarness();
+    const futureMap = MAP_REGISTRY[1]!;
+    const phases: string[] = [];
+    const result = await prepareMapModule(futureMap, update => phases.push(update.phase));
+    expect(result).toMatchObject({ cached: false, offline: false, ready: false });
+    expect(phases).toEqual(["แผนที่นี้ยังปิดใน runtime"]);
+    expect(await hasCachedMapModule(futureMap.id)).toBe(false);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

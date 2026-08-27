@@ -1,6 +1,7 @@
 import type { MapDefinition } from "@/game/data/maps";
+import { isRuntimeMapAllowed } from "@/game/routing/directRoute";
 
-const CACHE_NAME = "arcane-frontier-map-modules-v3";
+export const MAP_CACHE_NAME = "arcane-frontier-map-modules-v3" as const;
 
 export type MapPreparationUpdate = {
   progress: number;
@@ -22,6 +23,10 @@ function cacheKey(mapId: string) {
 export async function prepareMapModule(map: MapDefinition, onProgress?: (update: MapPreparationUpdate) => void) {
   if (typeof window === "undefined") return { cached: false, offline: false, ready: false } satisfies MapPreparationResult;
   const offline = navigator.onLine === false;
+  if (!isRuntimeMapAllowed(map.id)) {
+    onProgress?.({ progress: 100, phase: "แผนที่นี้ยังปิดใน runtime", cached: false, offline });
+    return { cached: false, offline, ready: false } satisfies MapPreparationResult;
+  }
   const alreadyCached = await hasCachedMapModule(map.id);
   onProgress?.({ progress: alreadyCached ? 18 : 4, phase: alreadyCached ? "อ่านโมดูลที่บันทึกไว้" : "กำลังจัดเตรียม map module", cached: alreadyCached, offline });
   if (offline && !alreadyCached) {
@@ -30,7 +35,7 @@ export async function prepareMapModule(map: MapDefinition, onProgress?: (update:
   }
   const payload = JSON.stringify({ id: map.id, name: map.name, cachedAt: Date.now(), keyArt: map.keyArt, content: map.content });
   if ("caches" in window) {
-    const cache = await caches.open(CACHE_NAME);
+    const cache = await caches.open(MAP_CACHE_NAME);
     if (!alreadyCached) {
       await cache.put(cacheKey(map.id), new Response(payload, { headers: { "Content-Type": "application/json" } }));
       onProgress?.({ progress: 42, phase: "บันทึกข้อมูล expedition", cached: false, offline: false });
@@ -67,9 +72,9 @@ export async function cacheMapModule(map: MapDefinition) {
 }
 
 export async function hasCachedMapModule(mapId: string) {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || !isRuntimeMapAllowed(mapId)) return false;
   if ("caches" in window) {
-    const cache = await caches.open(CACHE_NAME);
+    const cache = await caches.open(MAP_CACHE_NAME);
     if (await cache.match(cacheKey(mapId))) return true;
   }
   try {
