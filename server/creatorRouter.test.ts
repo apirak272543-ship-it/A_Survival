@@ -259,6 +259,19 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews quest reward dispatch gates without persisting or emitting gameplay", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.questRewardDispatchPreview({ seed: "reward-dispatch-router", completedQuestCount: 0, sequenceBase: 10 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "reward-dispatch-router", completedQuestCount: 0, candidateQuestId: "story-map-001-quest-01" });
+    expect(result.summary).toMatchObject({ accepted: false, appliedRewardCount: 0, persistenceOwnerCalled: false, gameplayEventEmitted: false, abilityRuntimeOwnerAvailable: false, requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: false, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.assessment).toMatchObject({ questId: "story-map-001-quest-01", accepted: false, code: "unsupported-reward" });
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews story offline map state namespace without writing IndexedDB", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.storyOfflineMapStatePreview({ seed: "story-offline-state-router-seed", playerId: "preview-player", requestedMapIds: ["obsidian-frontier", "story-map-002"], completedQuestCount: 20 });
@@ -475,6 +488,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.questGameplayEventPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questRewardRuntimePreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questRewardInventoryPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.questRewardDispatchPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -508,6 +522,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.questGameplayEventPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questRewardRuntimePreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questRewardInventoryPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.questRewardDispatchPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
