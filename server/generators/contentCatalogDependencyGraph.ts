@@ -19,6 +19,7 @@ export type ContentCatalogDependencyGraphOutput = {
     definitionCount: number;
     categoryCount: number;
   };
+  nodes: DependencyGraphNode[];
   graph: DependencyGraphValidation;
 };
 
@@ -98,6 +99,7 @@ export function buildContentCatalogDependencyGraph(input: ContentCatalogDependen
       definitionCount: output.definitions.length,
       categoryCount: output.assetRefs.length,
     },
+    nodes,
     graph: validateGeneratorDependencyGraph(nodes),
   };
 }
