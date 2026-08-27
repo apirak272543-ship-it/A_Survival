@@ -15,7 +15,7 @@ export type CreatorCompositionInput = {
   layers: Array<{ id: string; label: string; role: CreatorCompositionLayerRole; zIndex: number; visible: boolean; opacity: number }>;
   parts: Array<{ id: string; label: string; slot: CreatorCompositionPartSlot; x: number; y: number; width: number; height: number; layerIds: string[] }>;
   palette: Array<{ id: string; label: string; hex: string; semantic: string }>;
-  pixels: Array<{ x: number; y: number; colorId: string }>;
+  pixels: Array<{ x: number; y: number; colorId: string; layerId: string }>;
 };
 
 export type CreatorCompositionPreview = {
@@ -82,8 +82,9 @@ export function buildCreatorComposition(input: CreatorCompositionInput): Creator
   const paletteIds = new Set(input.palette.map(color => color.id));
   const pixelKeys = new Set<string>();
   input.pixels.forEach(pixel => {
-    const key = `${pixel.x}:${pixel.y}`;
+    const key = `${pixel.layerId}:${pixel.x}:${pixel.y}`;
     if (!Number.isInteger(pixel.x) || !Number.isInteger(pixel.y) || pixel.x < 0 || pixel.y < 0 || pixel.x >= input.canvasWidth || pixel.y >= input.canvasHeight) throw new Error(`Composition pixel ${key} is outside canvas bounds`);
+    if (!layerIds.has(pixel.layerId)) throw new Error(`Composition pixel ${key} references an unknown layer`);
     if (pixelKeys.has(key)) throw new Error(`Composition pixel ${key} is duplicated`);
     if (!paletteIds.has(pixel.colorId)) throw new Error(`Composition pixel ${key} references an unknown palette color`);
     pixelKeys.add(key);
@@ -96,7 +97,7 @@ export function buildCreatorComposition(input: CreatorCompositionInput): Creator
     layers: input.layers.map(layer => ({ ...layer })),
     parts: input.parts.map(part => ({ ...part, layerIds: [...part.layerIds] })),
     palette: input.palette.map(color => ({ ...color })),
-    pixels: input.pixels.map(pixel => ({ ...pixel })).sort((left, right) => left.y - right.y || left.x - right.x || left.colorId.localeCompare(right.colorId)),
+    pixels: input.pixels.map(pixel => ({ ...pixel })).sort((left, right) => left.y - right.y || left.x - right.x || left.layerId.localeCompare(right.layerId) || left.colorId.localeCompare(right.colorId)),
   } satisfies CreatorCompositionPreview["composition"];
   const summary = { layerCount: input.layers.length, partCount: input.parts.length, paletteCount: input.palette.length, pixelBudget: input.canvasWidth * input.canvasHeight, paintedPixelCount: input.pixels.length, meshRequired: false as const };
   const registryMetadata = buildCreatorDomainArtifactMetadata({

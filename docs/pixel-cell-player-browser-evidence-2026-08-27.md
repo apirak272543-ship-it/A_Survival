@@ -19,3 +19,7 @@ Opening `http://localhost:3000/creator-workbench` without an authenticated admin
 ## Handoff regression boundary
 
 After adding `creator.composition.texturePreview`, the player landing was reloaded and still rendered only the `Arcane Frontier` player surface with คู่มือ, เครดิต, ตั้งค่า and the game entry action. No texture builder, PNG, composition, pixel, palette, registry, review or creator controls appeared. This remains a boundary smoke check; it does not replace authenticated admin preview evidence.
+
+## Layer-aware regression check
+
+After restarting the local dev server with the layer-aware contract, the player landing again rendered the normal `Arcane Frontier` surface only. The DOM exposed player controls (คู่มือ, เครดิต, ตั้งค่า, เข้าสู่พื้นที่รอยต่อ) and did not expose layer selector, pixel grid, texture Builder, composition, registry, review, or creator controls. This is a fresh player boundary check, not authenticated creator preview evidence.

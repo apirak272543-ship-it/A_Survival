@@ -32,7 +32,7 @@ function validCompositionInput() {
     layers: [{ id: "base", label: "พื้นฐาน", role: "base" as const, zIndex: 0, visible: true, opacity: 1 }],
     parts: [{ id: "body", label: "ส่วนหลัก", slot: "body" as const, x: 0, y: 0, width: 4, height: 4, layerIds: ["base"] }],
     palette: [{ id: "leaf-green", label: "เขียวใบไม้", hex: "#3f8f5b", semantic: "ใบไม้" }],
-    pixels: [{ x: 2, y: 1, colorId: "leaf-green" }],
+    pixels: [{ x: 2, y: 1, colorId: "leaf-green", layerId: "base" }],
   };
 }
 

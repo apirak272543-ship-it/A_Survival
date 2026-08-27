@@ -12,7 +12,7 @@ function compositionInput(overrides: Partial<CreatorCompositionInput> = {}): Cre
     layers: [{ id: "base", label: "พื้นฐาน", role: "base", zIndex: 0, visible: true, opacity: 1 }],
     parts: [{ id: "body", label: "ส่วนหลัก", slot: "body", x: 0, y: 0, width: 4, height: 4, layerIds: ["base"] }],
     palette: [{ id: "leaf-green", label: "เขียวใบไม้", hex: "#3f8f5b", semantic: "ใบไม้" }],
-    pixels: [{ x: 2, y: 1, colorId: "leaf-green" }],
+    pixels: [{ x: 2, y: 1, colorId: "leaf-green", layerId: "base" }],
     ...overrides,
   };
 }
@@ -39,6 +39,17 @@ describe("creator composition texture adapter", () => {
   it("requires provenance before a texture handoff can be previewed", () => {
     const composition = buildCreatorComposition(compositionInput());
     expect(() => buildCompositionTextureInput(composition, { source: "generated", provenanceRef: " ", textureSampling: "nearest" })).toThrow("provenanceRef is required");
+  });
+
+  it("composites overlapping layers by z-index and opacity while skipping hidden layers", () => {
+    const composition = buildCreatorComposition(compositionInput({
+      layers: [{ id: "base", label: "พื้นฐาน", role: "base", zIndex: 0, visible: true, opacity: 1 }, { id: "outline", label: "เส้นขอบ", role: "outline", zIndex: 10, visible: true, opacity: 0.5 }, { id: "hidden", label: "ซ่อน", role: "detail", zIndex: 20, visible: false, opacity: 1 }],
+      palette: [{ id: "leaf-green", label: "เขียวใบไม้", hex: "#3f8f5b", semantic: "ใบไม้" }, { id: "outline-red", label: "แดงเส้นขอบ", hex: "#ff0000", semantic: "เส้นขอบ" }],
+      pixels: [{ x: 2, y: 1, colorId: "leaf-green", layerId: "base" }, { x: 2, y: 1, colorId: "outline-red", layerId: "outline" }, { x: 2, y: 1, colorId: "outline-red", layerId: "hidden" }],
+    }));
+    const texture = buildCompositionTextureInput(composition, { source: "generated", provenanceRef: "layer-test", textureSampling: "nearest" });
+    const rgba = texture.assets[0]!.layers[0]!.rgba;
+    expect(rgba.slice((1 * 4 + 2) * 4, (1 * 4 + 2) * 4 + 4)).toEqual([159, 72, 46, 255]);
   });
 
   it("maps block and structure compositions to tile textures without enabling runtime import", () => {
