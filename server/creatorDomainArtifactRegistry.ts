@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { creatorDomainArtifactReviewEvents, creatorDomainArtifacts, type CreatorDomainArtifact, type CreatorDomainArtifactReviewEvent } from "../drizzle/schema";
 import { getDb } from "./db";
+import { buildCreatorDomainArtifactExport, type CreatorDomainArtifactExport } from "./creatorDomainArtifactExport";
 import { transitionCreatorDomainArtifactReview, type CreatorArtifactReviewAction, type CreatorArtifactReviewStatus } from "./creatorDomainArtifactReview";
 export class CreatorDomainArtifactRegistryUnavailableError extends Error {
   constructor() {
@@ -155,6 +156,15 @@ export async function reviewCreatorDomainArtifact(input: { artifactKey: string; 
     await tx.insert(creatorDomainArtifactReviewEvents).values({ artifactRecordId: saved.id, artifactKey: saved.artifactKey, action: transition.action, fromStatus: transition.from, toStatus: transition.to, note: transition.note, reviewerUserId: input.reviewedByUserId });
     return saved;
   });
+}
+
+export async function exportCreatorDomainArtifact(input: { artifactKey: string }): Promise<CreatorDomainArtifactExport> {
+  const db = await getDb();
+  if (!db) throw new CreatorDomainArtifactRegistryUnavailableError();
+  const rows = await db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
+  const artifact = rows[0];
+  if (!artifact) throw new Error("Creator domain artifact was not found");
+  return buildCreatorDomainArtifactExport(artifact);
 }
 
 export async function listCreatorDomainArtifactReviewEvents(input: { artifactKey: string; limit?: number }): Promise<CreatorDomainArtifactReviewEvent[]> {

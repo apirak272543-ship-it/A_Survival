@@ -39,7 +39,7 @@ import {
 import { adminProcedure, router } from "./_core/trpc";
 import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
 import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
-import { buildCreatorDomainArtifactMetadata, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
+import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -389,6 +389,7 @@ export const creatorRouter = router({
     list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional(), domain: creatorDomainArtifactInputSchema.shape.domain.optional(), reviewStatus: z.enum(["draft", "approved", "rejected"]).optional() }).optional()).query(({ input }) => listCreatorDomainArtifacts(input)),
     review: adminProcedure.input(creatorArtifactReviewSchema).mutation(async ({ input, ctx }) => ({ previewOnly: true as const, runtimeImportAllowed: false as const, artifact: await reviewCreatorDomainArtifact({ ...input, reviewedByUserId: ctx.user.id }) })),
     audit: adminProcedure.input(z.object({ artifactKey: z.string().trim().min(8).max(191), limit: z.number().int().min(1).max(100).optional() })).query(({ input }) => listCreatorDomainArtifactReviewEvents(input)),
+    export: adminProcedure.input(z.object({ artifactKey: z.string().trim().min(8).max(191) })).mutation(async ({ input }) => exportCreatorDomainArtifact(input)),
   }),
   profiler: router({
     preview: adminProcedure.input(runtimeProfilerSnapshotSchema).mutation(({ input }) => ({
