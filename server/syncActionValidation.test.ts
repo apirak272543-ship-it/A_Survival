@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeUseItemPayload } from "./syncActionValidation";
+import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeQuestRewardDispatchPayload, isSafeUseItemPayload } from "./syncActionValidation";
 
 describe("use-item sync boundary", () => {
   it("accepts a bounded slot and well-formed item identifiers", () => {
@@ -57,5 +57,23 @@ describe("world storage sync boundary", () => {
     expect(isSafeStorageDepositPayload({ ...base, slot: 27 })).toBe(false);
     expect(isSafeStorageDepositPayload({ ...base, quantity: 65 })).toBe(false);
     expect(isSafeStorageDepositPayload({ ...base, itemInstanceId: "bad id" })).toBe(false);
+  });
+});
+
+
+describe("quest reward dispatch sync boundary", () => {
+  const base = { mapId: "obsidian-frontier", questId: "story-map-001-quest-01", questOrder: 1, rewardEventIds: ["quest-reward:story-map-001-quest-01:1"], rewardInstanceIds: ["obsidian-frontier-material-001-4"], sequenceBase: 4 };
+
+  it("accepts a bounded Obsidian MAP_001 item-only pending action", () => {
+    expect(isSafeQuestRewardDispatchPayload(base)).toBe(true);
+  });
+
+  it("rejects future maps, malformed quest IDs, duplicate IDs and unbounded values", () => {
+    expect(isSafeQuestRewardDispatchPayload({ ...base, mapId: "map-002-ashen-obsidian-plains" })).toBe(false);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, questId: "story-map-001-quest-20", questOrder: 20 })).toBe(true);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, questId: "story-map-002-quest-01" })).toBe(false);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, rewardEventIds: [base.rewardEventIds[0], base.rewardEventIds[0]], rewardInstanceIds: ["a", "b"] })).toBe(false);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, rewardEventIds: ["quest-reward:story-map-001-quest-01:0"] })).toBe(false);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, sequenceBase: 1_000_001 })).toBe(false);
   });
 });

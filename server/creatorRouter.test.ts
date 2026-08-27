@@ -265,7 +265,8 @@ describe("creator texture router", () => {
 
     expect(result.previewOnly).toBe(true);
     expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "reward-dispatch-router", completedQuestCount: 0, candidateQuestId: "story-map-001-quest-01" });
-    expect(result.summary).toMatchObject({ accepted: false, appliedRewardCount: 0, persistenceOwnerCalled: false, gameplayEventEmitted: false, abilityRuntimeOwnerAvailable: false, requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: false, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.summary).toMatchObject({ accepted: false, appliedRewardCount: 0, persistenceOwnerCalled: false, gameplayEventEmitted: false, pendingActionCreated: false, pendingActionId: null, requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: false, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.summary.pendingActionReason).toContain("dispatch ยังไม่ผ่าน");
     expect(result.assessment).toMatchObject({ questId: "story-map-001-quest-01", accepted: false, code: "unsupported-reward" });
     expect(result.graph.valid).toBe(false);
     expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);

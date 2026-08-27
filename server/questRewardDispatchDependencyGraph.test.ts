@@ -8,7 +8,9 @@ describe("quest reward dispatch dependency graph", () => {
     expect(result.previewOnly).toBe(true);
     expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", candidateQuestId: "story-map-001-quest-01", candidateQuestOrder: 1, completedQuestCount: 0, sequenceBase: 10 });
     expect(result.assessment).toMatchObject({ questId: "story-map-001-quest-01", questOrder: 1, accepted: false, code: "unsupported-reward", appliedRewardCount: 0, rewardEventIds: [] });
-    expect(result.summary).toMatchObject({ accepted: false, persistenceOwnerCalled: false, gameplayEventEmitted: false, abilityRuntimeOwnerAvailable: false, requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: false, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.summary).toMatchObject({ accepted: false, persistenceOwnerCalled: false, gameplayEventEmitted: false, pendingActionCreated: false, pendingActionId: null, requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: false, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.summary.pendingActionReason).toContain("dispatch ยังไม่ผ่าน");
+    expect(result.graph.nodes).toEqual(expect.arrayContaining([expect.objectContaining({ key: "reward.dispatch:pending-action-contract", generatorId: "quest.reward.pending-action" })]));
     expect(result.graph.valid).toBe(false);
     expect(result.graph.issues).toEqual(expect.arrayContaining([expect.objectContaining({ code: "MISSING_REQUIRED_DEPENDENCY", dependencyKey: "reward.dispatch:persistence-owner" })]));
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
@@ -19,7 +21,7 @@ describe("quest reward dispatch dependency graph", () => {
 
     expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", candidateQuestId: "story-map-001-quest-20", candidateQuestOrder: 20, completedQuestCount: 19 });
     expect(result.assessment).toMatchObject({ accepted: false, code: "ability-runtime-missing" });
-    expect(result.summary).toMatchObject({ requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: true, runtimeImportAllowed: false });
+    expect(result.summary).toMatchObject({ requiredPersistenceCallerMissing: true, requiredAbilityCallerMissing: true, pendingActionCreated: false, runtimeImportAllowed: false });
     expect(result.graph.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "MISSING_REQUIRED_DEPENDENCY", dependencyKey: "reward.dispatch:persistence-owner" }),
       expect.objectContaining({ code: "MISSING_REQUIRED_DEPENDENCY", dependencyKey: "reward.dispatch:ability-owner" }),

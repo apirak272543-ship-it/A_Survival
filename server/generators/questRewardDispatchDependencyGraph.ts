@@ -1,5 +1,6 @@
 import { createDefaultStoryProgressState, normalizeStoryProgressState, type StoryProgressState } from "../../client/src/game/systems/storyProgressionSystem";
 import { dispatchQuestReward, type QuestRewardDispatchQuest } from "../../client/src/game/systems/questRewardDispatchSystem";
+import { createQuestRewardPendingAction } from "../../client/src/game/systems/questRewardPendingAction";
 import { generateQuestProgression, type QuestDefinition } from "./questProgressionGenerator";
 import { validateGeneratorDependencyGraph, type DependencyGraphNode } from "./dependencyGraph";
 
@@ -52,6 +53,7 @@ export function buildQuestRewardDispatchDependencyGraph(input: QuestRewardDispat
     now: 0,
     sequenceBase,
   });
+  const pendingAction = createQuestRewardPendingAction({ mapId: "obsidian-frontier", questId: candidateQuest.id, questOrder: candidateQuest.order, dispatch: result, sequenceBase, createdAt: 0 });
   const assessment: RewardDispatchAssessment = {
     questId: candidateQuest.id,
     questOrder: candidateQuest.order,
@@ -67,6 +69,7 @@ export function buildQuestRewardDispatchDependencyGraph(input: QuestRewardDispat
     { key: "quest.progression:obsidian-frontier", kind: "quest", generatorId: "quest.progression", generatorVersion: "1.0.0", schemaVersion: progression.schemaVersion, seed: input.seed, rulesVersion: QUEST_REWARD_DISPATCH_RULES_VERSION, contentHash: "quest-progression-runtime-owner", dependencies: [] },
     { key: "story.progression:completion", kind: "simulation", generatorId: "story.progression.runtime", generatorVersion: "runtime", schemaVersion: "a-survival.story-progress.v1", seed: input.seed, rulesVersion: QUEST_REWARD_DISPATCH_RULES_VERSION, contentHash: "complete-story-quest-runtime-owner", dependencies: [{ key: "quest.progression:obsidian-frontier", kind: "quest", required: true }] },
     { key: "reward.dispatch:item-inventory", kind: "loot", generatorId: "quest.reward.dispatch", generatorVersion: "1.0.0", schemaVersion: "a-survival.quest-reward-dispatch.v1", seed: input.seed, rulesVersion: QUEST_REWARD_DISPATCH_RULES_VERSION, contentHash: "pure-item-inventory-transition", dependencies: [{ key: "story.progression:completion", kind: "simulation", required: true }, { key: "reward.dispatch:persistence-owner", kind: "simulation", required: true, generatorId: "quest.reward.persistence", generatorVersion: "missing", contentHash: "missing-runtime-caller" }] },
+    { key: "reward.dispatch:pending-action-contract", kind: "simulation", generatorId: "quest.reward.pending-action", generatorVersion: "1.0.0", schemaVersion: "a-survival.quest-reward-pending-action.v1", seed: input.seed, rulesVersion: QUEST_REWARD_DISPATCH_RULES_VERSION, contentHash: "home-action-queue-contract", dependencies: [{ key: "reward.dispatch:item-inventory", kind: "loot", required: true }] },
   ];
   if (candidateQuest.rewards.some(reward => reward.abilityId)) {
     nodes[2]!.dependencies.push({ key: "reward.dispatch:ability-owner", kind: "simulation", required: true, generatorId: "ability.runtime", generatorVersion: "missing", contentHash: "missing-runtime-owner" });
@@ -84,6 +87,9 @@ export function buildQuestRewardDispatchDependencyGraph(input: QuestRewardDispat
       appliedRewardCount: assessment.appliedRewardCount,
       persistenceOwnerCalled: false,
       gameplayEventEmitted: false,
+      pendingActionCreated: pendingAction.ok,
+      pendingActionId: pendingAction.ok ? pendingAction.action.id : null,
+      pendingActionReason: pendingAction.ok ? null : pendingAction.reason,
       abilityRuntimeOwnerAvailable: false,
       requiredPersistenceCallerMissing: true,
       requiredAbilityCallerMissing: candidateQuest.rewards.some(reward => Boolean(reward.abilityId)),
