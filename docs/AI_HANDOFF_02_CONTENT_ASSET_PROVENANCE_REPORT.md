@@ -21,8 +21,8 @@
 
 | ไฟล์ | การเปลี่ยนแปลง |
 |---|---|
-| `server/generators/plantAssetProvenanceDependencyGraph.ts` | เพิ่ม pure deterministic audit adapter, active-pack file/hash reader, provenance gate, logical/runtime asset separation, status summary, unresolved reason codes และ central graph validation |
-| `server/plantAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 6 รายการสำหรับ deterministic output, logical-vs-runtime distinction, file SHA mismatch, kind mismatch, unknown provenance, hash change และ input bounds |
+| `server/generators/plantAssetProvenanceDependencyGraph.ts` | เพิ่ม pure deterministic audit adapter, active-pack file/hash reader, provenance gate, durable-registry gate, logical/runtime asset separation, status summary, unresolved reason codes และ central graph validation |
+| `server/plantAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 7 รายการสำหรับ deterministic output, logical-vs-runtime distinction, file SHA mismatch, kind mismatch, unknown provenance, durable-registry blocker, hash change และ input bounds |
 | `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` | รายงาน completion นี้; ไม่แก้ `docs/OWNER_REQUIREMENTS_MATRIX.md` หรือ `docs/AI_COORDINATION_REGISTRY.md` เพราะ AI-0 เป็น owner ของทะเบียนกลาง |
 
 ไม่มีการแก้ไฟล์ที่ AI-0 จองไว้ ได้แก่ `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`, offline map-state/cache/direct route/map registry, Creator Workbench/creator router, authority/auth, database schema/migration, player UI และ runtime render loop. ไม่มีการเพิ่ม binary/PNG/GLB, ใช้ external asset หรือเรียก Google/Gemini/LLM/image generation
@@ -37,7 +37,8 @@
 | Base SHA ที่ checkout จริง | `d282e8ed7ecbbde83637d892e3edbd2440efd5c8` (`origin/main` หลัง fetch ล่าสุด) |
 | Registry reservation | `AI2-CONTENT-001` เป็น `RESERVED`; AI-0 เป็น owner ของ `main` และ registry ตามกติกา |
 | Files reserved | `server/generators/plantAssetProvenanceDependencyGraph.ts`, `server/plantAssetProvenanceDependencyGraph.test.ts`, `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` |
-| Implementation commit | `caf2fadaf12b1bf255a729ba0a1afbefecd58c2c` (`caf2fad`) |
+| Initial implementation commit | `caf2fadaf12b1bf255a729ba0a1afbefecd58c2c` (`caf2fad`) |
+| Latest implementation commit | `bea46236b06cae923a2dba7e0dad378f78935a6b` (`bea4623`) |
 | Report commit | Included in the final branch history; final branch HEAD is reported with the completion evidence |
 | Remote branch | `origin/ai-2/content-ai2-content-001` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ทั้ง `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md` |
@@ -49,9 +50,9 @@
 
 | Check | ผลที่รันจริง |
 |---|---|
-| Focused provenance suite | ผ่าน `1` test file / `6` tests |
-| Focused owner suite | ผ่าน `7` test files / `27` tests: provenance adapter, plant catalog, plant generator, plant graph, content catalog, content graph และ active asset-pack manifest |
-| Full test suite | ผ่าน `105` test files / `412` tests ด้วย `pnpm test -- --run` |
+| Focused provenance suite | ผ่าน `1` test file / `7` tests |
+| Focused owner suite | ผ่าน `7` test files / `28` tests: provenance adapter, plant catalog, plant generator, plant graph, content catalog, content graph และ active asset-pack manifest |
+| Full test suite | ผ่าน `105` test files / `413` tests ด้วย `pnpm test -- --run` |
 | TypeScript | ผ่าน `pnpm check` |
 | Whitespace/error check | ผ่าน `git diff --check` |
 | Production build | ผ่าน `NODE_OPTIONS=--max-old-space-size=1536 pnpm build` ทั้ง Vite client และ esbuild server bundle |
@@ -60,8 +61,8 @@ Build มี warning ที่ตรวจพบจริงและไม่�
 
 ## Result และ blockers/limitations
 
-ผล audit ที่ยืนยันจาก active pack คือ `items.seed` และ `art.obsidian.crystal-fern` มี manifest entry แบบ `texture`, ไฟล์จริง และ SHA-256 ตรง รวมทั้งมี pack-level project provenance. ส่วน `a-survival.content.plant` และ `a-survival.content.seed` ยังเป็น logical-only จึงถูกคงไว้เป็น blocker ไม่ถูกนับเป็น graphical assets ที่สร้างเสร็จ. การมี plant definitions 300 รายการจึงไม่ถูกตีความเป็น graphical assets 300 รายการ
+ผล audit ที่ยืนยันจาก active pack คือ `items.seed` และ `art.obsidian.crystal-fern` มี manifest entry แบบ `texture`, ไฟล์จริง และ SHA-256 ตรง รวมทั้งมี pack-level project provenance. ส่วน `a-survival.content.plant` และ `a-survival.content.seed` ยังเป็น logical-only และ active pack ยังไม่มี durable registry snapshot จึงถูกคงไว้เป็น blocker ไม่ถูกนับเป็น graphical assets ที่สร้างเสร็จ. การมี plant definitions 300 รายการจึงไม่ถูกตีความเป็น graphical assets 300 รายการ
 
-ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
+ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Durable registry ถูกออกแบบเป็น injected source contract เพื่อทดสอบเท่านั้น; `readActivePlantAssetProvenanceSources()` คืนค่า `durableRegistry: null` และไม่อ้างว่ามี registry ถาวรอยู่จริง. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
 
-AI-0 ควรตรวจ diff ของ commit `caf2fad`, ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
+AI-0 ควรตรวจ diff ของ commit `bea4623` (รวมฐานเดิม `caf2fad`), ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
