@@ -53,11 +53,12 @@ export function normalizeWorldFarmState(candidate: unknown): WorldFarmState {
     const y = Number(coordinate.y);
     const z = Number(coordinate.z);
     const soilId = value.soilId;
+    const plant = typeof value.plantId === "string" ? getWorldPlantDefinition(value.plantId) : undefined;
     normalized[plotId] = {
       ...fallback,
       coordinate: [x, y, z].every(Number.isInteger) ? { x, y, z } : fallback.coordinate,
       soilId: soilId === "terra-loam" || soilId === "ashen-volcanic" || soilId === "red-dune" || soilId === "verdant-humus" || soilId === "aether-crystal" ? soilId : fallback.soilId,
-      ...(typeof value.plantId === "string" && getWorldPlantDefinition(value.plantId) ? { plantId: value.plantId } : {}),
+      ...(plant ? { plantId: plant.id } : {}),
       ...(typeof value.seedDefinitionId === "string" && getItemDefinition(value.seedDefinitionId)?.category === "seed" ? { seedDefinitionId: value.seedDefinitionId } : {}),
       ...(typeof value.seedInstanceId === "string" ? { seedInstanceId: value.seedInstanceId } : {}),
       ...(Number.isFinite(Number(value.plantedAt)) ? { plantedAt: Number(value.plantedAt) } : {}),

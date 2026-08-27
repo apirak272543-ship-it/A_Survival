@@ -1,4 +1,5 @@
-import { getItemDefinition, type SoilId } from "@/game/data/catalog";
+import { PLANT_CATALOG, getPlantDefinition, type PlantDefinition } from "../data/plantCatalog";
+import type { SoilId } from "../data/catalog";
 
 export const WORLD_PLANT_CATALOG_SIZE = 300;
 export const WORLD_FARM_DEFAULT_GROWTH_MS = 90_000;
@@ -21,46 +22,60 @@ export type WorldPlantDefinition = {
   effect?: WorldPlantEffect;
 };
 
-const PREFIXES = ["เถ้า", "คริสตัล", "ลูเมน", "สปอร์", "หนาม", "เพลิง", "วอยด์", "ออบซิเดียน", "ดารา", "อีเธอร์"] as const;
-const FORMS = ["เฟิร์น", "เถาวัลย์", "ดอกไม้", "เห็ด", "หัวพืช", "ผลึก", "ผลเบอร์รี", "มอส", "หญ้า", "ฝัก"] as const;
-
-function padded(value: number) {
-  return String(value).padStart(3, "0");
+function toWorldEffect(plant: PlantDefinition): WorldPlantEffect | undefined {
+  if (plant.effect.kind === "repellent") {
+    return {
+      kind: "repel",
+      radius: Math.min(WORLD_FARM_MAX_REPEL_RADIUS, Math.max(0, plant.effect.radiusMeters ?? 0)),
+      durationMs: 30_000,
+      stackable: false,
+      label: "แรงผลักสมมติอ่อน ๆ · ไม่ทำลายมอนสเตอร์",
+    };
+  }
+  if (plant.effect.kind === "healing") {
+    return {
+      kind: "restore",
+      amount: Math.min(WORLD_FARM_MAX_FICTIONAL_RESTORE, Math.max(0, plant.effect.power)),
+      cap: WORLD_FARM_MAX_FICTIONAL_RESTORE,
+      label: "ฟื้นพลังสมมติแบบจำกัด",
+    };
+  }
+  return undefined;
 }
 
+/**
+ * The runtime plant catalog owns the 300 playable Obsidian plant records. This
+ * adapter only exposes the older farming-shaped view; it does not create a
+ * second set of seed, harvest, soil, or asset definitions.
+ */
 export function generateWorldPlantCatalog(count = WORLD_PLANT_CATALOG_SIZE): WorldPlantDefinition[] {
-  return Array.from({ length: count }, (_, index) => {
-    const ordinal = index + 1;
-    const seedDefinitionId = `seed-${padded(ordinal)}`;
-    const seed = getItemDefinition(seedDefinitionId);
-    if (!seed?.soilId) throw new Error(`Seed ${seedDefinitionId} must have a soil link before plant generation`);
-    const effect: WorldPlantEffect | undefined = ordinal % 12 === 0
-      ? { kind: "repel", radius: Math.min(WORLD_FARM_MAX_REPEL_RADIUS, 3 + (ordinal % 4)), durationMs: 30_000, stackable: false, label: "แรงผลักสมมติอ่อน ๆ · ไม่ทำลายมอนสเตอร์" }
-      : ordinal % 10 === 0
-        ? { kind: "restore", amount: Math.min(WORLD_FARM_MAX_FICTIONAL_RESTORE, 4 + (ordinal % 5)), cap: WORLD_FARM_MAX_FICTIONAL_RESTORE, label: "ฟื้นพลังสมมติแบบจำกัด" }
-        : undefined;
-    return {
-      id: `world-plant-${padded(ordinal)}`,
-      seedDefinitionId,
-      name: `${PREFIXES[index % PREFIXES.length]}${FORMS[Math.floor(index / PREFIXES.length) % FORMS.length]} ${padded(ordinal)}`,
-      biomeId: "obsidian-frontier",
-      soilId: seed.soilId,
-      tags: Array.from(new Set(["world-plant", "obsidian", ...seed.tags])),
-      harvestDefinitionId: `material-${padded(ordinal)}`,
-      growthDurationMs: WORLD_FARM_DEFAULT_GROWTH_MS + (ordinal % 5) * 15_000,
-      ...(effect ? { effect } : {}),
-    };
-  });
+  return PLANT_CATALOG.slice(0, Math.max(0, Math.min(WORLD_PLANT_CATALOG_SIZE, Math.trunc(count)))).map(plant => ({
+    id: plant.id,
+    seedDefinitionId: plant.seedItemId,
+    name: plant.displayName,
+    biomeId: "obsidian-frontier",
+    soilId: plant.compatibleSoils[0]!,
+    tags: Array.from(new Set(["world-plant", "obsidian", plant.family, ...plant.biomeTags, plant.effect.kind])),
+    harvestDefinitionId: plant.yieldItemId,
+    growthDurationMs: Math.max(1, Math.trunc(plant.growthSeconds * 1000)),
+    ...(toWorldEffect(plant) ? { effect: toWorldEffect(plant) } : {}),
+  }));
 }
 
 export const WORLD_PLANT_CATALOG = generateWorldPlantCatalog();
 
 export function getWorldPlantBySeed(seedDefinitionId: string) {
-  return WORLD_PLANT_CATALOG.find(plant => plant.seedDefinitionId === seedDefinitionId);
+  const direct = WORLD_PLANT_CATALOG.find(plant => plant.seedDefinitionId === seedDefinitionId);
+  if (direct) return direct;
+  const legacyOrdinal = /^seed-(\d{3})$/.exec(seedDefinitionId)?.[1];
+  return legacyOrdinal ? WORLD_PLANT_CATALOG[Number(legacyOrdinal) - 1] : undefined;
 }
 
 export function getWorldPlantDefinition(plantId: string) {
-  return WORLD_PLANT_CATALOG.find(plant => plant.id === plantId);
+  const direct = WORLD_PLANT_CATALOG.find(plant => plant.id === plantId);
+  if (direct) return direct;
+  const legacyOrdinal = /^world-plant-(\d{3})$/.exec(plantId)?.[1];
+  return legacyOrdinal ? WORLD_PLANT_CATALOG[Number(legacyOrdinal) - 1] : undefined;
 }
 
 export function validateWorldPlantCatalog(catalog: WorldPlantDefinition[] = WORLD_PLANT_CATALOG) {
@@ -72,11 +87,11 @@ export function validateWorldPlantCatalog(catalog: WorldPlantDefinition[] = WORL
     ids.add(plant.id);
     if (seedIds.has(plant.seedDefinitionId)) issues.push(`duplicate seed link: ${plant.seedDefinitionId}`);
     seedIds.add(plant.seedDefinitionId);
-    const seed = getItemDefinition(plant.seedDefinitionId);
-    const harvest = getItemDefinition(plant.harvestDefinitionId);
-    if (!seed || seed.category !== "seed") issues.push(`invalid seed link: ${plant.seedDefinitionId}`);
-    if (seed?.soilId !== plant.soilId) issues.push(`soil mismatch: ${plant.id}`);
-    if (!harvest || harvest.category !== "material") issues.push(`invalid harvest link: ${plant.harvestDefinitionId}`);
+    const seed = getPlantDefinition(plant.seedDefinitionId);
+    const harvest = getPlantDefinition(plant.id)?.yieldItemId;
+    if (!seed || seed.seedItemId !== plant.seedDefinitionId) issues.push(`invalid seed link: ${plant.seedDefinitionId}`);
+    if (seed?.compatibleSoils[0] !== plant.soilId) issues.push(`soil mismatch: ${plant.id}`);
+    if (!harvest || harvest !== plant.harvestDefinitionId) issues.push(`invalid harvest link: ${plant.harvestDefinitionId}`);
     if (plant.biomeId !== "obsidian-frontier") issues.push(`unsupported playable biome: ${plant.biomeId}`);
     if (!Number.isInteger(plant.growthDurationMs) || plant.growthDurationMs <= 0) issues.push(`invalid growth duration: ${plant.id}`);
     if (plant.effect?.kind === "repel" && (plant.effect.radius > WORLD_FARM_MAX_REPEL_RADIUS || plant.effect.durationMs <= 0 || plant.effect.stackable)) issues.push(`unsafe repel effect: ${plant.id}`);

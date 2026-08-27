@@ -34,13 +34,14 @@ describe("Obsidian world farming", () => {
     const state = createDefaultWorldFarmState();
     const planted = plantWorldSeed({ mapId: "obsidian-frontier", state, inventory: [seed], plotId: "farm-plot-01", seedInstanceId: seed.instanceId, now: 20_000 });
     expect(planted.accepted).toBe(true);
+    expect(planted.plot?.plantId).toBe("plant-001");
     expect(planted.inventory).toEqual([]);
     const tooEarly = planHarvestWorldPlant({ mapId: "obsidian-frontier", state: planted.state, plotId: "farm-plot-01", now: 20_000 + 1 });
     expect(tooEarly.accepted).toBe(false);
 
     const harvested = harvestWorldPlant({ mapId: "obsidian-frontier", state: planted.state, inventory: [], plotId: "farm-plot-01", now: 20_000 + planted.plot!.growthDurationMs! });
     expect(harvested.accepted).toBe(true);
-    expect(harvested.reward?.definitionId).toBe("material-001");
+    expect(harvested.reward?.definitionId).toBe("material-002");
     expect(harvested.reward?.provenance).toMatchObject({ type: "harvest", mapId: "obsidian-frontier" });
     expect(harvested.state["farm-plot-01"]?.plantId).toBeUndefined();
     expect(harvested.inventory).toHaveLength(1);
@@ -51,10 +52,11 @@ describe("Obsidian world farming", () => {
   });
 
   it("normalizes legacy or malformed farm state to the four bounded Obsidian plots", () => {
-    const normalized = normalizeWorldFarmState({ "farm-plot-01": { plantId: "unknown", seedDefinitionId: "seed-001", coordinate: { x: 3, y: 0, z: 1 }, soilId: "terra-loam", updatedAt: 1 }, "foreign-plot": { plantId: "world-plant-001" } });
+    const normalized = normalizeWorldFarmState({ "farm-plot-01": { plantId: "unknown", seedDefinitionId: "seed-001", coordinate: { x: 3, y: 0, z: 1 }, soilId: "terra-loam", updatedAt: 1 }, "farm-plot-02": { plantId: "world-plant-001", seedDefinitionId: "seed-001", plantedAt: 2, growthDurationMs: 3_000, coordinate: { x: 4, y: 0, z: 1 }, soilId: "ashen-volcanic", updatedAt: 2 }, "foreign-plot": { plantId: "world-plant-001" } });
     expect(Object.keys(normalized)).toEqual(["farm-plot-01", "farm-plot-02", "farm-plot-03", "farm-plot-04"]);
     expect(normalized["farm-plot-01"]?.plantId).toBeUndefined();
-    expect(normalized["farm-plot-02"]?.plantId).toBeUndefined();
+    expect(normalized["farm-plot-02"]?.plantId).toBe("plant-001");
+    expect(normalized["farm-plot-02"]?.seedDefinitionId).toBe("seed-001");
   });
 
   it("accepts only capped fictional mature effects", () => {
