@@ -99,3 +99,29 @@ The authoritative gameplay pack is `client/public/assets/packs/arcane-frontier-v
 | Animation states | `metadata/animations.json` | `data.animations` | Declarative idle/walk/run/dash/attack/hurt/dead timing; GLB clips remain future work |
 
 The previous Gemini image endpoint was quota-blocked. The current v0.3.0 compact files were prepared with the built-in image-generation route from an original Google/Gemini visual direction; they are explicitly **starter-authored from a Google/Gemini visual brief**, not falsely labelled as Gemini-generated images. The high-resolution source concepts and crop script are kept outside the repository audit workspace. When Gemini image generation or an artist pipeline becomes available, replacement files should preserve asset IDs, update the manifest hash, and pass the same visual, size, transparency and browser-loading checks.
+
+
+## Future content library starter pack — v0.1.0
+
+`client/public/assets/packs/a-survival-content-library-v0-1/` เป็น pack แยกสำหรับคลัง content ในอนาคต ไม่ถูก import โดย Obsidian Frontier runtime ใน checkpoint นี้. Pack ใช้ namespace `afc`, nearest sampling และมี 16 PNG entries ได้แก่ terrain 4 รายการ (`obsidian-frontier`, `aether-crystal`, `verdant-humus`, `ashen-volcanic`) และ icon 12 รายการสำหรับ plant, weapon และ material. ทุก entry มี SHA-256, logical ID, `procedural-starter-authored` source และ provenance reference นี้
+
+`server/generators/generateStarterTexturePack.py` สร้าง pack แบบ deterministic เพื่อให้ generate once → store → reuse ได้โดยไม่ผูกกับ AI image quota. ไฟล์นี้เป็น **original procedural starter art** ไม่ใช่ Minecraft asset, ไม่ใช่ Gemini-generated image และไม่ใช่ final art coverage ของ definitions 3,000 รายการ. เมื่อมี image/artist pipeline ในอนาคต ให้แทนที่ตาม logical IDs เดิม, อัปเดต manifest hash และผ่าน visual, size, alpha, provenance และ browser-loading checks ก่อน runtime ใช้จริง
+
+| Pack | Entries | Status | Runtime boundary |
+| --- | ---: | --- | --- |
+| `arcane-frontier-voxel-pixel` | 30+ | Current Obsidian gameplay pack | Runtime-allowed, namespace `af` |
+| `a-survival-content-library-v0-1` | 16 | Future content starter pack | Future-library-only, namespace `afc`; ไม่ selectable/player-facing |
+
+
+## Future content library — Builder-owned migration v0.1.0
+
+`client/public/assets/packs/a-survival-content-library-builder-v0-1/` คือผลลัพธ์จากการอ่าน procedural starter pack v0.1.0 แล้วส่ง pixel RGBA ทุกไฟล์เข้า `server/generators/texturePackBuilder.ts` ผ่าน `server/generators/migrateStarterTexturePack.ts`. Pack ใหม่นี้มี 16 entries เดิมในรูปแบบ Builder manifest `a-survival.texture-pack.v1`, namespace `afc-builder`, nearest sampling, per-entry PNG SHA-256, `packSha256` `70f7f239f9b675b834280c1ad1ecff903699e3d85105a949d1481a9e8b1a3fda` และ `provenance.json` ที่อ้าง source pack เดิม.
+
+สถานะ `procedural-starter-authored` ของ source pack ถูกเก็บไว้ใน provenance record ส่วน field ที่ Builder รองรับใช้ `starter-authored` เพื่อให้ผ่าน schema โดยไม่เรียกไฟล์เหล่านี้ว่า AI-generated. Output ยังคงเป็น original procedural starter art, ไม่ใช่ Minecraft asset และยังเป็น `future-library-only`; ไม่มีการเพิ่ม import หรือ runtime allow-list ให้ pack นี้.
+
+| Pack | Generator path | Entries | Runtime boundary |
+| --- | --- | ---: | --- |
+| `a-survival-content-library-v0-1` | `generateStarterTexturePack.py` | 16 | Future-only source pack |
+| `a-survival-content-library-builder-v0-1` | `migrateStarterTexturePack.ts` → `texture.pack@1.0.0` | 16 | Future-only Builder output, not imported by Obsidian runtime |
+
+Migration tests ยืนยันการ decode non-interlaced 8-bit PNG, 4 tile entries + 12 icon entries, RGBA geometry, per-file digest, manifest equality, provenance status และ output pack hash. การ migrate นี้ยังไม่ใช่การขยาย coverage ของ catalog 3,000 definitions และยังไม่ใช่ final visual acceptance บนอุปกรณ์จริง.

@@ -49,22 +49,26 @@ import {
   type GameSettings,
   type LocalGameSession,
 } from "@/game/storage/session";
-import type { GameSnapshot } from "@/game/scene";
+import type { BlockActionEvent, FarmActionEvent, GameSnapshot } from "@/game/scene";
 import type { WorldBlock } from "@/game/data/blockModules";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import { HELP_ARTICLES, getHelpArticle, type HelpTopic } from "@/game/help/helpContent";
 import { inspectInventoryIntegrity, integrityStatusCopy, type IntegrityReport } from "@/game/integrity/integrityVerdict";
 import { getVaultActionState, toggleVaultEquipment, type VaultAction } from "@/game/integrity/vaultActions";
-import { resolveDirectMapId, resolveDirectRoute, RUNTIME_MAP_ID, type DirectRouteScreen } from "@/game/routing/directRoute";
+import { RUNTIME_MAP_ID, isRuntimeMapAllowed, resolveDirectMapId, resolveDirectRoute, type DirectRouteScreen } from "@/game/routing/directRoute";
 import { dispatchHotbarAction, getHotbarInstance, type HotbarSlot } from "@/game/systems/itemActionSystem";
 import { addItemToContainer, PLAYER_INVENTORY_SLOTS, removeItemFromContainer, type WorldStorage } from "@/game/systems/inventorySystem";
+import { consumeOneFromStack, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import { CHEST_SLOT_LIMIT, CARRY_SLOT_LIMIT, STORAGE_CHEST_ID, createEmptyWorldStorage, depositIntoChest, getWorldStorageSlots, withdrawFromChest as withdrawItemFromChest, type WorldStorageById } from "@/game/systems/worldStorageSystem";
 import { createMapWorldStorage, depositInstanceToWorldStorage, withdrawInstanceFromWorldStorage, getWorldStorageAnchor } from "@/game/systems/worldStorageSystem";
+import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { DEFAULT_IN_MAP_SETTINGS, normalizeInMapSettings, VIEW_DISTANCE_BLOCKS, type InMapSettings } from "@/game/systems/cameraModes";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { ASSET_CREDITS, type AssetCreditStatus } from "@/game/data/assetProvenance";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 import { CODEX_CATEGORIES, getDiscoveredCodexEntries, type CodexCategoryId, type CodexEntry } from "@/game/systems/codexSystem";
 import { CAMERA_MODE_OPTIONS, type CameraMode } from "@/game/systems/cameraModes";
-import { TARGET_FPS_OPTIONS, VIEW_DISTANCE_BLOCK_STEPS } from "@/game/systems/renderDistance";
+import { TARGET_FPS_OPTIONS } from "@/game/systems/renderDistance";
 
 type Screen = DirectRouteScreen;
 type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
@@ -99,7 +103,7 @@ function getLoadingDemoTransition(): Transition {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const demo = params.get("loading");
-  const map = MAP_REGISTRY.find(candidate => candidate.id === RUNTIME_MAP_ID);
+  const map = MAP_REGISTRY.find(candidate => candidate.id === params.get("map") && isRuntimeMapAllowed(candidate.id)) ?? MAP_REGISTRY.find(candidate => candidate.id === RUNTIME_MAP_ID);
   if (demo === "biome" && map) return { destination: "game", mapId: map.id, title: map.name, accent: map.accent, progress: 64, phase: "กำลังตรวจ asset ของ biome", cached: false, offline: false };
   if (demo === "home") return { destination: "home", title: "Aether Homestead", accent: "#ffb703", progress: 68, phase: "เตรียมระบบฐานที่มั่น", cached: true, offline: false };
   if (demo === "maps") return { destination: "maps", title: "Map Observatory", accent: "#9d4edd", progress: 42, phase: "กำลังอ่านพิกัดที่บันทึกไว้", cached: true, offline: true };
@@ -170,37 +174,41 @@ function TouchStick() {
 type SettingsScope = "global" | "map";
 
 type SettingsSheetProps = {
-  scope: SettingsScope;
   settings: GameSettings;
   setSettings: (settings: GameSettings) => void;
-  mapCameraMode: CameraMode;
-  onMapCameraModeChange: (mode: CameraMode) => void;
   close: () => void;
 };
 
-function SettingsSheet({ scope, settings, setSettings, mapCameraMode, onMapCameraModeChange, close }: SettingsSheetProps) {
+function SettingsSheet({ settings, setSettings, close }: SettingsSheetProps) {
   const update = <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => setSettings({ ...settings, [key]: value });
-  const isMap = scope === "map";
-  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={isMap ? "In-map settings" : "Outside global settings"}>
-    <header><div><p className="eyebrow">{isMap ? "ตั้งค่าใน map · Obsidian Frontier" : "ตั้งค่าภายนอก · ใช้กับทั้งเกม"}</p><h3>{isMap ? "มุมมองและการควบคุม" : "ภาพ เสียง และตัวแอป"}</h3></div><button className="icon-button" onClick={close} aria-label="ปิดตั้งค่า"><X size={18} /></button></header>
-    {isMap ? <div className="setting-stack">
-      <label><span>มุมมองกล้อง</span><select value={mapCameraMode} onChange={event => onMapCameraModeChange(event.target.value as CameraMode)}>{CAMERA_MODE_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
-      <p className="settings-help-copy">{CAMERA_MODE_OPTIONS.find(option => option.id === mapCameraMode)?.purpose}</p>
-      <p className="settings-help-copy">การเปลี่ยนมุมมองมีผลเฉพาะการแสดงผลและการควบคุมใน map นี้ ไม่เปลี่ยนพิกัดบล็อก การชน การดรอป หรือสถานะเซฟ</p>
-    </div> : <div className="setting-stack">
-      <label><span>Language / ภาษา</span><select value={settings.language} onChange={event => update("language", event.target.value as GameSettings["language"])}><option value="th">ไทย (ค่าเริ่มต้น)</option><option value="en" disabled>English · กำลังเตรียมชุดภาษา</option></select></label>
-      <label><span>ระยะมองเห็น <b>{settings.viewDistanceBlocks} บล็อก</b></span><select value={settings.viewDistanceBlocks} onChange={event => update("viewDistanceBlocks", Number(event.target.value) as GameSettings["viewDistanceBlocks"])}>{VIEW_DISTANCE_BLOCK_STEPS.map(blocks => <option key={blocks} value={blocks}>{blocks} บล็อก</option>)}</select></label>
-      <label><span>เป้าหมายเฟรมเรต <b>{settings.targetFps} FPS</b></span><select value={settings.targetFps} onChange={event => update("targetFps", Number(event.target.value) as GameSettings["targetFps"])}>{TARGET_FPS_OPTIONS.map(fps => <option key={fps} value={fps}>{fps} FPS{fps === 120 ? " · ถ้าอุปกรณ์รองรับ" : ""}</option>)}</select></label>
+  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="ตั้งค่าตัวเกมภาพรวม">
+    <header><div><p className="eyebrow">Global settings · App-wide</p><h3>ตั้งค่าตัวเกมภาพรวม</h3></div><button className="icon-button" onClick={close} aria-label="ปิดตั้งค่า"><X size={18} /></button></header>
+    <div className="setting-stack">
+      <label><span>ระยะเรนเดอร์ภาพรวม</span><select value={settings.renderDistance} onChange={event => update("renderDistance", event.target.value as GameSettings["renderDistance"])}><option value="near">ใกล้ · ประหยัดแบต</option><option value="balanced">กลาง · แนะนำ</option><option value="far">ไกล · ใช้กับเครื่องแรงกว่า</option></select></label>
       <label><span>มุมมองเริ่มต้นสำหรับ map ใหม่</span><select value={settings.cameraDefaultMode} onChange={event => update("cameraDefaultMode", event.target.value as CameraMode)}>{CAMERA_MODE_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
+      <label><span>Language / ภาษา</span><select value={settings.language} onChange={event => update("language", event.target.value as GameSettings["language"])}><option value="th">ไทย (ค่าเริ่มต้น)</option><option value="en" disabled>English · กำลังเตรียมชุดภาษา</option></select></label>
       <label><span>คุณภาพภาพ</span><select value={settings.quality} onChange={event => update("quality", event.target.value as GameSettings["quality"])}><option value="low">ต่ำ · ประหยัดแบต</option><option value="medium">กลาง · สมดุล</option><option value="high">สูง · เอฟเฟกต์เต็ม</option></select></label>
       <label><span>ความหนาแน่นเอฟเฟกต์</span><select value={settings.effectIntensity} onChange={event => update("effectIntensity", event.target.value as GameSettings["effectIntensity"])}><option value="low">ต่ำ</option><option value="medium">กลาง</option><option value="high">สูง</option></select></label>
       <label><span>เพลง <b>{settings.musicVolume}%</b></span><input type="range" min="0" max="100" value={settings.musicVolume} onChange={event => update("musicVolume", Number(event.target.value))} /></label>
       <label><span>เสียงเอฟเฟกต์ <b>{settings.sfxVolume}%</b></span><input type="range" min="0" max="100" value={settings.sfxVolume} onChange={event => update("sfxVolume", Number(event.target.value))} /></label>
       <label><span>ขนาดปุ่มสัมผัส <b>{Math.round(settings.touchScale * 100)}%</b></span><input type="range" min="0.8" max="1.25" step="0.05" value={settings.touchScale} onChange={event => update("touchScale", Number(event.target.value))} /></label>
-      <label><span>ความทึบของปุ่มสัมผัส <b>{Math.round(settings.touchOpacity * 100)}%</b></span><input type="range" min="0.45" max="1" step="0.05" value={settings.touchOpacity} onChange={event => update("touchOpacity", Number(event.target.value))} /></label>
+      <label><span>ความทึบปุ่มสัมผัส <b>{Math.round(settings.touchOpacity * 100)}%</b></span><input type="range" min="0.45" max="1" step="0.05" value={settings.touchOpacity} onChange={event => update("touchOpacity", Number(event.target.value))} /></label>
       <label className="toggle-row"><span>ลดการเคลื่อนไหว</span><input type="checkbox" checked={settings.reducedMotion} onChange={event => update("reducedMotion", event.target.checked)} /></label>
-      <p className="settings-help-copy">Outside/Global Settings ใช้ร่วมกันทั้งเกมและบันทึกไว้ในอุปกรณ์นี้ ภาษาไทยเป็นชุดภาษาที่ใช้งานจริงของ slice นี้ ส่วน English ยังไม่เปิดเป็น full localization จนกว่าจะมี resource ครบทุกข้อความ และ 120 FPS เป็นเพียงเป้าหมาย การแสดงผลจริงขึ้นกับ browser, จอ และ GPU</p>
-    </div>}
+      <p className="settings-note">เมนูนี้ใช้กับภาพ เสียง และการควบคุมของแอปโดยรวม ส่วนมุมมอง ระยะ 5–50 บล็อก และเป้าหมาย FPS อยู่ในตั้งค่าภายในแผนที่เมื่อกำลังเล่น</p>
+    </div>
+  </section></div>;
+}
+
+function InMapSettingsSheet({ settings, setSettings, close }: { settings: InMapSettings; setSettings: (settings: InMapSettings) => void; close: () => void }) {
+  const update = <K extends keyof InMapSettings>(key: K, value: InMapSettings[K]) => setSettings({ ...settings, [key]: value });
+  return <div className="settings-scrim" onPointerDown={close}><section className="settings-sheet in-map-settings-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="ตั้งค่าภายในแผนที่">
+    <header><div><p className="eyebrow">In-map settings · Obsidian Frontier</p><h3>ตั้งค่าภายในแผนที่</h3></div><button className="icon-button" onClick={close} aria-label="ปิดตั้งค่า"><X size={18} /></button></header>
+    <div className="setting-stack">
+      <label><span>มุมมองการเล่น</span><select value={settings.cameraMode} onChange={event => update("cameraMode", event.target.value as InMapSettings["cameraMode"])}>{CAMERA_MODE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label} · {option.description}</option>)}</select></label>
+      <label><span>ระยะมองเห็น <b>{settings.viewDistanceBlocks} บล็อก</b></span><select value={settings.viewDistanceBlocks} onChange={event => update("viewDistanceBlocks", Number(event.target.value) as InMapSettings["viewDistanceBlocks"])}>{VIEW_DISTANCE_BLOCKS.map(blocks => <option key={blocks} value={blocks}>{blocks} บล็อก</option>)}</select></label>
+      <label><span>เป้าหมายเฟรมเรต <b>{settings.targetFps} FPS</b></span><select value={settings.targetFps} onChange={event => update("targetFps", Number(event.target.value) as InMapSettings["targetFps"])}>{TARGET_FPS_OPTIONS.map(fps => <option key={fps} value={fps}>{fps} FPS{fps === 120 ? " · ถ้าอุปกรณ์รองรับ" : " · เป้าหมาย ไม่ใช่การรับประกัน"}</option>)}</select></label>
+      <p className="settings-note">มุมมองและระยะนี้บันทึกแยกตามผู้เล่นกับแผนที่ ส่วน FPS เป็นค่าเป้าหมายของเกม ไม่ใช่ผลทดสอบประสิทธิภาพของเครื่อง</p>
+    </div>
   </section></div>;
 }
 
@@ -345,6 +353,23 @@ function CodexSheet({ discoveredIds, close, getAssetUrl }: { discoveredIds: stri
   </section></div>;
 }
 
+function ChestSheet({ session, storage, chestId, quarantinedInstanceIds, close, onDeposit, onWithdraw, getAssetUrl }: { session: LocalGameSession; storage: WorldStorageById; chestId: string; quarantinedInstanceIds: Set<string>; close: () => void; onDeposit: (instanceId: string) => void; onWithdraw: (instanceId: string) => void; getAssetUrl: (assetId?: string) => string | undefined }) {
+  const [selectedChestInstanceId, setSelectedChestInstanceId] = useState<string | null>(null);
+  const [selectedCarryInstanceId, setSelectedCarryInstanceId] = useState<string | null>(null);
+  const slots = getWorldStorageSlots(storage, chestId);
+  const storedItems = slots.filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const selectedChest = storedItems.find(item => item.instanceId === selectedChestInstanceId) ?? storedItems[0];
+  const selectedCarry = session.inventory.find(item => item.instanceId === selectedCarryInstanceId) ?? session.inventory[0];
+  const icon = (definitionId: string) => getAssetUrl(getItemDefinition(definitionId)?.iconAssetId);
+  return <div className="settings-scrim vault-scrim chest-scrim" onPointerDown={close}><section className="vault-sheet chest-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="หีบเก็บของใน Obsidian Frontier">
+    <header><div><p className="eyebrow">Map-local storage · Obsidian Frontier</p><h3>หีบออบซิเดียน</h3></div><button className="icon-button" onClick={close} aria-label="ปิดหีบ"><X size={18} /></button></header>
+    <div className="chest-layout">
+      <section className="chest-panel"><div className="vault-grid-label"><span>CHEST SLOTS</span><b>{storedItems.length}/{CHEST_SLOT_LIMIT}</b></div><div className="chest-grid">{slots.map((item, index) => { const itemDefinition = item ? getItemDefinition(item.definitionId) : undefined; const locked = Boolean(item && quarantinedInstanceIds.has(item.instanceId)); return <button key={`${chestId}-${index}`} className={`chest-slot ${item?.instanceId === selectedChest?.instanceId ? "selected" : ""} ${locked ? "quarantined" : ""}`} onClick={() => item && setSelectedChestInstanceId(item.instanceId)} disabled={!item} aria-label={`ช่องหีบ ${index + 1}${item ? ` · ${itemDefinition?.name ?? item.definitionId} ×${item.quantity}` : " · ว่าง"}`}><span>{item && (icon(item.definitionId) ? <img src={icon(item.definitionId)} alt="" /> : <Box size={16} />)}</span>{item && <><b>{itemDefinition?.name ?? item.definitionId}</b><small>×{item.quantity}</small></>}</button>; })}</div><div className="chest-actions"><button disabled={!selectedChest || quarantinedInstanceIds.has(selectedChest?.instanceId ?? "")} onClick={() => selectedChest && onWithdraw(selectedChest.instanceId)}>นำของออก</button><small>เลือกของในหีบเพื่อย้ายเข้าตัว · คง provenance เดิม</small></div></section>
+      <section className="chest-panel"><div className="vault-grid-label"><span>CARRY SLOTS</span><b>{session.inventory.length}/{CARRY_SLOT_LIMIT}</b></div><div className="chest-carry-list">{session.inventory.map(item => { const itemDefinition = getItemDefinition(item.definitionId); const locked = quarantinedInstanceIds.has(item.instanceId); return <button key={item.instanceId} className={`chest-carry-item ${item.instanceId === selectedCarry?.instanceId ? "selected" : ""} ${locked ? "quarantined" : ""}`} onClick={() => setSelectedCarryInstanceId(item.instanceId)} aria-label={`${itemDefinition?.name ?? item.definitionId} ×${item.quantity}${locked ? " · รอยืนยัน" : ""}`}><span>{icon(item.definitionId) ? <img src={icon(item.definitionId)} alt="" /> : <Box size={15} />}</span><b>{itemDefinition?.name ?? item.definitionId}</b><small>×{item.quantity}</small></button>; })}</div><div className="chest-actions"><button disabled={!selectedCarry || quarantinedInstanceIds.has(selectedCarry?.instanceId ?? "")} onClick={() => selectedCarry && onDeposit(selectedCarry.instanceId)}>เก็บเข้าหีบ</button><small>เลือกของติดตัวเพื่อย้ายเข้าช่องว่าง · หีบเต็มจะไม่ทำให้ของหาย</small></div></section>
+    </div>
+  </section></div>;
+}
+
 export default function ArcaneFrontier() {
   const directEntryRef = useRef<Screen>(getInitialScreen());
   const directMapRef = useRef(getInitialMapId());
@@ -363,6 +388,8 @@ export default function ArcaneFrontier() {
   const [showIntegrity, setShowIntegrity] = useState(getIntegrityDemoEnabled);
   const [showVault, setShowVault] = useState(getVaultDemoEnabled);
   const [openWorldStorageId, setOpenWorldStorageId] = useState<string | null>(null);
+  const [showChest, setShowChest] = useState(false);
+  const [activeChestId, setActiveChestId] = useState(STORAGE_CHEST_ID);
   const [showTacticalMap, setShowTacticalMap] = useState(false);
   const [showAiNpc, setShowAiNpc] = useState(false);
   const [aiNpcMessage, setAiNpcMessage] = useState("");
@@ -375,6 +402,11 @@ export default function ArcaneFrontier() {
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
   const [mapState, setMapState] = useState<OfflineMapState | null>(null);
+  const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
+  const [worldFarmState, setWorldFarmState] = useState<WorldFarmState>({});
+  const [worldStorageById, setWorldStorageById] = useState<WorldStorageById>(createEmptyWorldStorage);
+  const [inMapSettings, setInMapSettings] = useState<InMapSettings>(DEFAULT_IN_MAP_SETTINGS);
+  const [worldBlockStateReady, setWorldBlockStateReady] = useState(false);
   const [assetPackManifest, setAssetPackManifest] = useState<AssetPackManifest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedHomeSeedId, setSelectedHomeSeedId] = useState<string | null>(null);
@@ -393,15 +425,41 @@ export default function ArcaneFrontier() {
       const demoSession = requested !== "landing" && requested !== "identity" ? createSession("DEMO-EXPLORER") : null;
       setSession(saved ?? demoSession);
       setSettings(getSettings());
-      if (requested !== "landing") {
+      if (requested !== "landing" && requested !== "identity") {
         const map = requested === "game" && directMapRef.current === RUNTIME_MAP_ID ? MAP_REGISTRY.find(candidate => candidate.id === RUNTIME_MAP_ID) : undefined;
-        transitionTo(requested, { mapId: map?.id, title: map?.name, accent: map?.accent });
+        transitionTo(requested, { mapId: map?.id, title: map?.name ?? (requested === "home" ? "Aether Homestead" : "Frontier Lobby"), accent: map?.accent ?? (requested === "home" ? "#7ee787" : "#9d4edd") });
       }
     });
     return () => { active = false; };
   }, []);
 
   useEffect(() => saveSettings(settings), [settings]);
+
+  useEffect(() => {
+    if (screen !== "game" || !session) {
+      setWorldBlockStateReady(false);
+      return;
+    }
+    let active = true;
+    setWorldBlockStateReady(false);
+    void loadOfflineMapState(RUNTIME_MAP_ID, session.playerId).then(state => {
+      if (!active) return;
+      setWorldBlockOverrides(state.worldBlockOverrides);
+      setWorldFarmState(state.worldFarmState);
+      setWorldStorageById(state.worldStorageById);
+      setInMapSettings(state.inMapSettings);
+      setWorldBlockStateReady(true);
+    }).catch(() => {
+      if (active) {
+        setWorldBlockOverrides({});
+        setWorldFarmState({});
+        setWorldStorageById(createEmptyWorldStorage());
+        setInMapSettings(DEFAULT_IN_MAP_SETTINGS);
+        setWorldBlockStateReady(true);
+      }
+    });
+    return () => { active = false; };
+  }, [screen, session?.playerId]);
 
   useEffect(() => {
     let active = true;
@@ -417,9 +475,9 @@ export default function ArcaneFrontier() {
     setMapState(null);
     void loadOfflineMapState(selectedMapId, session.playerId).then(saved => {
       if (!active) return;
-      setMapState(saved ?? createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode));
+      setMapState(saved ?? { ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } });
     }).catch(() => {
-      if (active) setMapState(createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode));
+      if (active) setMapState({ ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } });
     });
     return () => { active = false; };
   }, [screen, selectedMapId, session?.playerId, settings.cameraDefaultMode]);
@@ -555,10 +613,10 @@ export default function ArcaneFrontier() {
   }, [session, syncSession]);
 
   const transitionTo = useCallback((destination: Screen, options?: { mapId?: string; title?: string; accent?: string }) => {
-    const requestedMapId = options?.mapId;
-    const blockedMapRequest = Boolean(requestedMapId && requestedMapId !== RUNTIME_MAP_ID);
+    const requestedMapId = options?.mapId ?? (destination === "game" ? RUNTIME_MAP_ID : undefined);
+    const blockedMapRequest = Boolean(requestedMapId && !isRuntimeMapAllowed(requestedMapId));
     const allowedMapId = blockedMapRequest ? undefined : requestedMapId;
-    const map = allowedMapId ? MAP_REGISTRY.find(candidate => candidate.id === allowedMapId) : undefined;
+    const map = allowedMapId ? MAP_REGISTRY.find(candidate => candidate.id === allowedMapId && isRuntimeMapAllowed(candidate.id)) : undefined;
     const title = blockedMapRequest ? "Obsidian Frontier เท่านั้น" : options?.title ?? map?.name ?? (destination === "home" ? "Aether Homestead" : "Frontier Lobby");
     const accent = blockedMapRequest ? "#00f3ff" : options?.accent ?? map?.accent ?? "#00f3ff";
     setTransition({ destination: blockedMapRequest ? "maps" : destination, mapId: allowedMapId, title, accent, progress: 0, phase: "กำลังปรับเส้นทางพลังงาน" });
@@ -639,6 +697,86 @@ export default function ArcaneFrontier() {
     }
   };
 
+  const blockActionHandler = useCallback((event: Pick<BlockActionEvent, "type" | "mapId" | "overrides" | "itemInstanceId" | "itemDefinitionId" | "message" | "coordinate" | "moduleId">) => {
+    if (!session || event.mapId !== RUNTIME_MAP_ID) return false;
+    if (event.type === "place" && event.itemInstanceId) {
+      const consumed = consumeOneFromStack(session.inventory, event.itemInstanceId);
+      if (!consumed.accepted) {
+        setToast(consumed.reason);
+        return false;
+      }
+      updateSession({ inventory: consumed.inventory, pendingActions: session.pendingActions.concat({ id: `block-place-${Date.now()}`, type: "block-place", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, itemInstanceId: event.itemInstanceId, itemDefinitionId: event.itemDefinitionId, coordinate: event.coordinate }, }) });
+    } else {
+      updateSession({ pendingActions: session.pendingActions.concat({ id: `block-break-${Date.now()}`, type: "block-break", createdAt: Date.now(), payload: { mapId: event.mapId, moduleId: event.moduleId, coordinate: event.coordinate }, }) });
+    }
+    setWorldBlockOverrides(event.overrides);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides: event.overrides, worldFarmState, worldStorageById, inMapSettings, worldPlants: mapState?.worldPlants ?? {}, cameraMode: inMapSettings.cameraMode, updatedAt: Date.now() }).catch(() => setToast("บันทึกบล็อกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    setToast(event.message);
+    return true;
+  }, [inMapSettings, session, worldFarmState, worldStorageById]);
+
+  const blockMessageHandler = useCallback((message: string) => setToast(message), []);
+  const farmMessageHandler = useCallback((message: string) => setToast(message), []);
+
+  const farmActionHandler = useCallback((event: FarmActionEvent) => {
+    if (!session || event.mapId !== RUNTIME_MAP_ID) return false;
+    if (event.type === "plant" && event.seedInstanceId) {
+      const consumed = consumeOneFromStack(session.inventory, event.seedInstanceId);
+      if (!consumed.accepted) {
+        setToast(consumed.reason);
+        return false;
+      }
+      updateSession({ inventory: consumed.inventory, pendingActions: session.pendingActions.concat({ id: `plant-world-${Date.now()}`, type: "plant-world-seed", createdAt: Date.now(), payload: { mapId: event.mapId, plotId: event.plotId, seedDefinitionId: event.seedDefinitionId, seedInstanceId: event.seedInstanceId, coordinate: event.coordinate }, }) });
+    } else if (event.type === "harvest" && event.reward) {
+      if (session.inventory.some(item => item.provenance.eventId === event.reward!.provenance.eventId)) return false;
+      const reward = event.reward;
+      updateSession({ inventory: session.inventory.concat(reward), pendingActions: session.pendingActions.concat({ id: `harvest-world-${Date.now()}`, type: "harvest-world-crop", createdAt: Date.now(), payload: { mapId: event.mapId, plotId: event.plotId, rewardInstanceId: reward.instanceId, coordinate: event.coordinate }, }) });
+      const restoreAmount = event.effect?.kind === "restore" ? Math.min(event.effect.amount, event.effect.cap, 12) : 0;
+      if (restoreAmount > 0) setGameSnapshot(current => ({ ...current, health: Math.min(100, current.health + restoreAmount) }));
+      if (event.effect?.kind === "repel") setToast(`${event.message} · แรงผลักทำงาน ${event.effect.radius} บล็อกแบบไม่ทำลาย`);
+    }
+    setWorldFarmState(event.state);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState: event.state, worldStorageById, inMapSettings, worldPlants: mapState?.worldPlants ?? {}, cameraMode: inMapSettings.cameraMode, updatedAt: Date.now() }).catch(() => setToast("บันทึกแปลงโลกในเครื่องไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    if (!event.effect || event.effect.kind !== "repel") setToast(event.message);
+    return true;
+  }, [inMapSettings, session, worldBlockOverrides, worldStorageById]);
+
+  const chestOpenHandler = useCallback((chestId: string) => {
+    if (chestId !== STORAGE_CHEST_ID) return;
+    setActiveChestId(chestId);
+    setShowChest(true);
+  }, []);
+
+  const persistStorageTransfer = useCallback((result: ReturnType<typeof depositIntoChest> | ReturnType<typeof withdrawItemFromChest>) => {
+    if (!session || !result.ok) return;
+    setWorldStorageById(result.storage);
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById: result.storage, inMapSettings, worldPlants: mapState?.worldPlants ?? {}, cameraMode: inMapSettings.cameraMode, updatedAt: Date.now() }).catch(() => setToast("บันทึกของในหีบไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+    updateSession({ inventory: result.carry, pendingActions: session.pendingActions.concat(result.action) });
+  }, [inMapSettings, session, worldBlockOverrides, worldFarmState]);
+
+  const depositFromChest = useCallback((itemInstanceId: string) => {
+    if (!session) return;
+    const result = depositIntoChest({ mapId: RUNTIME_MAP_ID, chestId: activeChestId, carry: session.inventory, storage: worldStorageById, itemInstanceId, now: Date.now() });
+    if (!result.ok) return setToast(result.reason);
+    persistStorageTransfer(result);
+    setToast("เก็บของเข้าหีบแล้ว · item instance และ provenance เดิมยังอยู่");
+  }, [activeChestId, persistStorageTransfer, session, worldStorageById]);
+
+  const withdrawFromChest = useCallback((itemInstanceId: string) => {
+    if (!session) return;
+    const result = withdrawItemFromChest({ mapId: RUNTIME_MAP_ID, chestId: activeChestId, carry: session.inventory, storage: worldStorageById, itemInstanceId, now: Date.now() });
+    if (!result.ok) return setToast(result.reason);
+    persistStorageTransfer(result);
+    setToast("นำของออกจากหีบแล้ว · provenance เดิมยังอยู่");
+  }, [activeChestId, persistStorageTransfer, session, worldStorageById]);
+
+  const commitInMapSettings = useCallback((next: InMapSettings) => {
+    const normalized = normalizeInMapSettings(next);
+    setInMapSettings(normalized);
+    if (!session) return;
+    void saveOfflineMapState({ mapId: RUNTIME_MAP_ID, playerId: session.playerId, fogOfWar: "", harvestedNodes: {}, worldBlockOverrides, worldFarmState, worldStorageById, inMapSettings: normalized, worldPlants: mapState?.worldPlants ?? {}, cameraMode: normalized.cameraMode, updatedAt: Date.now() }).catch(() => setToast("บันทึกตั้งค่าในแผนที่ไม่สำเร็จ · การเล่นยังดำเนินต่อได้"));
+  }, [session, worldBlockOverrides, worldFarmState, worldStorageById]);
+
   const snapshotHandler = useCallback((next: GameSnapshot) => {
     setGameSnapshot(next);
   }, []);
@@ -646,7 +784,7 @@ export default function ArcaneFrontier() {
   const persistMapCameraMode = useCallback((cameraMode: CameraMode) => {
     if (!session) return;
     setMapState(current => {
-      const base = current ?? createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode);
+      const base = current ?? { ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } };
       const next = { ...base, cameraMode };
       void saveOfflineMapState(next).catch(() => undefined);
       return next;
@@ -656,8 +794,8 @@ export default function ArcaneFrontier() {
   const persistWorldBlockMutation = useCallback((key: string, block: WorldBlock | null) => {
     if (!session) return;
     setMapState(current => {
-      const base = current ?? createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode);
-      const next = { ...base, worldBlockOverrides: { ...base.worldBlockOverrides, [key]: block } };
+      const base = current ?? { ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } };
+      const next = { ...base, worldBlockOverrides: { ...base.worldBlockOverrides, [key]: block?.moduleId ?? null } };
       void saveOfflineMapState(next).catch(() => undefined);
       return next;
     });
@@ -666,7 +804,7 @@ export default function ArcaneFrontier() {
   const persistWorldPlantMutation = useCallback((key: string, plant: WorldPlantState | null) => {
     if (!session) return;
     setMapState(current => {
-      const base = current ?? createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode);
+      const base = current ?? { ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } };
       const worldPlants = { ...base.worldPlants };
       if (plant) worldPlants[key] = plant;
       else delete worldPlants[key];
@@ -679,7 +817,7 @@ export default function ArcaneFrontier() {
   const persistWorldStorageMutation = useCallback((storageId: string, slots: ItemInstance[]) => {
     if (!session) return;
     setMapState(current => {
-      const base = current ?? createDefaultOfflineMapState(selectedMapId, session.playerId, settings.cameraDefaultMode);
+      const base = current ?? { ...createDefaultOfflineMapState(selectedMapId, session.playerId), cameraMode: settings.cameraDefaultMode, inMapSettings: { ...DEFAULT_IN_MAP_SETTINGS, cameraMode: settings.cameraDefaultMode } };
       const next = { ...base, worldStorageById: { ...base.worldStorageById, [storageId]: slots.map(item => ({ ...item })) } };
       void saveOfflineMapState(next).catch(() => undefined);
       return next;
@@ -753,7 +891,7 @@ export default function ArcaneFrontier() {
   const openWorldStorage = useMemo(() => {
     if (!openWorldStorageId || !mapState) return null;
     const anchor = getWorldStorageAnchor(openWorldStorageId, selectedMapId);
-    return anchor ? createMapWorldStorage(selectedMapId, openWorldStorageId, mapState.worldStorageById[openWorldStorageId] ?? []) : null;
+    return anchor ? createMapWorldStorage(selectedMapId, openWorldStorageId, (mapState.worldStorageById[openWorldStorageId] ?? []).filter((item): item is ItemInstance => Boolean(item))) : null;
   }, [mapState, openWorldStorageId, selectedMapId]);
   const companionConfig = useMemo(() => {
     if (!safeHome) return undefined;
@@ -774,7 +912,7 @@ export default function ArcaneFrontier() {
       updateSession({ inventory: result.inventory, pendingActions: session.pendingActions.concat({ id: `use-item-${Date.now()}`, type: "use-item", createdAt: Date.now(), payload: { slot, instanceId: result.instance?.instanceId, definitionId: result.definitionId } }) });
     }
     setToast(result.message);
-    dispatchControl({ type: "use-item", slot });
+    dispatchControl({ type: "use-item", slot, itemInstanceId: result.instance?.instanceId, itemDefinitionId: result.definitionId });
   };
   const equipVaultInstance = (instanceId: string) => {
     if (!session) return;
@@ -795,11 +933,12 @@ export default function ArcaneFrontier() {
     <div className="portrait-warning"><Gamepad2 size={20} /><span>หมุนอุปกรณ์เป็นแนวนอนเพื่อสัมผัส Arcane Frontier</span></div>
     {transition && <LoadingGate transition={transition} reducedMotion={settings.reducedMotion} />}
     {toast && <button className="game-toast" onClick={() => setToast(null)}>{toast}</button>}
-    {showSettings && <SettingsSheet scope={settingsScope} settings={settings} setSettings={setSettings} mapCameraMode={mapState?.cameraMode ?? settings.cameraDefaultMode} onMapCameraModeChange={persistMapCameraMode} close={() => setShowSettings(false)} />}
+    {showSettings && (screen === "game" ? <InMapSettingsSheet settings={inMapSettings} setSettings={commitInMapSettings} close={() => setShowSettings(false)} /> : <SettingsSheet settings={settings} setSettings={setSettings} close={() => setShowSettings(false)} />)}
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showCodex && session && <CodexSheet discoveredIds={session.discoveredItemIds} close={() => setShowCodex(false)} getAssetUrl={getPackIconUrl} />}
     {showCredits && <CreditsSheet manifest={assetPackManifest} close={() => setShowCredits(false)} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
+    {showChest && session && screen === "game" && <ChestSheet session={session} storage={worldStorageById} chestId={activeChestId} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowChest(false)} onDeposit={depositFromChest} onWithdraw={withdrawFromChest} getAssetUrl={getPackIconUrl} />}
     {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} toast={message => setToast(message)} getAssetUrl={getPackIconUrl} />}
     {openWorldStorage && session && screen === "game" && <WorldStorageSheet storage={openWorldStorage} session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setOpenWorldStorageId(null)} onStorageChange={persistWorldStorageMutation} onInventoryChange={inventory => { updateSession({ inventory }); }} toast={message => setToast(message)} />}
     {showTacticalMap && screen === "game" && <TacticalMapSheet map={activeMap} snapshot={gameSnapshot} close={() => setShowTacticalMap(false)} />}
@@ -833,11 +972,11 @@ export default function ArcaneFrontier() {
 
     {screen === "maps" && session && <section className="map-screen">
       <header className="screen-header"><button className="back-control" onClick={() => transitionTo("lobby", { title: "โถง Frontier", accent: "#9d00ff" })}><ChevronLeft size={18} /> กลับโถง</button><div><p className="eyebrow">หอสังเกตการณ์แผนที่</p><h2>เลือกพื้นที่ออกสำรวจ</h2></div><button className="map-count help-trigger" onClick={() => openHelp("offline")}><CircleHelp size={16} /> แคชและออฟไลน์</button></header>
-      <div className="map-cards">{MAP_REGISTRY.filter(map => map.id === RUNTIME_MAP_ID).map((map, index) => {
+      <div className="map-cards">{MAP_REGISTRY.filter(map => isRuntimeMapAllowed(map.id)).map((map, index) => {
         const cached = cachedMapIds.has(map.id);
         return <article key={map.id} className={`map-card ${map.id === selectedMapId ? "selected" : ""}`} style={{ "--map-accent": map.accent } as React.CSSProperties}><div className="map-card-art">{obsidianKeyArt ? <img src={obsidianKeyArt} alt="" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /> : <span className={`map-art map-art-${index % 4}`} />}<div className="map-number">01</div></div><div className="map-card-body"><div><p>{map.biome}</p><h3>{map.name}</h3><small className="map-prototype-status">OBSIDIAN VERTICAL SLICE · เล่นได้ตอนนี้</small></div><div className="map-meta"><span>รัศมี {map.radiusMeters}m</span><span>ภัยคุกคาม {"◆".repeat(map.threat)}</span></div><button onClick={() => transitionTo("game", { mapId: map.id, title: map.name, accent: map.accent })}>{cached ? <><Play size={15} fill="currentColor" /> เข้าเล่นจากแคช</> : <><Download size={15} /> เตรียมพื้นที่</>}</button></div></article>;
       })}</div>
-      <p className="map-footnote">ตอนนี้เปิดให้เล่นเฉพาะ Obsidian Frontier เพื่อปิด vertical slice ให้ครบก่อน · แผนที่อื่นยังเป็นข้อมูลที่วางแผนไว้และยังไม่มีปุ่มเข้าเล่นหรือเตรียมแคช</p>
+      <p className="map-footnote">ตอนนี้เปิดให้เล่นเฉพาะ Obsidian Frontier vertical slice เท่านั้น ส่วนแผนที่อื่นยังเป็นข้อมูลแผนงานหลังบ้านและยังไม่เปิดให้เลือกหรือเตรียม cache ใน runtime</p>
     </section>}
 
     {screen === "home" && session && <section className="home-screen">
@@ -853,17 +992,17 @@ export default function ArcaneFrontier() {
       </div>
     </section>}
 
-    {screen === "game" && session && mapState && <section className="game-screen" data-camera-mode={mapState.cameraMode} data-view-distance-blocks={gameSnapshot.viewDistanceBlocks ?? settings.viewDistanceBlocks} data-target-fps={settings.targetFps} data-planted-crops={gameSnapshot.plantedCrops ?? 0} data-mature-crops={gameSnapshot.matureCrops ?? 0} data-farm-plots={gameSnapshot.farmPlots ?? 0} data-repelled-enemies={gameSnapshot.repelledEnemies ?? 0} data-storage-open={openWorldStorage ? "true" : "false"} data-settings-paused={showSettings && settingsScope === "map" ? "true" : "false"} style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} viewDistanceBlocks={settings.viewDistanceBlocks} targetFps={settings.targetFps} cameraMode={mapState.cameraMode} paused={(showSettings && settingsScope === "map") || Boolean(openWorldStorage)} onSnapshot={snapshotHandler} onReward={rewardHandler} companion={companionConfig} selectedToolTag={selectedHotbarDefinition?.toolTag} selectedItemDefinitionId={selectedHotbarDefinition?.isBlockItem || selectedHotbarDefinition?.category === "seed" ? selectedHotbarDefinition.id : undefined} initialWorldBlockOverrides={mapState?.worldBlockOverrides} initialWorldPlants={mapState?.worldPlants} initialWorldStorageById={mapState?.worldStorageById} onItemConsumed={consumeSelectedBlockItem} onWorldBlockMutation={persistWorldBlockMutation} onWorldPlantMutation={persistWorldPlantMutation} onWorldStorageOpen={storageId => setOpenWorldStorageId(storageId)} />
+    {screen === "game" && session && worldBlockStateReady && <section className="game-screen" data-camera-mode={inMapSettings.cameraMode} data-view-distance-blocks={gameSnapshot.viewDistanceBlocks ?? inMapSettings.viewDistanceBlocks} data-target-fps={inMapSettings.targetFps} data-planted-crops={gameSnapshot.plantedCrops ?? 0} data-mature-crops={gameSnapshot.matureCrops ?? 0} data-farm-plots={gameSnapshot.farmPlots ?? 0} data-repelled-enemies={gameSnapshot.repelledEnemies ?? 0} data-storage-open={showChest ? "true" : "false"} data-settings-paused={showSettings || showChest ? "true" : "false"} style={{ "--touch-scale": settings.touchScale, "--touch-opacity": settings.touchOpacity } as React.CSSProperties}><GameCanvas mapId={selectedMapId} reducedMotion={settings.reducedMotion} renderDistance={settings.renderDistance} viewDistanceBlocks={inMapSettings.viewDistanceBlocks} targetFps={inMapSettings.targetFps} cameraMode={inMapSettings.cameraMode} paused={showSettings || showChest} onSnapshot={snapshotHandler} onReward={rewardHandler} onBlockAction={blockActionHandler} onChestOpen={chestOpenHandler} onBlockMessage={blockMessageHandler} onFarmAction={farmActionHandler} onFarmMessage={farmMessageHandler} worldBlockOverrides={worldBlockOverrides} worldFarmState={worldFarmState} companion={companionConfig} selectedToolTag={selectedHotbarDefinition?.toolTag} selectedItemDefinitionId={selectedHotbarDefinition?.isBlockItem || selectedHotbarDefinition?.category === "seed" ? selectedHotbarDefinition.id : undefined} />
       <div className="game-top-bar"><div className="game-status"><HealthBar label="พลังชีวิต" value={gameSnapshot.health} tone="health" /><HealthBar label="อีเธอร์" value={76} tone="shield" /><HealthBar label="แรงกาย" value={gameSnapshot.stamina ?? 88} tone="energy" /></div><div className="phase-badge"><span className={gameSnapshot.phase} /><div><small>{gameSnapshot.phase === "night" ? "รอบกลางคืน" : "รอบกลางวัน"}</small><b>{gameSnapshot.phase === "night" ? "15:00" : "15:00"}</b></div></div><div className="mini-radar"><div className="radar-grid" /><span className="radar-player" /><span className="radar-danger" /></div><div className="game-top-actions"><button className="game-icon-button" onClick={() => setShowVault(true)} aria-label="เปิดคลังไอเทม" title="Inventory (I / Tab)"><Backpack size={15} /></button><button className="game-icon-button" onClick={() => setShowCodex(true)} aria-label="เปิดคู่มือ Codex" title="Codex"><BookOpen size={15} /></button><button className="game-icon-button" onClick={() => setShowTacticalMap(true)} aria-label="เปิดแผนที่ยุทธวิธี" title="Tactical map (M)"><MapIcon size={15} /></button>{selectedMapId === "obsidian-frontier" && gameSnapshot.aiNpcAvailable !== false && <button className="game-icon-button" onClick={() => setShowAiNpc(true)} aria-label="คุยกับ NPC พิเศษ" title="Special NPC"><Sparkles size={15} /></button>}<button className="game-icon-button" onClick={() => { setSettingsScope("map"); setShowSettings(true); }} aria-label="เปิด In-map Settings" title="In-map Settings (Esc)"><Settings2 size={15} /></button></div></div>
       <div className="companion-hud"><img src={obsidianCompanionArt ?? "/manus-storage/arcane-cyber-fox-hud-icon_d96b6bd0.jpg"} alt="Arcane Cyber Fox" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("asset-fallback"); }} /><span><b>{session.home.petName}</b><small>{gameSnapshot.companionState ?? (companionConfig?.following ? "กำลังตาม" : "พักอยู่")} · เก็บของ {companionConfig?.lootRadius ?? 2}m</small></span><button onClick={() => { const result = togglePetFollowing(session.home); updateSession({ home: result.home, pendingActions: session.pendingActions.concat(result.action) }); }} aria-label="Toggle companion follow"><PawPrint size={16} className={companionConfig?.following ? "active" : ""} /></button></div>
       <button className="game-help-trigger" onClick={() => openHelp("expedition")}><CircleHelp size={15} /> วิธีควบคุม</button>
-      {gameSnapshot.worldStorageAvailable && !openWorldStorage && <div className="world-storage-hint" role="status"><Box size={14} /> กด E เปิดหีบเก็บของ · {gameSnapshot.worldStorageSlots ?? 0}/{gameSnapshot.worldStorageCapacity ?? 27} ช่อง</div>}
+      {gameSnapshot.worldStorageAvailable && !showChest && <div className="world-storage-hint" role="status"><Box size={14} /> กด E เปิดหีบเก็บของ · {gameSnapshot.worldStorageSlots ?? 0}/{gameSnapshot.worldStorageCapacity ?? 27} ช่อง</div>}
       <div className="boss-banner" style={{ "--boss-accent": activeMap.accent } as React.CSSProperties}><Flame size={16} /><span>ตรวจพบความผิดปกติ · {activeMap.eventBossName ?? "ความผิดปกติที่ไม่ทราบชื่อ"} อาจปรากฏ</span></div>
       {gameSnapshot.warning && <div className="map-event-warning" role="status"><Shield size={15} /><span>{gameSnapshot.warning}</span></div>}
       <div className="expedition-context" style={{ "--map-context-accent": activeMap.accent } as React.CSSProperties}><span><Compass size={13} /> {activeMap.content.npc}</span><span><MapIcon size={13} /> {activeMap.content.landmark}</span><span><Crosshair size={13} /> {activeMap.content.monsters.find(monster => monster.role === "regular")?.name}</span></div>
       <div className="quick-slots" aria-label="ช่องลัดไอเทม">{([0, 1, 2, 3, 4, 5] as const).map(slot => { const instance = session ? getHotbarInstance(session.inventory, session.hotbarBindings ?? {}, slot) : undefined; const definition = instance ? getItemDefinition(instance.definitionId) : undefined; const iconUrl = getPackIconUrl(definition?.iconAssetId); const fallbackIcon = slot === 0 ? <Wheat size={18} /> : slot === 1 ? <Zap size={18} /> : <Box size={18} />; return <button key={slot} className={activeHotbarSlot === slot ? "active" : ""} onClick={() => setActiveHotbarSlot(slot)} aria-label={`ช่องไอเทม ${slot + 1}${definition ? ` · ${definition.name}` : " · ว่าง"} · แตะเพื่อเลือก`}>{iconUrl ? <img className="hotbar-pack-icon" src={iconUrl} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : fallbackIcon}<span>{slot + 1}</span>{instance && instance.quantity > 1 && <small>×{instance.quantity}</small>}</button>; })}</div>
       <div className="game-controls"><TouchStick /><div className="action-cluster"><button className="skill-button use" onPointerDown={() => useHotbarSlot(activeHotbarSlot as HotbarSlot)} aria-label="ใช้ไอเท็มที่เลือก"><Box size={20} /><small>ใช้</small></button><button className="skill-button dash" onPointerDown={() => dispatchControl({ type: "dash" })} aria-label="แดช · Shift"><Zap size={20} /><small>แดช</small></button><button className="skill-button interact" onPointerDown={() => dispatchControl({ type: "interact" })} aria-label="โต้ตอบและเก็บของ · E"><Pickaxe size={20} /><small>E</small></button><button className="attack-button" onPointerDown={() => dispatchControl({ type: "attack" })} aria-label="โจมตี · Space"><Sword size={28} /><span>โจมตี</span></button></div></div>
-      <div className="game-footer"><button onClick={() => { setOpenWorldStorageId(null); transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" }); }}><Menu size={18} /> ออกจากการสำรวจ</button><span><Crosshair size={15} /> {gameSnapshot.enemies} ศัตรู · {gameSnapshot.resources} ทรัพยากร · {CAMERA_MODE_OPTIONS.find(option => option.id === mapState.cameraMode)?.label ?? mapState.cameraMode} · {gameSnapshot.viewDistanceBlocks ?? settings.viewDistanceBlocks} บล็อก · ฟาร์ม {gameSnapshot.plantedCrops ?? 0}/{gameSnapshot.farmPlots ?? 0} · ไล่ศัตรู {gameSnapshot.repelledEnemies ?? 0}</span><button onClick={() => { setSettingsScope("map"); setShowSettings(true); }} aria-label="เปิด In-map Settings"><Settings2 size={18} /></button></div>
+      <div className="game-footer"><button onClick={() => { setShowChest(false); setOpenWorldStorageId(null); transitionTo("lobby", { title: "Frontier Lobby", accent: "#9d00ff" }); }}><Menu size={18} /> ออกจากการสำรวจ</button><span><Crosshair size={15} /> {gameSnapshot.enemies} ศัตรู · {gameSnapshot.resources} ทรัพยากร · {CAMERA_MODE_OPTIONS.find(option => option.id === inMapSettings.cameraMode)?.label ?? inMapSettings.cameraMode} · {gameSnapshot.viewDistanceBlocks ?? settings.viewDistanceBlocks} บล็อก · ฟาร์ม {gameSnapshot.plantedCrops ?? 0}/{gameSnapshot.farmPlots ?? 0} · ไล่ศัตรู {gameSnapshot.repelledEnemies ?? 0}</span><button onClick={() => { setSettingsScope("map"); setShowSettings(true); }} aria-label="เปิด In-map Settings"><Settings2 size={18} /></button></div>
     </section>}
   </main>;
 }

@@ -125,7 +125,7 @@ const materialNames = ["Alloy", "Fiber", "Crystal", "Circuit", "Essence", "Resin
 const furnitureNames = ["Wardrobe", "Workbench", "Storage Chest", "Lantern", "Bedroll", "Field Kitchen", "Signal Table", "Pet Nook"];
 const decorationNames = ["Rune Banner", "Holo Planter", "Crystal Vase", "Wall Sigil", "Garden Arch", "Wind Chime", "Star Map", "Portal Lamp"];
 const structureNames = ["Foundation", "Wall Panel", "Roof Segment", "Door Frame", "Window Module", "Bridge Tile", "Fence Unit", "Power Pylon"];
-const toolNames = ["Pickaxe", "Axe", "Shears"];
+const toolNames = ["Pickaxe", "Hand Axe", "Field Shovel", "Builder Hammer", "Rune Chisel", "Survey Spade", "Obsidian Drill", "Aether Cutter"];
 
 const categoryNames: Record<ItemCategory, string[]> = {
   sword: swordNames,
@@ -165,7 +165,7 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
       category,
       name: `${prefix} ${noun} ${String(ordinal).padStart(3, "0")}`,
       tier,
-      stackLimit: equippable ? 1 : category === "furniture" || category === "decoration" || category === "structure" ? 1 : 99,
+      stackLimit: equippable ? 1 : category === "structure" && index === 0 ? 64 : category === "furniture" || category === "decoration" || category === "structure" ? 1 : 99,
       equippable,
       tags: category === "seed" ? ["plant", ...(seedSoil?.compatiblePlantTags ?? [])] : [category, tier, ...(toolTag ? [toolTag] : [])],
       soilId,
@@ -178,10 +178,10 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
             ? "ยิงระยะไกลและเพิ่มโอกาส critical ตามระยะ"
             : category === "ranged"
               ? "ยิงพลังงานและบริหารความร้อนของอาวุธ"
+              : category === "tool"
+                ? `เครื่องมือสำหรับ ${toolTag ?? "เก็บทรัพยากร"}`
                 : category === "seed"
-                ? `เติบโตได้ดีบน ${seedSoil?.name ?? "ดินที่เหมาะสม"}`
-                : category === "tool"
-                  ? `เครื่องมือสำหรับ ${toolTag ?? "เก็บทรัพยากร"}`
+                  ? `เติบโตได้ดีบน ${seedSoil?.name ?? "ดินที่เหมาะสม"}`
                   : category === "structure"
                   ? "ชิ้นส่วน modular ที่วาง หมุน ย้าย และเก็บคืนได้"
                   : "ใช้ในระบบคราฟต์ ตกแต่ง หรือเอาชีวิตรอด",

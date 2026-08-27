@@ -1,10 +1,11 @@
 import Dexie, { type Table } from "dexie";
 import type { ItemInstance } from "@/game/data/catalog";
-import type { WorldBlock } from "@/game/data/blockModules";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
-import { DEFAULT_CAMERA_MODE, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
+import { normalizeWorldFarmState, createDefaultWorldFarmState, type WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { createEmptyWorldStorage, normalizeWorldStorage, type WorldStorageById } from "@/game/systems/worldStorageSystem";
+import { DEFAULT_CAMERA_MODE, DEFAULT_IN_MAP_SETTINGS, normalizeCameraMode, normalizeInMapSettings, type CameraMode, type InMapSettings } from "@/game/systems/cameraModes";
 
 export const OFFLINE_QUEUE_LIMIT = 1000;
 
@@ -30,15 +31,75 @@ export type OfflineMapState = {
   playerId: string;
   fogOfWar: string;
   harvestedNodes: Record<string, number>;
-  worldStorageById: Record<string, ItemInstance[]>;
-  worldBlockOverrides: Record<string, WorldBlock | null>;
+  /** Persist only module IDs or explicit null tombstones, never generated meshes. */
+  worldBlockOverrides: Record<string, string | null>;
+  worldFarmState: WorldFarmState;
+  worldStorageById: WorldStorageById;
+  inMapSettings: InMapSettings;
+  /** Legacy compatibility fields retained for recovered world-plant callers. */
   worldPlants: Record<string, WorldPlantState>;
   cameraMode: CameraMode;
   updatedAt: number;
 };
 
-export function createDefaultOfflineMapState(mapId: string, playerId: string, cameraMode: CameraMode = DEFAULT_CAMERA_MODE): OfflineMapState {
-  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldStorageById: {}, worldBlockOverrides: {}, worldPlants: {}, cameraMode: normalizeCameraMode(cameraMode), updatedAt: 0 };
+function normalizeWorldBlockOverrideMap(candidate: unknown): Record<string, string | null> {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return {};
+  return Object.fromEntries(Object.entries(candidate).filter(([key, value]) => /^-?\d+:-?\d+:-?\d+$/.test(key) && (typeof value === "string" || value === null))) as Record<string, string | null>;
+}
+
+function normalizeLegacyWorldPlants(candidate: unknown): Record<string, WorldPlantState> {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return {};
+  return Object.fromEntries(Object.entries(candidate).filter(([key, value]) => Boolean(key) && Boolean(value && typeof value === "object" && !Array.isArray(value)))) as Record<string, WorldPlantState>;
+}
+
+export function defaultOfflineMapState(mapId: string, playerId: string): OfflineMapState {
+  return {
+    mapId,
+    playerId,
+    fogOfWar: "",
+    harvestedNodes: {},
+    worldBlockOverrides: {},
+    worldFarmState: createDefaultWorldFarmState(),
+    worldStorageById: createEmptyWorldStorage(),
+    inMapSettings: DEFAULT_IN_MAP_SETTINGS,
+    worldPlants: {},
+    cameraMode: DEFAULT_CAMERA_MODE,
+    updatedAt: Date.now(),
+  };
+}
+
+/** Backward-compatible alias retained for the recovered local runtime. */
+export const createDefaultOfflineMapState = defaultOfflineMapState;
+
+export function normalizeOfflineMapState(candidate: Partial<OfflineMapState> | null | undefined, mapId: string, playerId: string): OfflineMapState {
+  const source = candidate ?? {};
+  const inMapSettings = normalizeInMapSettings(source.inMapSettings);
+  const cameraMode = normalizeCameraMode(source.cameraMode ?? inMapSettings.cameraMode);
+  return {
+    mapId,
+    playerId,
+    fogOfWar: typeof source.fogOfWar === "string" ? source.fogOfWar : "",
+    harvestedNodes: source.harvestedNodes && typeof source.harvestedNodes === "object" ? source.harvestedNodes : {},
+    worldBlockOverrides: normalizeWorldBlockOverrideMap(source.worldBlockOverrides),
+    worldFarmState: normalizeWorldFarmState(source.worldFarmState),
+    worldStorageById: normalizeWorldStorage(source.worldStorageById),
+    inMapSettings: { ...inMapSettings, cameraMode },
+    worldPlants: normalizeLegacyWorldPlants(source.worldPlants),
+    cameraMode,
+    updatedAt: typeof source.updatedAt === "number" ? source.updatedAt : Date.now(),
+  };
+}
+
+export async function loadOfflineMapState(mapId: string, playerId: string) {
+  const state = await offlineDb.mapStates.get([mapId, playerId]);
+  return state ? normalizeOfflineMapState(state, mapId, playerId) : defaultOfflineMapState(mapId, playerId);
+}
+
+export async function saveOfflineMapState(state: OfflineMapState) {
+  const normalized = normalizeOfflineMapState(state, state.mapId, state.playerId);
+  normalized.updatedAt = Date.now();
+  await offlineDb.mapStates.put(normalized);
+  return normalized;
 }
 
 class ArcaneOfflineDatabase extends Dexie {
@@ -61,17 +122,6 @@ export const offlineDb = new ArcaneOfflineDatabase();
 export async function loadOfflineProfile(playerId?: string) {
   if (playerId) return offlineDb.profiles.get(playerId);
   return offlineDb.profiles.orderBy("updatedAt").last();
-}
-
-export async function loadOfflineMapState(mapId: string, playerId: string) {
-  const state = await offlineDb.mapStates.get([mapId, playerId]);
-  return state ? { ...state, worldStorageById: state.worldStorageById ?? {}, worldBlockOverrides: state.worldBlockOverrides ?? {}, worldPlants: state.worldPlants ?? {}, cameraMode: normalizeCameraMode(state.cameraMode) } : undefined;
-}
-
-export async function saveOfflineMapState(state: OfflineMapState) {
-  const next = { ...state, worldStorageById: state.worldStorageById ?? {}, worldBlockOverrides: state.worldBlockOverrides ?? {}, worldPlants: state.worldPlants ?? {}, cameraMode: normalizeCameraMode(state.cameraMode), updatedAt: Date.now() };
-  await offlineDb.mapStates.put(next);
-  return next;
 }
 
 export async function saveOfflineProfile(session: LocalGameSession, existing?: OfflineProfileRecord | null) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraRelativeMovement, CAMERA_MODE_OPTIONS, getCameraModeOption, normalizeCameraMode } from "../client/src/game/systems/cameraModes";
+import { cameraRelativeMovement, CAMERA_MODE_OPTIONS, DEFAULT_IN_MAP_SETTINGS, getCameraModeOption, normalizeCameraMode, normalizeInMapSettings, TARGET_FPS_OPTIONS, VIEW_DISTANCE_BLOCKS } from "../client/src/game/systems/cameraModes";
 
 describe("camera mode contract", () => {
   it("exposes player-selectable overhead, first-person and side modes", () => {
@@ -20,5 +20,17 @@ describe("camera mode contract", () => {
     const firstPersonForward = cameraRelativeMovement("first-person", 0, 1, Math.PI / 2);
     expect(firstPersonForward.x).toBeCloseTo(1, 5);
     expect(firstPersonForward.z).toBeCloseTo(0, 5);
+  });
+
+  it("supports bounded in-map view-distance and FPS settings", () => {
+    expect(DEFAULT_IN_MAP_SETTINGS).toEqual({ cameraMode: "overhead", viewDistanceBlocks: 20, targetFps: 60 });
+    expect(VIEW_DISTANCE_BLOCKS).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
+    expect(TARGET_FPS_OPTIONS).toEqual([5, 15, 30, 45, 60, 120]);
+    expect(normalizeInMapSettings({ cameraMode: "first-person", viewDistanceBlocks: 50, targetFps: 120 })).toEqual({ cameraMode: "first-person", viewDistanceBlocks: 50, targetFps: 120 });
+  });
+
+  it("falls back safely for malformed legacy map settings", () => {
+    expect(normalizeInMapSettings({ cameraMode: "unknown" as never, viewDistanceBlocks: 7 as never, targetFps: 999 as never })).toEqual(DEFAULT_IN_MAP_SETTINGS);
+    expect(normalizeInMapSettings(undefined)).toEqual(DEFAULT_IN_MAP_SETTINGS);
   });
 });

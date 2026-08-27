@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
-import { isSafeUseItemPayload } from "./syncActionValidation";
+import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeStorageDepositPayload, isSafeStorageWithdrawPayload, isSafeUseItemPayload } from "./syncActionValidation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -229,7 +229,13 @@ export async function writeGameSyncBatch(input: {
         continue;
       }
       const supportedAction = ["place-structure", "move-structure", "rotate-structure", "recall-structure", "plant-seed", "harvest-crop", "equip-pet-item", "unequip-pet-item"].includes(transaction.actionType)
-        || (transaction.actionType === "use-item" && isSafeUseItemPayload(transaction.payload));
+        || (transaction.actionType === "use-item" && isSafeUseItemPayload(transaction.payload))
+        || (transaction.actionType === "block-place" && isSafeBlockPlacePayload(transaction.payload))
+        || (transaction.actionType === "block-break" && isSafeBlockBreakPayload(transaction.payload))
+        || (transaction.actionType === "plant-world-seed" && isSafePlantWorldSeedPayload(transaction.payload))
+        || (transaction.actionType === "harvest-world-crop" && isSafeHarvestWorldCropPayload(transaction.payload))
+        || (transaction.actionType === "storage-deposit" && isSafeStorageDepositPayload(transaction.payload))
+        || (transaction.actionType === "storage-withdraw" && isSafeStorageWithdrawPayload(transaction.payload));
       if (transaction.actorId !== profile.deviceToken || !supportedAction) {
         rejectedTxIds.push(transaction.txId);
         continue;

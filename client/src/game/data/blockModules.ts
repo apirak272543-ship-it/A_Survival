@@ -1,3 +1,5 @@
+import { getItemDefinition } from "./catalog";
+
 export const VOXEL_BLOCK_PIXEL_SIZE = 16;
 export const VOXEL_BLOCK_METERS = 1;
 
@@ -285,6 +287,22 @@ export const OBSIDIAN_BLOCKS: Record<string, BlockDefinition> = {
     gravityAffected: false,
     canFloat: false,
   },
+  "player.placed": {
+    id: "player.placed",
+    assetId: "terrain.obsidian",
+    kind: "obstacle",
+    solid: true,
+    collisionShape: "full",
+    action: "break",
+    hardness: 3,
+    requiredToolTag: "pickaxe",
+    dropDefinitionId: "structure-001",
+    dropQuantity: 1,
+    blockItemDefinitionId: "structure-001",
+    requiresSupport: true,
+    gravityAffected: false,
+    canFloat: false,
+  },
 };
 
 export const OBSIDIAN_TREE_TEMPLATES: TreeTemplate[] = [
@@ -323,5 +341,44 @@ export function getBlockDefinition(blockId: string): BlockDefinition | undefined
 }
 
 export function blockKey(x: number, y: number, z: number): string {
-  return `${x}:${y}:${z}`;
+  return `${Math.round(x)}:${Math.round(y)}:${Math.round(z)}`;
+}
+
+export type BlockTool = "hand" | "pickaxe" | "axe" | "shovel" | "shears";
+
+const PLACEABLE_ITEM_TO_MODULE: Record<string, string> = {
+  "structure-001": "player.placed",
+};
+
+export function getPlaceableBlockModule(definitionId: string) {
+  return PLACEABLE_ITEM_TO_MODULE[definitionId] && getItemDefinition(definitionId)?.stackLimit === 64 ? PLACEABLE_ITEM_TO_MODULE[definitionId] : undefined;
+}
+
+export function isSolidSupport(blockId: string | null | undefined) {
+  if (!blockId) return false;
+  const definition = getBlockDefinition(blockId);
+  return Boolean(definition?.solid && definition.collisionShape !== "none");
+}
+
+export function getBlockToolForItem(definitionId: string): BlockTool | null {
+  if (!definitionId.startsWith("tool-")) return null;
+  const ordinal = Number(definitionId.slice("tool-".length));
+  if (ordinal === 1 || ordinal === 7) return "pickaxe";
+  if (ordinal === 2 || ordinal === 8) return "axe";
+  if (ordinal === 3 || ordinal === 6) return "shovel";
+  return "hand";
+}
+
+export function parseBlockKey(key: string) {
+  const [x, y, z] = key.split(":").map(Number);
+  if (![x, y, z].every(Number.isFinite)) return null;
+  return { x, y, z };
+}
+
+export function canPlaceBlock(moduleId: string, supportModuleId?: string | null, existingModuleId?: string | null) {
+  if (existingModuleId) return { accepted: false as const, reason: "occupied" as const };
+  const definition = getBlockDefinition(moduleId);
+  if (!definition) return { accepted: false as const, reason: "unknown-block" as const };
+  if (!definition.canFloat && !isSolidSupport(supportModuleId)) return { accepted: false as const, reason: "requires-support" as const };
+  return { accepted: true as const, reason: "placed" as const };
 }

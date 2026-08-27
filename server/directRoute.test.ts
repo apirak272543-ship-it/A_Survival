@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveDirectMapId, resolveDirectRoute } from "../client/src/game/routing/directRoute";
+import { RUNTIME_MAP_ID, resolveDirectMapId, resolveDirectRoute } from "../client/src/game/routing/directRoute";
 
 describe("direct route contract", () => {
   it("prefers the durable route query while retaining existing demo URLs", () => {
@@ -8,10 +8,12 @@ describe("direct route contract", () => {
     expect(resolveDirectRoute("?route=unknown")).toBe("landing");
   });
 
-  it("only enters the approved Obsidian vertical-slice map and safely falls back for other ids", () => {
-    const maps = ["obsidian-frontier", "ashen-hellscape"];
-    expect(resolveDirectMapId("?route=game&map=obsidian-frontier", maps)).toBe("obsidian-frontier");
-    expect(resolveDirectMapId("?route=game&map=ashen-hellscape", maps)).toBe("obsidian-frontier");
-    expect(resolveDirectMapId("?route=game&map=unknown", maps)).toBe("obsidian-frontier");
+  it("allows only the Obsidian runtime map and safely falls back for future maps", () => {
+    const maps = [RUNTIME_MAP_ID, "ashen-hellscape", "planned-frontier-001"];
+    expect(resolveDirectMapId(`?route=game&map=${RUNTIME_MAP_ID}`, maps)).toBe(RUNTIME_MAP_ID);
+    expect(resolveDirectMapId("?route=game&map=ashen-hellscape", maps)).toBe(RUNTIME_MAP_ID);
+    expect(resolveDirectMapId("?route=game&map=planned-frontier-001", maps)).toBe(RUNTIME_MAP_ID);
+    expect(resolveDirectMapId("?route=game&map=unknown", maps)).toBe(RUNTIME_MAP_ID);
+
   });
 });

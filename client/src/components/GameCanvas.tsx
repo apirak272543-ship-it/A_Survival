@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import type { WorldBlockOverrides } from "@/game/systems/blockActionSystem";
+import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
+import type { CameraMode, ViewDistanceBlocks } from "@/game/systems/cameraModes";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig } from "@/game/scene";
+import { createGameScene, type GameSnapshot, type GameHandle, type GameReward, type CompanionConfig, type BlockActionHandler, type FarmActionHandler } from "@/game/scene";
 import { prepareAssetPack } from "@/game/assets/assetPackLoader";
 import { setActiveAssetPackManifest } from "@/game/assets/pixelPack";
 import type { BlockToolTag, WorldBlock } from "@/game/data/blockModules";
@@ -12,11 +15,18 @@ type GameCanvasProps = {
   reducedMotion?: boolean;
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
+  onBlockAction?: BlockActionHandler;
+  onBlockMessage?: (message: string) => void;
+  onFarmAction?: FarmActionHandler;
+  onFarmMessage?: (message: string) => void;
+  onChestOpen?: (chestId: string) => void;
+  worldBlockOverrides?: WorldBlockOverrides;
+  worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
   renderDistance?: "near" | "balanced" | "far";
-  viewDistanceBlocks?: number;
+  viewDistanceBlocks?: ViewDistanceBlocks | number;
   targetFps?: number;
-  cameraMode?: "overhead" | "first-person" | "side";
+  cameraMode?: CameraMode;
   paused?: boolean;
   selectedToolTag?: BlockToolTag;
   selectedItemDefinitionId?: string;
@@ -30,7 +40,7 @@ type GameCanvasProps = {
 };
 
 export default function GameCanvas(props: GameCanvasProps) {
-  const { mapId } = props;
+  const { mapId, reducedMotion, renderDistance, cameraMode, viewDistanceBlocks } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startedRef = useRef(false);
   const latestPropsRef = useRef<GameCanvasProps>(props);
@@ -61,6 +71,13 @@ export default function GameCanvas(props: GameCanvasProps) {
         get mapId() { return latestPropsRef.current.mapId; },
         get onSnapshot() { return latestPropsRef.current.onSnapshot; },
         get onReward() { return latestPropsRef.current.onReward; },
+        get onBlockAction() { return latestPropsRef.current.onBlockAction; },
+        get onBlockMessage() { return latestPropsRef.current.onBlockMessage; },
+        get onFarmAction() { return latestPropsRef.current.onFarmAction; },
+        get onFarmMessage() { return latestPropsRef.current.onFarmMessage; },
+        get onChestOpen() { return latestPropsRef.current.onChestOpen; },
+        get worldBlockOverrides() { return latestPropsRef.current.worldBlockOverrides; },
+        get worldFarmState() { return latestPropsRef.current.worldFarmState; },
         get companion() { return latestPropsRef.current.companion; },
         get reducedMotion() { return latestPropsRef.current.reducedMotion; },
         get renderDistance() { return latestPropsRef.current.renderDistance; },
@@ -104,7 +121,17 @@ export default function GameCanvas(props: GameCanvasProps) {
       engine.dispose();
       startedRef.current = false;
     };
-  }, [mapId]);
+  }, [mapId, reducedMotion, renderDistance]);
+
+  useEffect(() => {
+    if (!startedRef.current || !cameraMode) return;
+    window.dispatchEvent(new CustomEvent("arcane-control", { detail: { type: "set-camera-mode", mode: cameraMode } }));
+  }, [cameraMode]);
+
+  useEffect(() => {
+    if (!startedRef.current || !viewDistanceBlocks) return;
+    window.dispatchEvent(new CustomEvent("arcane-control", { detail: { type: "set-view-distance", blocks: viewDistanceBlocks } }));
+  }, [viewDistanceBlocks]);
 
   return (
     <div className="game-viewport">

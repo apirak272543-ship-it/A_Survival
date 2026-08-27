@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "a-survival.texture-pack.v1",
+  "id": "a-survival-content-library-builder-v0-1",
+  "namespace": "afc-builder",
+  "version": "0.1.0",
+  "displayName": "A_Survival Content Library Starter Pack · Builder Output",
+  "textureSampling": "nearest",
+  "entries": {
+    "content.aether-crystal": {
+      "kind": "tile",
+      "path": "textures/content.aether-crystal.png",
+      "mime": "image/png",
+      "sha256": "2bd349987bf954b1acefdf4e9d13153522421b234f7a805fdead7d68c642bbee",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.ashen-volcanic": {
+      "kind": "tile",
+      "path": "textures/content.ashen-volcanic.png",
+      "mime": "image/png",
+      "sha256": "75b07dfd94926f2dbf1891f0f63a6291e4757c50e822479a71969548af33566e",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.material-aether-core": {
+      "kind": "icon",
+      "path": "icons/content.material-aether-core.png",
+      "mime": "image/png",
+      "sha256": "9fae846a12f5655a94d757d35ec4e879f9a578c465e032d753979a16d6d192b2",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.material-ember-resin": {
+      "kind": "icon",
+      "path": "icons/content.material-ember-resin.png",
+      "mime": "image/png",
+      "sha256": "096a74de1ce716bfc6436e5fe7c4dccb14b1d8c40d838c1116152b4076bf09b6",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.material-obsidian-shard": {
+      "kind": "icon",
+      "path": "icons/content.material-obsidian-shard.png",
+      "mime": "image/png",
+      "sha256": "a3317ea770a6154803300ff0c7c1fe2fbc2741471f6c3f49bfdafb25746a6dd3",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.material-verdant-fiber": {
+      "kind": "icon",
+      "path": "icons/content.material-verdant-fiber.png",
+      "mime": "image/png",
+      "sha256": "da8609ba78174869844404d9b526d6d7f791f2859aaf8ace21c2cd5fa991a1d5",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.obsidian-frontier": {
+      "kind": "tile",
+      "path": "textures/content.obsidian-frontier.png",
+      "mime": "image/png",
+      "sha256": "0b16721e8e1fba9d7879190ef19701efb013f3abc08b2b10d72b55846185c1af",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.plant-crystal-fern": {
+      "kind": "icon",
+      "path": "icons/content.plant-crystal-fern.png",
+      "mime": "image/png",
+      "sha256": "3bde290a510c1947e7cd3be4f97772a97b7fc3238952161de432e7323908d95c",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.plant-glow-vine": {
+      "kind": "icon",
+      "path": "icons/content.plant-glow-vine.png",
+      "mime": "image/png",
+      "sha256": "8e9035f97954676df0907de95e9c9c6926e1094dafe4815bbba4b5e18b20cabd",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.plant-lumen-bulb": {
+      "kind": "icon",
+      "path": "icons/content.plant-lumen-bulb.png",
+      "mime": "image/png",
+      "sha256": "2bafddd5787be2227468f7fab66c575734d67ef2642faa5eb323eee24b3f1b38",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.plant-spore-shrub": {
+      "kind": "icon",
+      "path": "icons/content.plant-spore-shrub.png",
+      "mime": "image/png",
+      "sha256": "e45d0c432951f2a22d0bcb84c1e7da80d284ea1e82228e71f16566acfac44853",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.verdant-humus": {
+      "kind": "tile",
+      "path": "textures/content.verdant-humus.png",
+      "mime": "image/png",
+      "sha256": "881c9cc8612bf4bc94fd9bf48e9f64d499166b6d526ef9797f708faa5ad1899c",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.weapon-aether-blade": {
+      "kind": "icon",
+      "path": "icons/content.weapon-aether-blade.png",
+      "mime": "image/png",
+      "sha256": "9992bd49536d9639888de71af8cb64fb886b61a337c76d704da6649d23b3119e",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.weapon-ember-bow": {
+      "kind": "icon",
+      "path": "icons/content.weapon-ember-bow.png",
+      "mime": "image/png",
+      "sha256": "a8f09491d6bc56b5ec816e9a07eb72e9aff889a11d2acc536044ead0c55c0950",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.weapon-storm-spear": {
+      "kind": "icon",
+      "path": "icons/content.weapon-storm-spear.png",
+      "mime": "image/png",
+      "sha256": "f3f64333567bcd62e2051bdf0a821bb5086bb0ac4842bb15d494950d1196287e",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    },
+    "content.weapon-void-rifle": {
+      "kind": "icon",
+      "path": "icons/content.weapon-void-rifle.png",
+      "mime": "image/png",
+      "sha256": "67c2898eed327880f9f96ed1fd3ed199bbef90490863a5ad7e52cea7bcbadd3a",
+      "source": "starter-authored",
+      "provenanceRef": "ASSETS.md#procedural-starter-texture-pack"
+    }
+  },
+  "packSha256": "70f7f239f9b675b834280c1ad1ecff903699e3d85105a949d1481a9e8b1a3fda"
+}

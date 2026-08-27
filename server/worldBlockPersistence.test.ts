@@ -34,18 +34,19 @@ const placed: WorldBlock = {
 };
 
 describe("map-local world block persistence contract", () => {
-  it("creates an empty map state without leaking carried or world storage", () => {
-    expect(createDefaultOfflineMapState("obsidian-frontier", "player-a")).toEqual({
-      mapId: "obsidian-frontier",
-      playerId: "player-a",
-      fogOfWar: "",
-      harvestedNodes: {},
-      worldStorageById: {},
-      worldBlockOverrides: {},
-      worldPlants: {},
-      cameraMode: "overhead",
-      updatedAt: 0,
-    });
+  it("creates a map-scoped default without leaking carried or world storage", () => {
+    const state = createDefaultOfflineMapState("obsidian-frontier", "player-a");
+    expect(state.mapId).toBe("obsidian-frontier");
+    expect(state.playerId).toBe("player-a");
+    expect(state.fogOfWar).toBe("");
+    expect(state.harvestedNodes).toEqual({});
+    expect(state.worldStorageById).toEqual({});
+    expect(state.worldBlockOverrides).toEqual({});
+    expect(state.worldPlants).toEqual({});
+    expect(state.cameraMode).toBe("overhead");
+    expect(state.inMapSettings).toEqual({ cameraMode: "overhead", viewDistanceBlocks: 20, targetFps: 60 });
+    expect(Object.keys(state.worldFarmState)).toEqual(["farm-plot-01", "farm-plot-02", "farm-plot-03", "farm-plot-04"]);
+    expect(state.updatedAt).toBeGreaterThan(0);
   });
 
   it("keeps a broken generated block absent after reload hydration", () => {

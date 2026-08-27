@@ -5,15 +5,17 @@ export type CameraMode = (typeof CAMERA_MODES)[number];
 
 export type CameraModeOption = {
   id: CameraMode;
+  value: CameraMode;
   label: string;
   shortLabel: string;
   purpose: string;
+  description: string;
 };
 
 export const CAMERA_MODE_OPTIONS: readonly CameraModeOption[] = [
-  { id: "overhead", label: "มุมสูง / Tactical", shortLabel: "OVERHEAD", purpose: "เห็นพื้นที่ บล็อก ศัตรู และเส้นทางชัด เหมาะกับ action" },
-  { id: "first-person", label: "บุคคลที่หนึ่ง / Builder", shortLabel: "FIRST PERSON", purpose: "มองจากระดับผู้เล่น เหมาะกับสร้างบ้าน ทำฟาร์ม และสำรวจใกล้ ๆ" },
-  { id: "side", label: "ด้านข้าง / Over-shoulder", shortLabel: "SIDE", purpose: "เห็นตัวละครและทิศทางด้านข้างชัด เหมาะกับเดินทางและต่อสู้" },
+  { id: "overhead", value: "overhead", label: "มุมสูง / Tactical", shortLabel: "OVERHEAD", purpose: "เห็นพื้นที่ บล็อก ศัตรู และเส้นทางชัด เหมาะกับ action", description: "เห็นพื้นที่รอบตัว เหมาะกับฟาร์มและวางบล็อก" },
+  { id: "first-person", value: "first-person", label: "บุคคลที่หนึ่ง / Builder", shortLabel: "FIRST PERSON", purpose: "มองจากระดับผู้เล่น เหมาะกับสร้างบ้าน ทำฟาร์ม และสำรวจใกล้ ๆ", description: "มุม action ใกล้ตัว เหมาะกับสำรวจและต่อสู้" },
+  { id: "side", value: "side", label: "ด้านข้าง / Over-shoulder", shortLabel: "SIDE", purpose: "เห็นตัวละครและทิศทางด้านข้างชัด เหมาะกับเดินทางและต่อสู้", description: "เห็นตัวละครและความสูงของสิ่งปลูกสร้างชัดขึ้น" },
 ];
 
 export const DEFAULT_CAMERA_MODE: CameraMode = "overhead";
@@ -46,4 +48,32 @@ export function cameraRelativeMovement(mode: unknown, inputX: number, inputY: nu
 
 export function supportsFirstPerson(mode: unknown) {
   return normalizeCameraMode(mode) === "first-person";
+}
+
+export const VIEW_DISTANCE_BLOCKS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50] as const;
+export type ViewDistanceBlocks = (typeof VIEW_DISTANCE_BLOCKS)[number];
+export const TARGET_FPS_OPTIONS = [5, 15, 30, 45, 60, 120] as const;
+export type TargetFps = (typeof TARGET_FPS_OPTIONS)[number];
+
+export type InMapSettings = {
+  cameraMode: CameraMode;
+  viewDistanceBlocks: ViewDistanceBlocks;
+  targetFps: TargetFps;
+};
+
+export const DEFAULT_IN_MAP_SETTINGS: InMapSettings = {
+  cameraMode: "overhead",
+  viewDistanceBlocks: 20,
+  targetFps: 60,
+};
+
+export function normalizeInMapSettings(candidate: Partial<InMapSettings> | null | undefined): InMapSettings {
+  const cameraMode = candidate?.cameraMode === "first-person" || candidate?.cameraMode === "side" ? candidate.cameraMode : DEFAULT_IN_MAP_SETTINGS.cameraMode;
+  const viewDistanceBlocks = VIEW_DISTANCE_BLOCKS.includes(candidate?.viewDistanceBlocks as ViewDistanceBlocks) ? candidate!.viewDistanceBlocks as ViewDistanceBlocks : DEFAULT_IN_MAP_SETTINGS.viewDistanceBlocks;
+  const targetFps = TARGET_FPS_OPTIONS.includes(candidate?.targetFps as TargetFps) ? candidate!.targetFps as TargetFps : DEFAULT_IN_MAP_SETTINGS.targetFps;
+  return { cameraMode, viewDistanceBlocks, targetFps };
+}
+
+export function getCameraModeLabel(mode: CameraMode) {
+  return CAMERA_MODE_OPTIONS.find(option => option.value === mode)?.label ?? "มุมสูง";
 }

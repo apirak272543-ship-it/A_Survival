@@ -1,5 +1,4 @@
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -10,8 +9,10 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { getWorldLighting } from "@/game/data/worldTime";
 import { getMapDefinition } from "@/game/data/maps";
+import { getItemDefinition, type ItemInstance } from "@/game/data/catalog";
 import { getMapSceneTreatment } from "@/game/data/mapSceneTreatments";
 import { MAP001_DISTRESS_POD, MAP001_MONOLITH, initialMap001Encounter, resolveMap001Encounter } from "@/game/map001/encounter";
 import { MAP002_JAX_CAMP, MAP002_PYROCLASTIC_ALTAR, initialMap002Encounter, resolveMap002Encounter } from "@/game/map002/encounter";
@@ -35,17 +36,21 @@ import { loadPackModel } from "@/game/assets/glbPack";
 import { canSpendStamina, createStaminaState, regenerateStamina, spendStamina, staminaPercent, type StaminaState } from "@/game/systems/staminaSystem";
 import { chunkKey, getStreamingChunkKeys } from "@/game/systems/visibleRegionSystem";
 import { updatePixelTerrainStream } from "@/game/assets/pixelPack";
-import { getBlockRenderDistanceConfig, getRenderDistanceConfig, type RenderDistancePreset } from "@/game/systems/renderDistance";
+import { getBlockRenderDistanceConfig, getRenderDistanceConfig, normalizeViewDistanceBlocks, type RenderDistancePreset, type ViewDistanceBlocks } from "@/game/systems/renderDistance";
 import { cameraRelativeMovement, getCameraModePose, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
 import { sampleObsidianTerrainHeight } from "@/game/systems/terrainHeight";
-import { getItemDefinition, type ItemInstance } from "@/game/data/catalog";
 import { getBlockDefinition, type BlockToolTag, type WorldBlock } from "@/game/data/blockModules";
+import { blockKey, getPlaceableBlockModule, getBlockToolForItem, type BlockTool } from "@/game/data/blockModules";
+import { breakBlockAt, getAdjacentSupportModule, getWorldBlockAt, normalizeWorldBlockOverrides, placeBlockAt, type BlockCoordinate, type WorldBlockOverrides } from "@/game/systems/blockActionSystem";
 import { resolveBlockBreak } from "@/game/systems/blockActionSystem";
 import { canApplyHazardDamage, canPlaceBlock, getBlockingContacts, getHazardContacts } from "@/game/systems/blockPhysicsSystem";
 import { createBlockWorld, generateBlockGroup, generateRockBlocks, generateTreeBlocks, getWorldBlock, listWorldBlocks, mergeGeneratedGroup, removeWorldBlock, setWorldBlock, type BlockWorld } from "@/game/systems/blockWorldSystem";
 import { applyWorldBlockOverrides, loadObsidianWorldModule } from "@/game/storage/obsidianWorldModule";
 import { OBSIDIAN_FARM_PLOTS, countMatureWorldPlants, getActiveRepellentAuras, getRepellentInfluence, getWorldPlantStage, harvestWorldPlant, plantWorldSeed, type ObsidianFarmPlot, type WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import { getWorldStorageAnchor, OBSIDIAN_STORAGE_ID, WORLD_STORAGE_INTERACTION_REACH, type WorldStorageAnchor } from "@/game/systems/worldStorageSystem";
+import { getWorldFarmCropStage, getWorldFarmPlant, normalizeWorldFarmState, planHarvestWorldPlant, planPlantWorldSeed, type WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { STORAGE_CHEST_ID, STORAGE_CHEST_MODULE_ID } from "@/game/systems/worldStorageSystem";
+import type { WorldPlantEffect } from "@/game/tools/plantCatalogGenerator";
 
 export type GameSnapshot = {
   health: number;
@@ -81,6 +86,35 @@ export type GameReward = {
   quantity?: number;
 };
 
+export type BlockActionEvent = {
+  type: "break" | "place";
+  mapId: string;
+  coordinate: BlockCoordinate;
+  moduleId: string;
+  itemInstanceId?: string;
+  itemDefinitionId?: string;
+  droppedDefinitionId?: string;
+  overrides: WorldBlockOverrides;
+  message: string;
+};
+
+export type BlockActionHandler = (event: BlockActionEvent) => boolean;
+
+export type FarmActionEvent = {
+  type: "plant" | "harvest";
+  mapId: string;
+  plotId: string;
+  state: WorldFarmState;
+  coordinate: BlockCoordinate;
+  seedInstanceId?: string;
+  seedDefinitionId?: string;
+  reward?: ItemInstance;
+  effect?: WorldPlantEffect;
+  message: string;
+};
+
+export type FarmActionHandler = (event: FarmActionEvent) => boolean;
+
 export type CompanionConfig = {
   following: boolean;
   lootRadius: number;
@@ -97,10 +131,17 @@ type GameOptions = {
   mapId: string;
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
+  onBlockAction?: BlockActionHandler;
+  onBlockMessage?: (message: string) => void;
+  onFarmAction?: FarmActionHandler;
+  onFarmMessage?: (message: string) => void;
+  onChestOpen?: (chestId: string) => void;
+  worldBlockOverrides?: WorldBlockOverrides;
+  worldFarmState?: WorldFarmState;
   companion?: CompanionConfig;
   reducedMotion?: boolean;
   renderDistance?: RenderDistancePreset;
-  viewDistanceBlocks?: number;
+  viewDistanceBlocks?: ViewDistanceBlocks | number;
   targetFps?: number;
   initialWorldPlants?: Record<string, WorldPlantState>;
   initialWorldStorageById?: Record<string, ItemInstance[]>;
@@ -120,7 +161,9 @@ type ArcaneControl =
   | { type: "attack" }
   | { type: "interact" }
   | { type: "dash" }
-  | { type: "use-item"; slot: number };
+  | { type: "use-item"; slot: number; itemInstanceId?: string; itemDefinitionId?: string }
+  | { type: "set-camera-mode"; mode: CameraMode }
+  | { type: "set-view-distance"; blocks: ViewDistanceBlocks };
 
 function material(scene: Scene, name: string, color: string, glow = 0) {
   const result = new StandardMaterial(name, scene);
@@ -128,6 +171,17 @@ function material(scene: Scene, name: string, color: string, glow = 0) {
   result.emissiveColor = Color3.FromHexString(color).scale(glow);
   result.specularColor = Color3.Black();
   return result;
+}
+
+function renderPresetForViewDistance(blocks: ViewDistanceBlocks): RenderDistancePreset {
+  return blocks <= 15 ? "near" : blocks >= 40 ? "far" : "balanced";
+}
+
+function effectiveRenderDistancePreset(globalPreset: RenderDistancePreset | undefined, viewDistanceBlocks: ViewDistanceBlocks): RenderDistancePreset {
+  const viewPreset = renderPresetForViewDistance(viewDistanceBlocks);
+  if (globalPreset === "near" || viewPreset === "near") return "near";
+  if (globalPreset === "far" && viewPreset === "far") return "far";
+  return "balanced";
 }
 
 export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement, options: GameOptions): Promise<GameHandle> {
@@ -155,7 +209,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const visualProfile = getBiomeVisualProfile(options.mapId);
   const worldMetersPerUnit = 1;
   const worldRadius = Math.max(500, Math.round(mapDefinition?.radiusMeters ?? 500));
-  const renderDistance = getRenderDistanceConfig(options.renderDistance, options.viewDistanceBlocks, worldRadius);
+  let activeViewDistanceBlocks: ViewDistanceBlocks = normalizeViewDistanceBlocks(options.viewDistanceBlocks, 20);
+  let renderDistance = getRenderDistanceConfig(options.renderDistance, activeViewDistanceBlocks, worldRadius);
   const overheadCamera = new ArcRotateCamera("arcane-overhead-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
   const sideCamera = new ArcRotateCamera("arcane-side-camera", -Math.PI / 2.6, Math.PI / 2.75, 15, new Vector3(0, 1.5, 0), scene);
   const firstPersonCamera = new UniversalCamera("arcane-first-person-camera", new Vector3(0, 1.45, -0.2), scene);
@@ -250,14 +305,13 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
 
   const blockWorld = createBlockWorld(options.mapId, 7341);
   let obsidianBlockWorld: BlockWorld = blockWorld;
-  const worldBlockMeshes = new Map<string, ReturnType<typeof createPixelBlockMesh>>();
+  const moduleWorldBlockMeshes = new Map<string, ReturnType<typeof createPixelBlockMesh>>();
   const worldBlockRoot = new TransformNode("obsidian-block-world-root", scene);
   const worldPlantStates = new Map<string, WorldPlantState>(Object.entries(options.initialWorldPlants ?? {}));
   const worldPlantMeshes = new Map<string, ReturnType<typeof createPixelBlockMesh>>();
   const worldStorageMeshes = new Map<string, AbstractMesh>();
+  const moduleWorldFarmPlotMeshes = new Map<string, ReturnType<typeof createPixelBlockMesh>>();
   const obsidianStorageAnchor = getWorldStorageAnchor(OBSIDIAN_STORAGE_ID, options.mapId);
-
-  const worldFarmPlotMeshes = new Map<string, ReturnType<typeof createPixelBlockMesh>>();
   let obsidianWorldModule: Awaited<ReturnType<typeof loadObsidianWorldModule>> | undefined;
   if (isMap001) {
     try {
@@ -303,7 +357,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       const mesh = createPixelBlockMesh(scene, block);
       mesh.parent = worldBlockRoot;
       mesh.isPickable = true;
-      worldBlockMeshes.set(block.key, mesh);
+      moduleWorldBlockMeshes.set(block.key, mesh);
     });
     if (obsidianStorageAnchor) {
       const chestY = Math.floor(sampleObsidianTerrainHeight(obsidianStorageAnchor.x, obsidianStorageAnchor.z));
@@ -340,7 +394,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       soilMesh.position.y = groundY + 1 - 0.04;
       soilMesh.isPickable = false;
       soilMesh.metadata = { ...soilMesh.metadata, farming: true, soilPlot: true, soilId: plot.soilId, biome: plot.biome, collisionShape: "none", replaceable: true };
-      worldFarmPlotMeshes.set(plot.key, soilMesh);
+      moduleWorldFarmPlotMeshes.set(plot.key, soilMesh);
     }
     for (const plant of Array.from(worldPlantStates.values())) {
       const meshBlock: WorldBlock = { key: plant.key, blockId: "flora.obsidian.sprout", moduleId: "farming.world", groupId: `world-plant:${plant.plantId}`, x: plant.x, y: plant.y, z: plant.z, state: "young", hitPoints: 1, maxHitPoints: 1, solid: false, seed: plant.seed };
@@ -351,7 +405,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       updateWorldPlantMesh(plant);
     }
   }
-  worldBlockRoot.metadata = { assetPack: "arcane-frontier-voxel-pixel", mapId: options.mapId, blockFirst: true, blockCount: worldBlockMeshes.size, plantCount: worldPlantMeshes.size, farmPlotCount: worldFarmPlotMeshes.size, replaceable: true, generatedModule: Boolean(obsidianWorldModule), worldHash: obsidianWorldModule?.manifest.worldHash, generatorSeed: obsidianWorldModule?.manifest.seed };
+  worldBlockRoot.metadata = { assetPack: "arcane-frontier-voxel-pixel", mapId: options.mapId, blockFirst: true, blockCount: moduleWorldBlockMeshes.size, plantCount: worldPlantMeshes.size, farmPlotCount: moduleWorldFarmPlotMeshes.size, replaceable: true, generatedModule: Boolean(obsidianWorldModule), worldHash: obsidianWorldModule?.manifest.worldHash, generatorSeed: obsidianWorldModule?.manifest.seed };
 
 
   const biomeDressing = createBiomeDressing(scene, visualProfile.decorations);
@@ -398,6 +452,109 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const petArt = await loadPackModel(scene, "companion", { name: "arcane-cyber-fox-pack-model", scale: 1.12 });
   petArt.parent = pet;
   petArt.position.y = 0.02;
+
+  const applyCameraMode = (mode: CameraMode) => {
+    setCameraMode(mode);
+    heroArt.setEnabled(mode !== "first-person");
+  };
+  applyCameraMode(activeCameraMode);
+
+  let worldBlockOverrides = normalizeWorldBlockOverrides(options.worldBlockOverrides);
+  let activeBlockTool: BlockTool = "hand";
+  const worldBlockMeshes = new Map<string, AbstractMesh>();
+  const worldChestMeshes = new Map<string, AbstractMesh>();
+  const blockMaterials = new Map<string, StandardMaterial>();
+  let worldFarmState = normalizeWorldFarmState(options.worldFarmState);
+  const worldFarmPlotMeshes = new Map<string, AbstractMesh>();
+  const worldFarmCropMeshes = new Map<string, AbstractMesh>();
+  const farmMaterials = new Map<string, StandardMaterial>();
+  let lastFarmVisualUpdate = -Infinity;
+  let activeItemInstanceId: string | undefined;
+  let activeItemDefinitionId: string | undefined;
+  const initialWorldBlocks: Array<{ coordinate: BlockCoordinate; moduleId: string }> = [
+    { coordinate: { x: 0, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+    { coordinate: { x: -1, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+    { coordinate: { x: 1, y: 0, z: 2 }, moduleId: "obstacle.obsidian.slab" },
+  ];
+  const staticWorldBlocks = new Map(initialWorldBlocks.map(block => [blockKey(block.coordinate.x, block.coordinate.y, block.coordinate.z), block.moduleId]));
+  const readSceneBlockAt = (coordinate: BlockCoordinate) => {
+    const key = blockKey(coordinate.x, coordinate.y, coordinate.z);
+    if (Object.prototype.hasOwnProperty.call(worldBlockOverrides, key)) return worldBlockOverrides[key];
+    return staticWorldBlocks.get(key) ?? getWorldBlockAt(coordinate, worldBlockOverrides);
+  };
+  const getBlockMaterial = (moduleId: string) => {
+    const existing = blockMaterials.get(moduleId);
+    if (existing) return existing;
+    const definition = getBlockDefinition(moduleId);
+    const color = definition?.kind === "terrain" ? "#756052" : definition?.kind === "rock" ? "#626979" : definition?.kind === "ore" ? "#51b7c9" : definition?.kind === "log" ? "#78523a" : definition?.kind === "leaf" ? "#4d9b61" : definition?.kind === "plant" ? "#7bbf6a" : "#6e5aa8";
+    const blockMaterial = material(scene, `block-material-${moduleId.replaceAll(".", "-")}`, color, 0.08);
+    blockMaterials.set(moduleId, blockMaterial);
+    return blockMaterial;
+  };
+  const syncWorldBlockMesh = (coordinate: BlockCoordinate, moduleId: string | null) => {
+    const key = blockKey(coordinate.x, coordinate.y, coordinate.z);
+    const current = worldBlockMeshes.get(key);
+    if (!moduleId) {
+      current?.setEnabled(false);
+      return;
+    }
+    const definition = getBlockDefinition(moduleId);
+    if (!definition) return;
+    const partial = definition.collisionShape === "slab" || definition.collisionShape === "thin";
+    const mesh = current ?? MeshBuilder.CreateBox(`obsidian-block-${key.replaceAll(":", "-")}`, { width: 0.92, depth: 0.92, height: partial ? 0.36 : 0.92 }, scene);
+    mesh.position.set(coordinate.x, coordinate.y + (partial ? 0.18 : 0.46), coordinate.z);
+    mesh.material = getBlockMaterial(moduleId);
+    mesh.metadata = { ...(mesh.metadata ?? {}), mapId: options.mapId, blockModuleId: moduleId, coordinate, solid: definition.solid, partial, replaceable: true };
+    mesh.setEnabled(true);
+    worldBlockMeshes.set(key, mesh);
+  };
+  const syncWorldChestMesh = (chestId: string, coordinate: BlockCoordinate) => {
+    const mesh = worldChestMeshes.get(chestId) ?? MeshBuilder.CreateBox(`world-chest-${chestId}`, { width: 0.76, depth: 0.62, height: 0.56 }, scene);
+    mesh.position.set(coordinate.x, coordinate.y + 0.28, coordinate.z);
+    mesh.material = getBlockMaterial(STORAGE_CHEST_MODULE_ID);
+    mesh.metadata = { ...(mesh.metadata ?? {}), mapId: options.mapId, storageChestId: chestId, blockModuleId: STORAGE_CHEST_MODULE_ID, coordinate, solid: true, partial: true };
+    mesh.setEnabled(true);
+    worldChestMeshes.set(chestId, mesh);
+  };
+  const getFarmMaterial = (key: string, color: string) => {
+    const existing = farmMaterials.get(key);
+    if (existing) return existing;
+    const farmMaterial = material(scene, `farm-material-${key}`, color, 0.05);
+    farmMaterials.set(key, farmMaterial);
+    return farmMaterial;
+  };
+  const syncWorldFarmVisuals = (now = Date.now()) => {
+    if (!isMap001 || now - lastFarmVisualUpdate < 220) return;
+    lastFarmVisualUpdate = now;
+    Object.values(worldFarmState).forEach(plot => {
+      const plotMesh = worldFarmPlotMeshes.get(plot.id) ?? MeshBuilder.CreateBox(`farm-plot-${plot.id}`, { width: 0.9, depth: 0.9, height: 0.1 }, scene);
+      plotMesh.position.set(plot.coordinate.x, 0.06, plot.coordinate.z);
+      plotMesh.material = getFarmMaterial(`soil-${plot.soilId}`, plot.soilId === "ashen-volcanic" ? "#5a3c42" : "#8f6442");
+      plotMesh.metadata = { ...(plotMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, soilId: plot.soilId, solid: false, partial: true };
+      plotMesh.setEnabled(true);
+      worldFarmPlotMeshes.set(plot.id, plotMesh);
+      const stage = getWorldFarmCropStage(plot, now);
+      const cropMesh = worldFarmCropMeshes.get(plot.id) ?? MeshBuilder.CreateBox(`farm-crop-${plot.id}`, { width: 0.42, depth: 0.42, height: 0.22 }, scene);
+      cropMesh.position.set(plot.coordinate.x, stage === "empty" ? 0 : stage === "mature" ? 0.62 : stage === "young" ? 0.46 : stage === "sprout" ? 0.3 : 0.18, plot.coordinate.z);
+      cropMesh.scaling.set(1, stage === "mature" ? 2.4 : stage === "young" ? 1.7 : stage === "sprout" ? 1.1 : 0.65, 1);
+      cropMesh.material = getFarmMaterial(`stage-${stage}`, stage === "mature" ? "#b8df75" : stage === "young" ? "#66c27a" : stage === "sprout" ? "#4fa58a" : "#6b4e39");
+      cropMesh.metadata = { ...(cropMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, farmStage: stage, solid: false, partial: true };
+      cropMesh.setEnabled(stage !== "empty");
+      worldFarmCropMeshes.set(plot.id, cropMesh);
+    });
+  };
+  if (isMap001) {
+    syncWorldChestMesh(STORAGE_CHEST_ID, { x: 0, y: 0, z: 4 });
+    initialWorldBlocks.forEach(({ coordinate, moduleId }) => {
+      const resolved = readSceneBlockAt(coordinate);
+      if (resolved) syncWorldBlockMesh(coordinate, resolved);
+    });
+    Object.entries(worldBlockOverrides).forEach(([key, moduleId]) => {
+      const [x, y, z] = key.split(":").map(Number);
+      if ([x, y, z].every(Number.isFinite) && moduleId) syncWorldBlockMesh({ x, y, z }, moduleId);
+    });
+    syncWorldFarmVisuals();
+  }
 
   const enemies: AbstractMesh[] = [];
   for (let index = 0; index < 7; index += 1) {
@@ -842,11 +999,142 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   let map014Warning: string | undefined;
   let map015Warning: string | undefined;
 
+  const nearestWorldBlock = () => {
+    let nearest: { mesh: AbstractMesh; coordinate: BlockCoordinate; moduleId: string; distance: number } | undefined;
+    worldBlockMeshes.forEach(mesh => {
+      if (!mesh.isEnabled() || mesh.metadata?.mapId !== options.mapId) return;
+      const moduleId = mesh.metadata?.blockModuleId as string | undefined;
+      const coordinate = mesh.metadata?.coordinate as BlockCoordinate | undefined;
+      if (!moduleId || !coordinate) return;
+      const distance = Vector3.Distance(mesh.position, player.position);
+      if (distance <= 3.8 && (!nearest || distance < nearest.distance)) nearest = { mesh, coordinate, moduleId, distance };
+    });
+    return nearest;
+  };
+
+  const nearestWorldChest = () => {
+    let nearest: { chestId: string; distance: number } | undefined;
+    worldChestMeshes.forEach(mesh => {
+      if (!mesh.isEnabled() || mesh.metadata?.mapId !== options.mapId) return;
+      const chestId = mesh.metadata?.storageChestId as string | undefined;
+      if (!chestId) return;
+      const distance = Vector3.Distance(mesh.position, player.position);
+      if (distance <= 3.8 && (!nearest || distance < nearest.distance)) nearest = { chestId, distance };
+    });
+    return nearest;
+  };
+
+  const nearestWorldFarmPlot = () => {
+    let nearest: { plotId: string; distance: number } | undefined;
+    Object.values(worldFarmState).forEach(plot => {
+      const distance = Vector3.Distance(new Vector3(plot.coordinate.x, 0, plot.coordinate.z), player.position);
+      if (distance <= 6 && (!nearest || distance < nearest.distance)) nearest = { plotId: plot.id, distance };
+    });
+    return nearest;
+  };
+
+  const applyFarmAction = (event: FarmActionEvent) => {
+    const accepted = options.onFarmAction?.(event) ?? true;
+    if (!accepted) return false;
+    worldFarmState = event.state;
+    return true;
+  };
+
+  const plantNearestWorldFarmPlot = () => {
+    if (!isMap001 || !activeItemInstanceId || !activeItemDefinitionId || getItemDefinition(activeItemDefinitionId)?.category !== "seed") return false;
+    const target = nearestWorldFarmPlot();
+    if (!target) {
+      options.onFarmMessage?.("เดินเข้าใกล้แปลงดินเพื่อปลูกหรือเก็บเกี่ยว");
+      return false;
+    }
+    const plot = worldFarmState[target.plotId];
+    if (!plot) return false;
+    const plan = planPlantWorldSeed({ mapId: options.mapId, state: worldFarmState, plotId: plot.id, seedDefinitionId: activeItemDefinitionId, seedInstanceId: activeItemInstanceId });
+    if (!plan.accepted || !plan.plot || !plan.plant) {
+      options.onFarmMessage?.(plan.reason ?? plan.message);
+      return false;
+    }
+    return applyFarmAction({ type: "plant", mapId: options.mapId, plotId: plot.id, state: plan.state, coordinate: plot.coordinate, seedInstanceId: activeItemInstanceId, seedDefinitionId: activeItemDefinitionId, message: plan.message });
+  };
+
+  const harvestNearestWorldFarmPlot = () => {
+    if (!isMap001) return false;
+    const target = nearestWorldFarmPlot();
+    if (!target) {
+      options.onFarmMessage?.("เดินเข้าใกล้แปลงดินเพื่อเก็บเกี่ยว");
+      return false;
+    }
+    const plan = planHarvestWorldPlant({ mapId: options.mapId, state: worldFarmState, plotId: target.plotId });
+    if (!plan.accepted || !plan.plot || !plan.reward) {
+      if (plan.reason && worldFarmState[target.plotId]?.plantId) options.onFarmMessage?.(plan.reason);
+      return false;
+    }
+    return applyFarmAction({ type: "harvest", mapId: options.mapId, plotId: target.plotId, state: plan.state, coordinate: plan.plot.coordinate, reward: plan.reward, effect: plan.effect, message: plan.message });
+  };
+
+  const applyBlockAction = (event: BlockActionEvent) => {
+    const accepted = options.onBlockAction?.(event) ?? true;
+    if (!accepted) return false;
+    worldBlockOverrides = event.overrides;
+    syncWorldBlockMesh(event.coordinate, event.type === "break" ? null : event.moduleId);
+    return true;
+  };
+
+  const breakNearestWorldBlock = () => {
+    if (!isMap001) return false;
+    const target = nearestWorldBlock();
+    if (!target) return false;
+    const result = breakBlockAt({ moduleId: target.moduleId, coordinate: target.coordinate, tool: activeBlockTool, overrides: worldBlockOverrides });
+    if (!result.removed) return false;
+    const accepted = applyBlockAction({
+      type: "break",
+      mapId: options.mapId,
+      coordinate: target.coordinate,
+      moduleId: target.moduleId,
+      droppedDefinitionId: result.dropDefinitionId,
+      overrides: result.overrides,
+      message: result.message,
+    });
+    if (accepted && result.dropDefinitionId) {
+      const item = getItemDefinition(result.dropDefinitionId);
+      options.onReward?.({ definitionId: result.dropDefinitionId, displayName: item?.name ?? result.dropDefinitionId, eventId: `block-break-${options.mapId}-${blockKey(target.coordinate.x, target.coordinate.y, target.coordinate.z)}`, provenanceType: "drop" });
+    }
+    return accepted;
+  };
+
+  const placeSelectedWorldBlock = (itemInstanceId?: string, itemDefinitionId?: string) => {
+    if (!isMap001 || !itemInstanceId || !itemDefinitionId || !getPlaceableBlockModule(itemDefinitionId)) return false;
+    const anchor = nearestWorldBlock();
+    const coordinate = anchor
+      ? { x: anchor.coordinate.x, y: anchor.coordinate.y + 1, z: anchor.coordinate.z }
+      : { x: Math.round(player.position.x), y: 1, z: Math.round(player.position.z + 1) };
+    const existingModuleId = getWorldBlockAt(coordinate, worldBlockOverrides);
+    const supportModuleId = getAdjacentSupportModule(coordinate, worldBlockOverrides) ?? (anchor?.moduleId ?? null);
+    const placement = placeBlockAt({ moduleId: "player.placed", coordinate, supportModuleId, existingModuleId, overrides: worldBlockOverrides });
+    if (!placement.accepted) return false;
+    return applyBlockAction({
+      type: "place",
+      mapId: options.mapId,
+      coordinate,
+      moduleId: "player.placed",
+      itemInstanceId,
+      itemDefinitionId,
+      overrides: placement.overrides,
+      message: "วางบล็อกสำเร็จ · ใช้บล็อกไป 1 ชิ้น",
+    });
+  };
+
   const handleControl = (event: Event) => {
     if (options.paused) return;
     const control = (event as CustomEvent<ArcaneControl>).detail;
     if (!control) return;
     if (control.type === "move") move = { x: control.x, y: control.y };
+    if (control.type === "set-camera-mode") applyCameraMode(control.mode);
+    if (control.type === "set-view-distance") {
+      activeViewDistanceBlocks = control.blocks;
+      renderDistance = getRenderDistanceConfig(effectiveRenderDistancePreset(options.renderDistance, activeViewDistanceBlocks));
+      updateTerrainVisibility(player.position, performance.now());
+    }
     if (control.type === "attack") {
       const result = spendStamina(stamina, "attack");
       if (result.accepted) {
@@ -855,8 +1143,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       }
     }
     if (control.type === "use-item") {
+      activeItemInstanceId = control.itemInstanceId;
+      activeItemDefinitionId = control.itemDefinitionId;
+      const selectedTool = control.itemDefinitionId ? getBlockToolForItem(control.itemDefinitionId) : null;
+      activeBlockTool = selectedTool ?? "hand";
+      if (control.itemDefinitionId) options.onBlockMessage?.(selectedTool ? `เลือกเครื่องมือ: ${selectedTool}` : getItemDefinition(control.itemDefinitionId)?.category === "seed" ? "เลือกเมล็ด · กด E ใกล้แปลงเพื่อปลูก" : "เลือกมือเปล่า");
       if (tryPlantSelectedWorldSeed()) return;
-      tryPlaceSelectedWorldBlock();
+      if (control.itemInstanceId && control.itemDefinitionId && getPlaceableBlockModule(control.itemDefinitionId)) {
+        const placed = placeSelectedWorldBlock(control.itemInstanceId, control.itemDefinitionId);
+        if (!placed) options.onBlockMessage?.("วางไม่ได้: ต้องวางบนบล็อกทึบและตำแหน่งต้องว่าง");
+      }
       return;
     }
     if (control.type === "dash" && canSpendStamina(stamina, "dash")) {
@@ -864,6 +1160,24 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       dashPulse = 0.25;
     }
     if (control.type === "interact") {
+      const chest = isMap001 ? nearestWorldChest() : undefined;
+      if (chest) {
+        options.onChestOpen?.(chest.chestId);
+        pendingMapInteraction = false;
+        return;
+      }
+      if (harvestNearestWorldFarmPlot()) {
+        pendingMapInteraction = false;
+        return;
+      }
+      if (plantNearestWorldFarmPlot()) {
+        pendingMapInteraction = false;
+        return;
+      }
+      if (breakNearestWorldBlock()) {
+        pendingMapInteraction = false;
+        return;
+      }
       pendingMapInteraction = true;
       if (tryOpenNearestWorldStorage()) return;
       if (tryHarvestNearestWorldPlant()) return;
@@ -997,6 +1311,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     }
     if (isMoving) player.rotation.y = Math.atan2(movement.x, movement.z);
     updateTerrainVisibility(player.position, performance.now());
+    syncWorldFarmVisuals(Date.now());
     if (activeCameraMode === "first-person") {
       const lookDirection = new Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
       firstPersonCamera.position.copyFrom(player.position.add(new Vector3(0, 1.45, 0)).add(lookDirection.scale(0.12)));
@@ -1080,6 +1395,23 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         lastDamage = performance.now();
       }
     });
+
+    if (isMap001) {
+      Object.values(worldFarmState).forEach(plot => {
+        if (getWorldFarmCropStage(plot, Date.now()) !== "mature") return;
+        const effect = getWorldFarmPlant(plot)?.effect;
+        if (effect?.kind !== "repel") return;
+        const origin = new Vector3(plot.coordinate.x, 0, plot.coordinate.z);
+        enemies.forEach(enemy => {
+          if (!enemy.metadata?.alive) return;
+          const delta = enemy.position.subtract(origin);
+          const distance = delta.length();
+          if (distance <= 0 || distance > effect.radius) return;
+          delta.normalize();
+          enemy.position.addInPlace(delta.scale(dt * 1.35));
+        });
+      });
+    }
 
     const lighting = getWorldLighting(options.mapId);
     const sky = Color3.FromHexString(sceneTreatment?.skyColor ?? lighting.sky);
