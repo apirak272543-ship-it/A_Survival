@@ -9,6 +9,7 @@ import {
   Eraser,
   FlipHorizontal2,
   Grid3X3,
+  History,
   ImageIcon,
   Layers3,
   LockKeyhole,
@@ -280,6 +281,11 @@ export default function CreatorStudio() {
     return issues;
   }, [assetId, assetName, assetSource, layers.length, provenanceRef, skinMapping, template.kind]);
 
+  const registryQuery = trpc.creator.texture.list.useQuery({ limit: 12 }, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
   const buildMutation = trpc.creator.texture.build.useMutation({
     onSuccess: response => {
       setValidationRun(true);
@@ -293,6 +299,16 @@ export default function CreatorStudio() {
     onError: error => {
       setValidationRun(true);
       setStatus(`ส่งให้ Builder ไม่สำเร็จ: ${error.message}`);
+    },
+  });
+
+  const registerMutation = trpc.creator.texture.register.useMutation({
+    onSuccess: response => {
+      setStatus(`บันทึก artifact เข้า registry แล้ว · ${response.artifact.artifactKey.slice(0, 48)}…`);
+      void registryQuery.refetch();
+    },
+    onError: error => {
+      setStatus(`บันทึก registry ไม่สำเร็จ: ${error.message}`);
     },
   });
 
@@ -329,6 +345,15 @@ export default function CreatorStudio() {
     }
     setStatus("กำลังให้ server-side Builder ประกอบ PNG และตรวจ manifest…");
     buildMutation.mutate(makeBuilderInput());
+  };
+
+  const registerArtifact = () => {
+    if (!buildMutation.data?.validation.valid) {
+      setStatus("ต้องส่งให้ Builder และตรวจผ่านก่อนบันทึก artifact");
+      return;
+    }
+    setStatus("กำลังอัปโหลด PNG และบันทึก manifest/hash/provenance…");
+    registerMutation.mutate(makeBuilderInput());
   };
 
   const applyPreset = (nextId: string) => {
@@ -628,8 +653,9 @@ export default function CreatorStudio() {
               <Button size="sm" variant="outline" onClick={() => { setValidationRun(true); setStatus(validationIssues.length === 0 ? "ตรวจเบื้องต้นผ่านแล้ว" : "พบข้อมูลที่ต้องแก้ก่อนส่ง"); }} className="mt-3 h-8 w-full gap-2 border-white/10 bg-black/10 text-xs"><ShieldCheck size={13} /> ตรวจงานตอนนี้</Button>
             </div>
 
-            <div className="grid gap-2"><Button onClick={saveDraft} className="h-10 w-full gap-2 bg-cyan-300 text-[#031319] hover:bg-cyan-200"><Save size={15} /> บันทึกแบบร่าง</Button><Button onClick={exportDraft} variant="outline" className="h-10 w-full gap-2 border-white/10 bg-white/[0.03] text-slate-200"><ArrowDownToLine size={15} /> ส่งออกแบบร่าง</Button><Button onClick={sendToBuilder} disabled={buildMutation.isPending} className="h-10 w-full gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"><Boxes size={15} /> {buildMutation.isPending ? "กำลังสร้างด้วย Builder…" : "ส่งเข้า Builder / Registry"}</Button></div>
-            <div className="rounded-xl border border-cyan-300/10 bg-cyan-300/[0.04] p-3"><p className="flex items-center gap-2 text-[10px] font-bold text-cyan-200"><Sparkles size={13} /> สถานะพื้นที่ทำงาน</p><p className="mt-1 text-[10px] leading-relaxed text-slate-400">{status}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">ปุ่มนี้เรียก server-side `texture.pack` เพื่อประกอบ PNG และตรวจ manifest/hash/provenance ก่อนจะมีการ register จริง โดยยังไม่แตะ playable runtime</p></div>
+            <div className="grid gap-2"><Button onClick={saveDraft} className="h-10 w-full gap-2 bg-cyan-300 text-[#031319] hover:bg-cyan-200"><Save size={15} /> บันทึกแบบร่าง</Button><Button onClick={exportDraft} variant="outline" className="h-10 w-full gap-2 border-white/10 bg-white/[0.03] text-slate-200"><ArrowDownToLine size={15} /> ส่งออกแบบร่าง</Button><Button onClick={sendToBuilder} disabled={buildMutation.isPending || registerMutation.isPending} className="h-10 w-full gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"><Boxes size={15} /> {buildMutation.isPending ? "กำลังสร้างด้วย Builder…" : "ส่งเข้า Builder เพื่อตรวจ"}</Button><Button onClick={registerArtifact} disabled={registerMutation.isPending || !buildMutation.data?.validation.valid} variant="outline" className="h-10 w-full gap-2 border-amber-300/30 bg-amber-300/[0.06] text-amber-100 hover:bg-amber-300/[0.12] disabled:cursor-not-allowed disabled:opacity-50"><History size={15} /> {registerMutation.isPending ? "กำลังบันทึก registry…" : "บันทึก artifact เข้า registry"}</Button></div>
+            <div className="rounded-xl border border-cyan-300/10 bg-cyan-300/[0.04] p-3"><p className="flex items-center gap-2 text-[10px] font-bold text-cyan-200"><Sparkles size={13} /> สถานะพื้นที่ทำงาน</p><p className="mt-1 text-[10px] leading-relaxed text-slate-400">{status}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">Builder จะประกอบ PNG และตรวจ manifest/hash/provenance ก่อน ปุ่ม registry จะอัปโหลด bytes และบันทึก metadata เมื่อ environment มี DB กับ object storage พร้อม โดยยังไม่แตะ playable runtime</p></div>
+            <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3"><p className="flex items-center gap-2 text-[10px] font-bold text-slate-300"><History size={13} className="text-amber-200" /> registry ล่าสุด</p>{registryQuery.isLoading ? <p className="mt-2 text-[10px] text-slate-500">กำลังอ่านทะเบียน…</p> : registryQuery.isError ? <p className="mt-2 text-[10px] leading-relaxed text-slate-500">ยังอ่านทะเบียนไม่ได้ใน environment นี้ ต้องตั้งค่า DB และเปิดสิทธิ์ admin ก่อน</p> : registryQuery.data?.length ? <div className="mt-2 space-y-2">{registryQuery.data.slice(0, 4).map(artifact => <div key={artifact.artifactKey} className="rounded-lg border border-white/8 bg-black/15 p-2"><p className="truncate font-mono text-[9px] text-cyan-100/80">{artifact.artifactKey}</p><p className="mt-1 text-[9px] text-slate-500">hash {artifact.packSha256.slice(0, 12)}…</p></div>)}</div> : <p className="mt-2 text-[10px] text-slate-500">ยังไม่มี artifact ที่บันทึกไว้</p>}</div>
           </div>
         </aside>
       </div>

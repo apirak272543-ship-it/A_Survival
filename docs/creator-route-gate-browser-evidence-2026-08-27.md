@@ -31,3 +31,13 @@ At `http://localhost:3000/creator-workbench`, with the same unauthenticated brow
 > `กรุณาเข้าสู่ระบบผู้ดูแลระบบก่อนใช้งานพื้นที่สร้าง asset`
 
 The Workbench form and its world/structure/item/weapon panels were not rendered before authorization. This confirms route separation and deny behavior, but it is not an authenticated Workbench acceptance test.
+
+## Registry UI boundary observation
+
+After the registry `register`/`list` hooks were added to `CreatorStudio`, an unauthenticated visit to `http://localhost:3000/creator-studio` still settled to the same gate and exposed no Builder canvas or registry controls:
+
+> `DEVELOPER ONLY` — `เข้า Creator Studio ไม่ได้`
+>
+> `กรุณาเข้าสู่ระบบผู้ดูแลระบบก่อนใช้งานพื้นที่สร้าง asset`
+
+No authenticated admin session was available, so the registry upload/list UI was not claimed as end-to-end browser verified.
