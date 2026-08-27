@@ -50,5 +50,5 @@ Implementation branch ยังไม่ merge เข้า `main`; AI-0 ต้�
 - Task ID: `G-04` bounded Content Generation Suite contract sub-checkpoint
 - Branch: `ai-6/g04-suite-contract`
 - Base SHA: `4a41ab74e120a7a41b59dbb3faeb1f9366590d8d`
-- Implementation commit SHA: จะเติมหลัง commit checkpoint
+- Implementation commit SHA: `18a15f2d335c5f9727f6502edadee9f54a2bf204`
 - Status requested: `WAITING_EVIDENCE` จนกว่า AI-0 จะตรวจ diff และหลักฐานซ้ำ
