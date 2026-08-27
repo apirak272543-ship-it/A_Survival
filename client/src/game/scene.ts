@@ -50,6 +50,7 @@ import { applyWorldBlockOverrides, loadObsidianWorldModule } from "@/game/storag
 import { OBSIDIAN_FARM_PLOTS, countMatureWorldPlants, getActiveRepellentAuras, getRepellentInfluence, getWorldPlantStage, harvestWorldPlant, plantWorldSeed, type ObsidianFarmPlot, type WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import { getWorldStorageAnchor, OBSIDIAN_STORAGE_ID, WORLD_STORAGE_INTERACTION_REACH, type WorldStorageAnchor } from "@/game/systems/worldStorageSystem";
 import { getWorldFarmCropStage, getWorldFarmPlant, normalizeWorldFarmState, planHarvestWorldPlant, planPlantWorldSeed, type WorldFarmState } from "@/game/systems/worldFarmSystem";
+import { shouldEnableRuntimeObject, type RuntimeSpatialMetadata } from "@/game/systems/runtimeVisibilitySystem";
 import { STORAGE_CHEST_ID, STORAGE_CHEST_MODULE_ID } from "@/game/systems/worldStorageSystem";
 import type { WorldPlantEffect } from "@/game/tools/plantCatalogGenerator";
 
@@ -401,7 +402,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       soilMesh.scaling.set(0.86, 0.08, 0.86);
       soilMesh.position.y = groundY + 1 - 0.04;
       soilMesh.isPickable = false;
-      soilMesh.metadata = { ...soilMesh.metadata, farming: true, soilPlot: true, soilId: plot.soilId, biome: plot.biome, collisionShape: "none", replaceable: true };
+      soilMesh.metadata = { ...soilMesh.metadata, farming: true, soilPlot: true, soilId: plot.soilId, biome: plot.biome, x: plot.x, z: plot.z, collisionShape: "none", replaceable: true };
       moduleWorldFarmPlotMeshes.set(plot.key, soilMesh);
     }
     for (const plant of Array.from(worldPlantStates.values())) {
@@ -429,6 +430,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const activeRenderDistance = getRenderDistanceConfig(options.renderDistance, activePerformanceBudget.viewDistanceBlocks, worldRadius);
     const visible = getStreamingChunkKeys({ positionX: position.x, positionZ: position.z, chunkWorldSize: 16, visibleRadiusMeters: activeRenderDistance.visibleRadiusMeters, mapRadiusMeters: worldRadius });
     updatePixelTerrainStream(ground, { x: position.x, z: position.z }, worldRadius);
+    updateWorldObjectVisibility(position);
     terrainChunks.forEach(chunk => {
       const chunkInfo = chunk.metadata?.chunk as { x?: number; z?: number } | undefined;
       chunk.setEnabled(Boolean(chunk.metadata?.inMap && chunkInfo && visible.has(chunkKey(chunkInfo.x ?? 0, chunkInfo.z ?? 0))));
@@ -533,6 +535,18 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     farmMaterials.set(key, farmMaterial);
     return farmMaterial;
   };
+  const updateWorldObjectVisibility = (position: Vector3) => {
+    const input = { positionX: position.x, positionZ: position.z, viewDistanceBlocks: activePerformanceBudget.viewDistanceBlocks };
+    const meshes = new Set<AbstractMesh>();
+    [moduleWorldBlockMeshes, worldBlockMeshes, worldPlantMeshes, worldStorageMeshes, moduleWorldFarmPlotMeshes, worldChestMeshes, worldFarmPlotMeshes, worldFarmCropMeshes].forEach(registry => {
+      registry.forEach(mesh => meshes.add(mesh));
+    });
+    meshes.forEach(mesh => {
+      const metadata = (mesh.metadata ?? null) as RuntimeSpatialMetadata | null;
+      mesh.setEnabled(shouldEnableRuntimeObject(metadata, input));
+    });
+  };
+
   const syncWorldFarmVisuals = (now = Date.now()) => {
     if (!isMap001 || now - lastFarmVisualUpdate < 220) return;
     lastFarmVisualUpdate = now;
@@ -540,7 +554,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       const plotMesh = worldFarmPlotMeshes.get(plot.id) ?? MeshBuilder.CreateBox(`farm-plot-${plot.id}`, { width: 0.9, depth: 0.9, height: 0.1 }, scene);
       plotMesh.position.set(plot.coordinate.x, 0.06, plot.coordinate.z);
       plotMesh.material = getFarmMaterial(`soil-${plot.soilId}`, plot.soilId === "ashen-volcanic" ? "#5a3c42" : "#8f6442");
-      plotMesh.metadata = { ...(plotMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, soilId: plot.soilId, solid: false, partial: true };
+      plotMesh.metadata = { ...(plotMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, x: plot.coordinate.x, z: plot.coordinate.z, soilId: plot.soilId, solid: false, partial: true };
       plotMesh.setEnabled(true);
       worldFarmPlotMeshes.set(plot.id, plotMesh);
       const stage = getWorldFarmCropStage(plot, now);
@@ -548,7 +562,7 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       cropMesh.position.set(plot.coordinate.x, stage === "empty" ? 0 : stage === "mature" ? 0.62 : stage === "young" ? 0.46 : stage === "sprout" ? 0.3 : 0.18, plot.coordinate.z);
       cropMesh.scaling.set(1, stage === "mature" ? 2.4 : stage === "young" ? 1.7 : stage === "sprout" ? 1.1 : 0.65, 1);
       cropMesh.material = getFarmMaterial(`stage-${stage}`, stage === "mature" ? "#b8df75" : stage === "young" ? "#66c27a" : stage === "sprout" ? "#4fa58a" : "#6b4e39");
-      cropMesh.metadata = { ...(cropMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, farmStage: stage, solid: false, partial: true };
+      cropMesh.metadata = { ...(cropMesh.metadata ?? {}), mapId: options.mapId, farmPlotId: plot.id, x: plot.coordinate.x, z: plot.coordinate.z, farmStage: stage, solid: false, partial: true };
       cropMesh.setEnabled(stage !== "empty");
       worldFarmCropMeshes.set(plot.id, cropMesh);
     });
@@ -1324,8 +1338,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
       player.position.y = sampleGroundY(player.position);
     }
     if (isMoving) player.rotation.y = Math.atan2(movement.x, movement.z);
-    updateTerrainVisibility(player.position, performance.now());
     syncWorldFarmVisuals(Date.now());
+    updateTerrainVisibility(player.position, performance.now());
     if (activeCameraMode === "first-person") {
       const lookDirection = new Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
       firstPersonCamera.position.copyFrom(player.position.add(new Vector3(0, 1.45, 0)).add(lookDirection.scale(0.12)));
