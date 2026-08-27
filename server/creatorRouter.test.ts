@@ -197,6 +197,21 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews MAP_001 encounter events against world spawn and loot context without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.map001EncounterPreview({ seed: "map001-encounter-router-seed", radius: 32, sampleSpawnCount: 64 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "map001-encounter-router-seed", worldGeneratorVersion: "0.1.0", encounterOwnerVersion: "1.0.0", lootGeneratorVersion: "0.1.0", triggerCount: 2 });
+    expect(result.summary.eventKinds).toEqual(["distress-pod", "void-reaper"]);
+    expect(result.summary.expectedSpeciesIds).toEqual(["glass-stalker", "void-reaper"]);
+    expect(result.summary.missingSpawnCount).toBeGreaterThan(0);
+    expect(result.summary.unresolvedReferenceCount).toBeGreaterThan(0);
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews procedural weapons through item.universal without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.proceduralUniversalItemPreview({ seed: 829173, count: 8, category: "melee", maxPowerBudget: 100 });
@@ -360,6 +375,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.animationAssetPreview({ id: "blocked.animation", displayName: "Blocked Animation", assetId: "animation.blocked", assetSource: "reference-only", provenanceRef: "blocked-test", fps: 12, seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.structureSpawnReconciliationPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["compound-frontier-farm"], sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -385,6 +401,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.animationAssetPreview({ id: "blocked.animation", displayName: "Blocked Animation", assetId: "animation.blocked", assetSource: "reference-only", provenanceRef: "blocked-test", fps: 12, seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.structureSpawnReconciliationPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["compound-frontier-farm"], sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootUniversalItemPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.map001EncounterPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
