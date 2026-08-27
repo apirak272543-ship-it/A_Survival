@@ -75,3 +75,17 @@ After adding canonical non-overlapping 32 × 32 body-part presets and the Workbe
 ## Dependency graph inspector boundary check
 
 After adding the admin-only `creator.dependencyGraph.preview` route and Thai Workbench inspector, a fresh player landing still displayed only คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No dependency graph, generator, seed, rules version, registry or creator controls appeared. A fresh unauthenticated visit to `/creator-workbench` displayed only `DEVELOPER ONLY`, the administrator-login gate and `กลับหน้าผู้เล่น`; the graph inspector was not rendered. This is browser boundary evidence only; no authenticated graph preview, registry write, DB/storage execution or player runtime import claim is made.
+
+## Actual content-catalog dependency graph boundary check
+
+After wiring the Workbench dependency inspector to the real deterministic content-catalog generator output, a fresh player landing loaded the normal player surface with คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ only. It did not expose content-catalog, dependency graph, generator, seed, rules version, registry or creator controls. The first navigation briefly showed a blank loading frame; the subsequent page view loaded the normal player surface, so this is not treated as a runtime failure. No authenticated graph preview, catalog generation download, registry write, DB/storage execution or player runtime import claim is made.
+
+## Actual content-catalog unauthenticated gate check
+
+A fresh visit to `/creator-workbench` without an authenticated session remains gated by `DEVELOPER ONLY`, the administrator-login message and `กลับหน้าผู้เล่น`; the actual content-catalog graph controls were not rendered. No authenticated Workbench preview claim is made.
+
+## Browser boundary evidence timestamp
+
+Checked during the current local dev smoke on 2026-08-27. The temporary server was stopped after the smoke; no persistent creator/player server process is part of this evidence.
+
+The follow-up direct navigation to `/creator-workbench` after the actual catalog wiring again showed only the administrator gate and `กลับหน้าผู้เล่น`; no catalog graph preview controls were rendered.

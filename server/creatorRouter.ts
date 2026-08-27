@@ -47,6 +47,7 @@ import { buildCreatorCompositionTextureExport } from "./creatorCompositionTextur
 import { validateCreatorCompositionTextureExport } from "./creatorCompositionTextureCompatibility";
 import { buildVerifiedCreatorCompositionTexture } from "./creatorCompositionTextureRegistration";
 import { validateGeneratorDependencyGraph, type DependencyGraphNode } from "./generators/dependencyGraph";
+import { buildContentCatalogDependencyGraph } from "./generators/contentCatalogDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -348,6 +349,7 @@ function buildCompositionTextureExport(input: z.infer<typeof creatorCompositionT
 export const creatorRouter = router({
   dependencyGraph: router({
     preview: adminProcedure.input(z.object({ nodes: z.array(dependencyGraphNodeSchema).min(1).max(128) })).mutation(({ input }) => ({ previewOnly: true as const, graph: validateGeneratorDependencyGraph(input.nodes as DependencyGraphNode[]) })),
+    contentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), samplePerCategory: z.number().int().min(1).max(8).default(1), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildContentCatalogDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),
