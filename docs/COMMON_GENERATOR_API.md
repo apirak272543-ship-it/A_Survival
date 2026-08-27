@@ -73,3 +73,16 @@ Plant catalog generator เดิมยังคงเป็น runtime owner �
 - Verification baseline: Common API foundation tests remain part of the repository suite; each new dependency-graph checkpoint records its own current test/build/browser evidence in [`OWNER_REQUIREMENTS_MATRIX.md`](./OWNER_REQUIREMENTS_MATRIX.md). Build warnings about analytics placeholders and the large Babylon vendor chunk remain known non-blocking warnings.
 - Owner requirements: [`OWNER_REQUIREMENTS_MATRIX.md`](./OWNER_REQUIREMENTS_MATRIX.md)
 - Requirements reconciliation: [`REQUIREMENTS_RECONCILIATION_2026-08-26.md`](./REQUIREMENTS_RECONCILIATION_2026-08-26.md)
+
+
+## Quest reward dispatch contract
+
+`client/src/game/systems/questRewardDispatchSystem.ts` เป็น pure transition boundary สำหรับการตรวจว่า quest completion และ item reward สามารถเดินหน้าพร้อมกันแบบ atomic ได้หรือไม่ โดยรับ `StoryProgressState`, inventory, discovered item IDs, canonical quest reward data, runtime map ID, timestamp input และ deterministic sequence base แล้วคืนผลลัพธ์ใหม่หรือ failure ที่ยังคง state/input เดิมไว้ การทำงานนี้ไม่เรียก `saveSession`, ไม่เขียน localStorage/IndexedDB, ไม่ส่ง gameplay event และไม่ทำให้ planned map กลายเป็น playable map
+
+เส้นทาง item reward ที่พิสูจน์ได้ใช้ `createMapRewardInstance` และ `addItemToContainer` กับ `PLAYER_INVENTORY_SLOTS` จำนวน 40 ช่อง โดยสร้าง provenance event ID รูปแบบ `quest-reward:<questId>:<rewardIndex>` และตรวจ duplicate provenance ก่อนเพิ่มของ หาก reward ใดเพิ่มไม่ได้ ระบบจะคืน failure แบบ atomic ไม่ยอมเก็บ reward ก่อนหน้าไว้บางส่วน และไม่เปลี่ยน story completion state
+
+ปัจจุบัน generator ของ quest ยังใส่ `reputation` ใน reward และใส่ `abilityId` ในเควสสุดท้ายของแผนที่ ระบบจึง fail closed เพราะยังไม่มี canonical reputation owner หรือ ability runtime owner การมี item catalog/factory ไม่ได้แปลว่ามี caller ที่แจก reward จริง และ pure transition นี้ยังไม่ถูกต่อเข้า `ArcaneFrontier/rewardHandler` หรือ persistence caller จนกว่าจะมี integration checkpoint แยกพร้อม acceptance evidence
+
+`server/generators/questRewardDispatchDependencyGraph.ts` เป็น read-only preview adapter ที่ใช้ quest progression จริงและตรวจ candidate quest ของ MAP_001 โดยสร้าง dependency graph สำหรับ story completion, item/inventory transition และ persistence/ability owners ที่ยังขาด Graph preview ถูกเปิดผ่าน `creator.dependencyGraph.questRewardDispatchPreview` ซึ่งอยู่หลัง creator guard สำหรับ GM/admin/master และคืน `previewOnly: true` พร้อม runtime policy `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }` เท่านั้น
+
+การทดสอบ pure อยู่ที่ `server/questRewardDispatchSystem.test.ts` และ `server/questRewardDispatchDependencyGraph.test.ts`; authorization/preview contract อยู่ใน `server/creatorRouter.test.ts` โดยต้องยืนยัน item-only atomic success, capacity failure, missing definition, duplicate provenance, future-map rejection, missing reputation/ability owner, deterministic output, preview-only behavior และ `FORBIDDEN` สำหรับผู้ใช้ทั่วไปหรือ unauthenticated caller
