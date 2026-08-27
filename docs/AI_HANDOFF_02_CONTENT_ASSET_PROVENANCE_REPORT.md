@@ -38,7 +38,7 @@
 | Registry reservation | `AI2-CONTENT-001` เป็น `RESERVED`; AI-0 เป็น owner ของ `main` และ registry ตามกติกา |
 | Files reserved | `server/generators/plantAssetProvenanceDependencyGraph.ts`, `server/plantAssetProvenanceDependencyGraph.test.ts`, `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` |
 | Implementation commit | `caf2fadaf12b1bf255a729ba0a1afbefecd58c2c` (`caf2fad`) |
-| Report commit | จะระบุหลัง commit รายงานฉบับสุดท้าย |
+| Report commit | Included in the final branch history; final branch HEAD is reported with the completion evidence |
 | Remote branch | `origin/ai-2/content-ai2-content-001` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ทั้ง `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md` |
 | Recovery refs/stash | ไม่แตะต้อง; ไม่มี reset, revert, force checkout, force push, recovery-ref deletion หรือ stash manipulation |
