@@ -347,7 +347,7 @@ export function generateContentSuiteBundle(input: ContentSuiteInput): ContentSui
     gameplayId,
     rarity: normalized.rarity,
     biome: normalized.biome,
-    tags: [...new Set([normalized.gameplayRole, normalized.material ?? "stone", normalized.element ?? "arcane", ...ROLE_RULES[normalized.gameplayRole].tags])],
+    tags: Array.from(new Set([normalized.gameplayRole, normalized.material ?? "stone", normalized.element ?? "arcane", ...ROLE_RULES[normalized.gameplayRole].tags])),
     generatorVersion: CONTENT_SUITE_VERSION,
     seed: normalized.seed,
   };
