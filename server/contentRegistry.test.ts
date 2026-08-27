@@ -83,4 +83,29 @@ describe("A-Survival Content Generation Suite", () => {
     expect(validateContentSuiteBundle(invalid)).toContain("definition.modelId does not resolve to model.id");
     expect(() => new ContentRegistry().register(invalid)).toThrow("Cannot register");
   });
+
+  it("rejects tampered hashes, preview projections and unsupported suite versions", () => {
+    const bundle = generateContentSuiteBundle({ ...baseInput, id: "integrity-fixture" });
+    const invalid = {
+      ...bundle,
+      suiteVersion: "0.0.0",
+      contentHash: "f".repeat(64),
+      preview: { ...bundle.preview, swatches: ["forged-swatch"] },
+    };
+    expect(validateContentSuiteBundle(invalid)).toEqual(expect.arrayContaining([
+      "unsupported content suite version: 0.0.0",
+      "contentHash does not match bundle payload",
+      "preview.swatches does not match visual specification",
+    ]));
+    expect(() => new ContentRegistry().register(invalid)).toThrow("Cannot register");
+  });
+
+  it("rejects duplicate definition IDs instead of silently overwriting a bundle", () => {
+    const registry = new ContentRegistry();
+    const first = generateContentSuiteBundle({ ...baseInput, id: "duplicate-fixture", seed: 1 });
+    const second = generateContentSuiteBundle({ ...baseInput, id: "duplicate-fixture", seed: 2 });
+    registry.register(first);
+    expect(() => registry.register(second)).toThrow("definition ID is already registered");
+    expect(registry.get("duplicate-fixture")).toBe(first);
+  });
 });

@@ -219,6 +219,15 @@ function findBiomeRule(biome: string) {
   return BIOME_RULES.find(rule => rule.match.some(token => lowered.includes(token))) ?? { secondaryColor: "ash_slate", accentColor: "muted_cyan", palette: "muted-obsidian" as const };
 }
 
+function createContentSuitePreview(visual: VisualSpecification, assetStatus: PixelAssetBinding["status"]): ContentSuiteBundle["preview"] {
+  return {
+    swatches: [visual.baseColor, visual.secondaryColor, visual.accentColor],
+    summary: `${visual.material} ${visual.pattern}; ${visual.shapeLanguage}; emission ${visual.emission.toFixed(2)}`,
+    texturePrompt: `${visual.baseColor} ${visual.material} ${visual.pattern}, ${visual.shapeLanguage}, ${visual.textureResolution}x${visual.textureResolution} crisp pixel texture, ${visual.paletteDiscipline}, restrained semantic accent, no photorealism`,
+    finalArtStatus: assetStatus === "bound" ? "bound" : "awaiting-asset",
+  };
+}
+
 export function createSemanticVisualSpecification(input: VisualInput): { visual: VisualSpecification; decisionLog: CreativeDecisionLog } {
   const material = input.material ?? "stone";
   const element = input.element ?? "arcane";
@@ -356,12 +365,7 @@ export function generateContentSuiteBundle(input: ContentSuiteInput): ContentSui
   const contentHash = hash(stable(bundleWithoutHash));
   const bundle: ContentSuiteBundle = {
     ...bundleWithoutHash,
-    preview: {
-      swatches: [visual.baseColor, visual.secondaryColor, visual.accentColor],
-      summary: `${visual.material} ${visual.pattern}; ${visual.shapeLanguage}; emission ${visual.emission.toFixed(2)}`,
-      texturePrompt: `${visual.baseColor} ${visual.material} ${visual.pattern}, ${visual.shapeLanguage}, ${visual.textureResolution}x${visual.textureResolution} crisp pixel texture, ${visual.paletteDiscipline}, restrained semantic accent, no photorealism`,
-      finalArtStatus: texture.asset.status === "bound" ? "bound" : "awaiting-asset",
-    },
+    preview: createContentSuitePreview(visual, texture.asset.status),
     cacheKey,
     contentHash,
   };
@@ -374,8 +378,25 @@ export function generateContentSuiteBatch(inputs: readonly ContentSuiteInput[]):
   return inputs.map(generateContentSuiteBundle);
 }
 
+function isSha256(value: string) {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
+function calculateContentSuiteHash(bundle: ContentSuiteBundle) {
+  const { preview: _preview, cacheKey: _cacheKey, contentHash: _contentHash, ...payload } = bundle;
+  return hash(stable(payload));
+}
+
+function sameStringArray(left: readonly string[], right: readonly string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 export function validateContentSuiteBundle(bundle: ContentSuiteBundle): string[] {
   const errors = validateVisualSpecification(bundle.visual, bundle.definition.rarity);
+  if (bundle.suiteVersion !== CONTENT_SUITE_VERSION) errors.push(`unsupported content suite version: ${bundle.suiteVersion}`);
+  if (!isSha256(bundle.cacheKey)) errors.push("cacheKey must be a lowercase sha256 hash");
+  if (!isSha256(bundle.contentHash)) errors.push("contentHash must be a lowercase sha256 hash");
+  if (isSha256(bundle.contentHash) && calculateContentSuiteHash(bundle) !== bundle.contentHash) errors.push("contentHash does not match bundle payload");
   if (bundle.definition.modelId !== bundle.model.id) errors.push("definition.modelId does not resolve to model.id");
   if (bundle.definition.textureId !== bundle.texture.id) errors.push("definition.textureId does not resolve to texture.id");
   if (bundle.definition.skinId !== bundle.skin.id) errors.push("definition.skinId does not resolve to skin.id");
@@ -384,7 +405,11 @@ export function validateContentSuiteBundle(bundle: ContentSuiteBundle): string[]
   if (bundle.skin.modelId !== bundle.model.id) errors.push("skin.modelId does not resolve to model.id");
   if (bundle.skin.textureId !== bundle.texture.id) errors.push("skin.textureId does not resolve to texture.id");
   if (bundle.variant.modelId !== bundle.model.id || bundle.variant.skinId !== bundle.skin.id || bundle.variant.gameplayId !== bundle.gameplay.id) errors.push("variant references are not separated component IDs");
-  if (bundle.preview.finalArtStatus === "bound" && bundle.texture.asset.status !== "bound") errors.push("bound preview requires bound texture asset");
+  const expectedPreview = createContentSuitePreview(bundle.visual, bundle.texture.asset.status);
+  if (!sameStringArray(bundle.preview.swatches, expectedPreview.swatches)) errors.push("preview.swatches does not match visual specification");
+  if (bundle.preview.summary !== expectedPreview.summary) errors.push("preview.summary does not match visual specification");
+  if (bundle.preview.texturePrompt !== expectedPreview.texturePrompt) errors.push("preview.texturePrompt does not match visual specification");
+  if (bundle.preview.finalArtStatus !== expectedPreview.finalArtStatus) errors.push("preview.finalArtStatus does not match texture asset status");
   return errors;
 }
 
@@ -394,6 +419,7 @@ export class ContentRegistry {
   register(bundle: ContentSuiteBundle) {
     const errors = validateContentSuiteBundle(bundle);
     if (errors.length > 0) throw new Error(`Cannot register ${bundle.definition.id}: ${errors.join("; ")}`);
+    if (this.bundles.has(bundle.definition.id)) throw new Error(`Cannot register ${bundle.definition.id}: definition ID is already registered`);
     this.bundles.set(bundle.definition.id, bundle);
     return bundle;
   }
