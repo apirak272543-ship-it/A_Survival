@@ -1,6 +1,6 @@
 # A_Survival AI Coordination Registry
 
-เอกสารนี้เป็น **ทะเบียนกลางของการแบ่งงานและการจองไฟล์** สำหรับ AI สามตัวใน Repository `apirak272543-ship-it/A_Survival` โดย AI-0 เป็นผู้ประสานงานหลักและผู้ตรวจรับบน `main` ทุกสถานะต้องอ้างอิงจาก repository, branch, commit, diff และผลตรวจจริง ไม่ใช่จากข้อความในแชตเพียงอย่างเดียว
+เอกสารนี้เป็น **ทะเบียนกลางของการแบ่งงานและการจองไฟล์** สำหรับ AI สามตัวใน Repository `apirak272543-ship-it/A_Survival` โดย AI-0 เป็นผู้ประสานงานหลักและผู้ตรวจรับบน `main` ทุกสถานะต้องอ้างอิงจาก repository, branch, commit, diff และผลตรวจจริง ไม่ใช่จากข้อความในแชตเพียงอย่างเดียว. รายการงานครบทั้ง 52 ข้ออยู่ใน [`AI_COORDINATION_BACKLOG.md`](./AI_COORDINATION_BACKLOG.md); ไฟล์นี้เก็บกติกา lock และงานที่กำลังถืออยู่ ส่วน backlog เก็บ queue ที่ AI ทั้งสามเลือกได้
 
 > กฎสั้น: อ่านทะเบียนก่อนแก้ทุกครั้ง, ห้ามแตะไฟล์ที่มี owner อื่นจองอยู่, ห้าม push ตรงเข้า `main` จาก AI-1/AI-2, และห้ามเปลี่ยนสถานะเป็นสีเขียวจนกว่าจะมี commit SHA กับผลตรวจที่ตรวจซ้ำได้
 
@@ -21,21 +21,21 @@
 |---|---|
 | Repository | `apirak272543-ship-it/A_Survival` |
 | Branch หลัก | `main` |
-| HEAD และ `origin/main` | `08b9d6de9cfc87ae5d29eb181cea39d97e2de062` |
+| Latest implementation checkpoint | `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` (`origin/main` ก่อน docs correction) |
 | Recovery ref ที่ต้องรักษา | `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2` |
 | Stash | ว่าง ณ การตรวจล่าสุด |
 | Dev/test process | ไม่พบ process ที่ต้องหยุด ณ การตรวจล่าสุด |
-| สถานะล่าสุด | working tree มี reservation ของ AI-0 สองไฟล์สำหรับ quest reward → inventory checkpoint; ยังไม่ commit |
+| สถานะล่าสุด | quest reward → inventory checkpoint ถูก push แล้ว; registry และ matrix กำลังบันทึกผลรับงานใน docs correction commit |
 
 ## ทะเบียนงานและ file reservation
 
 | Task ID | Owner | สถานะ | ขอบเขตและไฟล์ที่จอง | Base/commit evidence | การกระทำถัดไป |
 |---|---|---|---|---|---|
-| `MAIN-REWARD-INVENTORY-001` | AI-0 / Main Integrator | 🔵 IN_PROGRESS | `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`; ห้าม AI-1/AI-2 แตะสองไฟล์นี้ | Base `2d0a220`; uncommitted ใน working tree ของ AI-0 | ตรวจ focused/full tests, ต่อ route/Workbench เมื่อจำเป็น, บันทึก evidence แล้ว commit/push เป็น checkpoint แยก |
-| `AI1-PERF-001` | AI-1 | ⚪ WAITING_EVIDENCE | Performance profile → runtime visibility/telemetry/profiler; reserved files: `server/generators/runtimePerformanceContract.ts`, `server/runtimePerformanceContract.test.ts`; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_01_RUNTIME_PERFORMANCE.md`; ห้ามแก้ Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | Base `d282e8e`; branch `ai1/runtime-performance-visibility-mainline`; implementation commit `8bc2653ca85b130ff5bf1e2848e1776b00eb08aa`; registry commit `26d92f6ed3dfde926bcbce2ab0866703db635b91`; focused 5 files/21 tests, refreshed full 105 files/410 tests, `pnpm check`, `git diff --check`, production build ผ่าน | รอ AI-0 ตรวจ diff และหลักฐาน แล้วเปลี่ยนเป็น 🟢 DONE หรือแจ้ง blocker |
-| `AI2-CONTENT-001` | AI-2 | 🟡 RESERVED | Content generator / plant / asset provenance; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_02_CONTENT_PROVENANCE.md`; ห้ามสร้าง PNG/GLB, แก้ Workbench/router, map policy, authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-2 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded provenance checkpoint, ส่ง evidence กลับ AI-0 |
+| `MAIN-REWARD-INVENTORY-001` | AI-0 / Main Integrator | 🟢 DONE | `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`, `server/creatorRouter.ts`, `server/creatorRouter.test.ts`, `client/src/pages/CreatorDomainWorkbench.tsx`, reward inventory browser/docs evidence | Base `d282e8e`; implementation `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` | รอออกแบบ checkpoint ใหม่ `NEXT-QUEST-REWARD-DISPATCH-001`; ห้ามตีความ dry-run เป็นการแจก reward จริง |
+| `AI1-PERF-001` | AI-1 | ⚪ WAITING_EVIDENCE | Performance profile → runtime visibility/telemetry/profiler; files: `server/generators/runtimePerformanceContract.ts`, `server/runtimePerformanceContract.test.ts`; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_01_RUNTIME_PERFORMANCE.md`; ห้ามแก้ Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | Base `d282e8e`; branch `ai1/runtime-performance-visibility-mainline`; implementation `8bc2653ca85b130ff5bf1e2848e1776b00eb08aa`; focused 5 files/21 tests, refreshed full 105 files/410 tests, `pnpm check`, `git diff --check`, production build ผ่าน | รอ AI-0 ตรวจ diff และหลักฐาน แล้วเปลี่ยนเป็น 🟢 DONE หรือแจ้ง blocker |
+| `AI2-CONTENT-001` | AI-2 | 🟡 RESERVED | Content generator / plant / asset provenance และ Credits/Supporters provenance; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_02_CONTENT_PROVENANCE.md`; ห้ามสร้าง PNG/GLB, แก้ Workbench/router, map policy, authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-2 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded provenance checkpoint, ส่ง evidence กลับ AI-0 |
 | `NEXT-QUEST-REWARD-DISPATCH-001` | AI-0 | ⬜ AVAILABLE | ออกแบบ canonical quest reward dispatch หลัง inventory checkpoint ผ่านเท่านั้น; ต้องแยกจาก read-only graph และห้าม fabricate completion | ยังไม่มี reservation | ห้ามเริ่มจนกว่า `MAIN-REWARD-INVENTORY-001` จะเป็น 🟢 DONE และมี design/acceptance ที่ชัดเจน |
-| `NEXT-PERF-CAPABILITY-001` | AI-1 | ⚪ WAITING_EVIDENCE | Runtime capability evidence contract ต่อจาก T-01; files changed: `server/generators/runtimePerformanceCapability.ts`, `server/runtimePerformanceCapability.test.ts`; ไม่แตะ device benchmark, player UI, Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | Base `2ca0e1a`; branch `ai1/runtime-performance-capability`; implementation commit `1469d65c437700d961e7facfc72c183b8743eeb1` pushed to `origin/ai1/runtime-performance-capability`; focused 1 file/4 tests, full 107 files/418 tests, `pnpm check`, `git diff --check`, production build ผ่าน | รอ AI-0 ตรวจ diff และหลักฐาน แล้วเปลี่ยนเป็น 🟢 DONE หรือแจ้ง blocker |
+| `NEXT-PERF-CAPABILITY-001` | AI-1 | ⚪ WAITING_EVIDENCE | Runtime capability evidence contract ต่อจาก T-01; files: `server/generators/runtimePerformanceCapability.ts`, `server/runtimePerformanceCapability.test.ts`; ไม่แตะ device benchmark, player UI, Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | Base `2ca0e1a`; branch `ai1/runtime-performance-capability`; implementation `1469d65c437700d961e7facfc72c183b8743eeb1`; focused 1 file/4 tests, full 106 files/414 tests, `pnpm check`, `git diff --check`, production build ผ่าน | รอ AI-0 ตรวจ diff และหลักฐาน แล้วเปลี่ยนเป็น 🟢 DONE หรือแจ้ง blocker |
 | `NEXT-ASSET-PROVENANCE-001` | AI-2 หรือ AI-0 ตามการมอบหมาย | ⬜ AVAILABLE | เชื่อม plant/item/asset provenance กับ manifest หรือ required blockers ต่อจาก T-04/F-01 โดยไม่สร้าง graphical assets | ยังไม่มี reservation | AI-0 จะมอบหมายหลัง AI-2 ส่ง evidence ของ `AI2-CONTENT-001` |
 
 ## File ownership rules
@@ -85,4 +85,4 @@ Repository นี้ไม่มีช่องแชตภายในระห
 
 ## ข้อห้ามร่วม
 
-ห้าม `reset`, `revert`, force checkout, force push, ลบ recovery ref, ลบหรือ overwrite งานของ owner อื่น, เพิ่ม secret/password/token, ทำ live migration/db push, เปิด future map, เอา preview graph ไปเป็น player control, fabricate quest completion/reward/ability unlock หรืออ้าง authenticated/device/mobile/production acceptance ที่ยังไม่มีหลักฐาน
+ห้าม `reset`, `revert`, force checkout, force push, ลบ recovery ref, ลบหรือ overwrite งานของ owner อื่น, เพิ่ม secret/password/token, ทำ live migration/db push, เปิด future map, เอา preview graph ไปเป็น player control, fabricate quest completion/reward/ability unlock หรืออ้าง authenticated/device/mobile/production acceptance ที่ยังไม่มีหลักฐาน.
