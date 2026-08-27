@@ -57,6 +57,7 @@ describe("creator texture router", () => {
     const caller = appRouter.createCaller(createContext("user"));
 
     await expect(caller.creator.texture.build(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.register(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {

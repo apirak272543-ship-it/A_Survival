@@ -100,3 +100,24 @@ export const gameIntegrityLogs = mysqlTable("gameIntegrityLogs", {
 }, table => [index("gameIntegrityLogs_profileId_idx").on(table.profileId)]);
 
 export type GameIntegrityLog = typeof gameIntegrityLogs.$inferSelect;
+
+/** Admin-only registry for Builder outputs; image bytes live in object storage, not in the database. */
+export const creatorArtifacts = mysqlTable("creatorArtifacts", {
+  id: int("id").autoincrement().primaryKey(),
+  artifactKey: varchar("artifactKey", { length: 191 }).notNull().unique(),
+  kind: mysqlEnum("kind", ["texture-pack"]).notNull(),
+  packId: varchar("packId", { length: 128 }).notNull(),
+  packVersion: varchar("packVersion", { length: 32 }).notNull(),
+  packSha256: varchar("packSha256", { length: 64 }).notNull(),
+  manifest: json("manifest").$type<Record<string, unknown>>().notNull(),
+  assets: json("assets").$type<Record<string, unknown>>().notNull(),
+  provenance: json("provenance").$type<Record<string, unknown>>().notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("creatorArtifacts_packId_idx").on(table.packId),
+  index("creatorArtifacts_createdByUserId_idx").on(table.createdByUserId),
+]);
+
+export type CreatorArtifact = typeof creatorArtifacts.$inferSelect;

@@ -7,6 +7,7 @@ import {
   type TexturePackInput,
 } from "./generators/texturePackBuilder";
 import { adminProcedure, router } from "./_core/trpc";
+import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -76,5 +77,13 @@ export const creatorRouter = router({
     }),
     generate: adminProcedure.input(textureGenerationSchema).mutation(({ input }) => buildGeneratedTextureResponse(input.input, input.seed)),
     preview: adminProcedure.input(textureGenerationSchema).mutation(({ input }) => buildGeneratedTextureResponse(input.input, input.seed).preview),
+    register: adminProcedure.input(texturePackInputSchema).mutation(async ({ input, ctx }) => {
+      const output = buildTexturePack(input as TexturePackInput);
+      const validation = validateTexturePackOutput(output, input as TexturePackInput);
+      if (!validation.valid) throw new Error(`Texture pack output is invalid: ${validation.issues.join("; ")}`);
+      const artifact = await registerTexturePackArtifact({ output, createdByUserId: ctx.user.id });
+      return { artifact, validation };
+    }),
+    list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional()).query(({ input }) => listCreatorArtifacts(input?.limit)),
   }),
 });
