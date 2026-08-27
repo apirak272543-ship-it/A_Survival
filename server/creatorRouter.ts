@@ -39,6 +39,7 @@ import {
 import { adminProcedure, router } from "./_core/trpc";
 import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
 import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
+import { buildCreatorDomainArtifactMetadata, listCreatorDomainArtifacts, registerCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -118,6 +119,21 @@ const itemPreviewSchema = z.object({
 });
 
 type ItemPreviewRequest = z.infer<typeof itemPreviewSchema>;
+
+const creatorDomainArtifactInputSchema = z.object({
+  domain: z.enum(["world", "block", "structure", "item", "weapon", "animation", "quest", "profiler"]),
+  artifactId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,127}$/),
+  artifactVersion: z.string().trim().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,31}$/),
+  generatorId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,127}$/),
+  generatorVersion: z.string().trim().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,31}$/),
+  manifest: z.record(z.string(), z.unknown()),
+  summary: z.record(z.string(), z.unknown()),
+  sources: z.array(z.string().trim().min(1).max(160)).min(1).max(16),
+  provenanceRefs: z.array(z.string().trim().min(1).max(512)).min(1).max(16),
+}).superRefine((input, context) => {
+  if (JSON.stringify(input.manifest).length > 32_768) context.addIssue({ code: "custom", message: "Artifact manifest is too large", path: ["manifest"] });
+  if (JSON.stringify(input.summary).length > 32_768) context.addIssue({ code: "custom", message: "Artifact summary is too large", path: ["summary"] });
+});
 
 export const runtimeProfilerSnapshotSchema = z.object({
   tier: z.enum(["low", "balanced", "high"]),
@@ -356,6 +372,15 @@ export const creatorRouter = router({
       const generated = generateUniversalItem({ item: buildNoCodeItemInput(input), maxPowerBudget: input.maxPowerBudget });
       return { previewOnly: true as const, output: generated, validation: { valid: true as const, issues: [] as string[] } };
     }),
+  }),
+  artifact: router({
+    preview: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(({ input }) => ({ previewOnly: true as const, ...buildCreatorDomainArtifactMetadata(input) })),
+    register: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(async ({ input, ctx }) => {
+      const metadata = buildCreatorDomainArtifactMetadata(input);
+      const artifact = await registerCreatorDomainArtifact({ metadata, createdByUserId: ctx.user.id });
+      return { previewOnly: true as const, runtimeImportAllowed: false as const, artifact };
+    }),
+    list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional(), domain: creatorDomainArtifactInputSchema.shape.domain.optional() }).optional()).query(({ input }) => listCreatorDomainArtifacts(input)),
   }),
   profiler: router({
     preview: adminProcedure.input(runtimeProfilerSnapshotSchema).mutation(({ input }) => ({

@@ -121,3 +121,28 @@ export const creatorArtifacts = mysqlTable("creatorArtifacts", {
 ]);
 
 export type CreatorArtifact = typeof creatorArtifacts.$inferSelect;
+
+/** Admin-only metadata registry for non-texture Builder previews; runtime import remains explicitly disabled. */
+export const creatorDomainArtifacts = mysqlTable("creatorDomainArtifacts", {
+  id: int("id").autoincrement().primaryKey(),
+  artifactKey: varchar("artifactKey", { length: 191 }).notNull().unique(),
+  domain: mysqlEnum("domain", ["world", "block", "structure", "item", "weapon", "animation", "quest", "profiler"]).notNull(),
+  artifactId: varchar("artifactId", { length: 128 }).notNull(),
+  artifactVersion: varchar("artifactVersion", { length: 32 }).notNull(),
+  generatorId: varchar("generatorId", { length: 128 }).notNull(),
+  generatorVersion: varchar("generatorVersion", { length: 32 }).notNull(),
+  contentSha256: varchar("contentSha256", { length: 64 }).notNull(),
+  manifest: json("manifest").$type<Record<string, unknown>>().notNull(),
+  summary: json("summary").$type<Record<string, unknown>>().notNull(),
+  provenance: json("provenance").$type<Record<string, unknown>>().notNull(),
+  runtimePolicy: json("runtimePolicy").$type<Record<string, unknown>>().notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("creatorDomainArtifacts_domain_idx").on(table.domain),
+  index("creatorDomainArtifacts_createdByUserId_idx").on(table.createdByUserId),
+  index("creatorDomainArtifacts_createdAt_idx").on(table.createdAt),
+]);
+
+export type CreatorDomainArtifact = typeof creatorDomainArtifacts.$inferSelect;
