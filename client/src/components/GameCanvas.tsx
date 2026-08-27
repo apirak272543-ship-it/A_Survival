@@ -10,12 +10,14 @@ import type { BlockToolTag, WorldBlock } from "@/game/data/blockModules";
 import type { ItemInstance } from "@/game/data/catalog";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import { getPerformanceBudget, type PerformanceTier } from "@/game/systems/performanceProfile";
+import { createRuntimePerformanceSampler, type RuntimePerformanceTelemetrySnapshot } from "@/game/systems/runtimePerformanceTelemetry";
 
 type GameCanvasProps = {
   mapId: string;
   reducedMotion?: boolean;
   performanceTier?: PerformanceTier;
   onSnapshot?: (snapshot: GameSnapshot) => void;
+  onPerformanceSnapshot?: (snapshot: RuntimePerformanceTelemetrySnapshot) => void;
   onReward?: (reward: GameReward) => void;
   onBlockAction?: BlockActionHandler;
   onBlockMessage?: (message: string) => void;
@@ -109,12 +111,27 @@ export default function GameCanvas(props: GameCanvasProps) {
       }
       handle = game;
       let lastRenderedAt = -Infinity;
+      const telemetrySampler = createRuntimePerformanceSampler({
+        tier: performanceBudgetRef.current.tier,
+        effectiveTargetFps: performanceBudgetRef.current.targetFps,
+      });
       engine.runRenderLoop(() => {
         const now = performance.now();
-        const targetFps = performanceBudgetRef.current.targetFps;
-        if (now - lastRenderedAt < 1000 / targetFps) return;
-        lastRenderedAt = now;
-        game.scene.render();
+        const budget = performanceBudgetRef.current;
+        telemetrySampler.setBudget({ tier: budget.tier, effectiveTargetFps: budget.targetFps });
+        const shouldRender = now - lastRenderedAt >= 1000 / budget.targetFps;
+        if (shouldRender) {
+          lastRenderedAt = now;
+          game.scene.render();
+        }
+        telemetrySampler.recordCallback(now, shouldRender);
+        if (telemetrySampler.shouldFlush(now)) {
+          const snapshot = telemetrySampler.flush(now, {
+            totalMeshes: game.scene.meshes.length,
+            activeMeshes: game.scene.getActiveMeshes().length,
+          });
+          if (snapshot) latestPropsRef.current.onPerformanceSnapshot?.(snapshot);
+        }
       });
     };
     void startGame().catch(error => console.error("[GameCanvas] scene startup failed", error));
