@@ -147,6 +147,22 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews real Obsidian biome and resource references against content catalog without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.worldBiomeResourceContentCatalogPreview({ seed: "world-structure-seed", radius: 32, sampleResourceCount: 16, samplePerCategory: 8 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "world-structure-seed", worldGeneratorVersion: "0.1.0", catalogGeneratorVersion: "1.0.0", sampledResourceCount: 16 });
+    expect(result.summary.biomeIds.length).toBeGreaterThan(1);
+    expect(result.summary.resourceCount).toBeGreaterThan(0);
+    expect(result.summary.sampledResourceCount).toBe(16);
+    expect(result.summary.resourceDefinitionIds).toContain("ore.aether.block");
+    expect(result.summary.unresolvedReferenceCount).toBeGreaterThan(0);
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews the real Obsidian world against structure blueprints without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.worldStructurePreview({ seed: "world-structure-router-seed", radius: 32, blueprintIds: ["object-frontier-lantern"] });
@@ -208,6 +224,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.itemContentCatalogPreview({ seed: "blocked-seed", itemId: "obsidian-rift-blade", samplePerCategory: 1, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldBlockContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleBlockCount: 24, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.structureBlockContentCatalogPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["object-frontier-lantern"], sampleBlockCount: 24, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.worldBiomeResourceContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleResourceCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -224,6 +241,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.itemContentCatalogPreview({ seed: "blocked-seed", itemId: "obsidian-rift-blade", samplePerCategory: 1, maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldBlockContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleBlockCount: 24, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.structureBlockContentCatalogPreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["object-frontier-lantern"], sampleBlockCount: 24, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.worldBiomeResourceContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleResourceCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
