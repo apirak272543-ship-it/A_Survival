@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { buildCreatorComposition } from "./creatorCompositionBuilder";
 import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter";
@@ -36,6 +37,12 @@ describe("creator composition texture export", () => {
       runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false },
     });
     expect(firstExport.exportId).toMatch(/^[a-f0-9]{64}$/);
+    expect(firstExport.manifestSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(firstExport.manifestFile).toMatchObject({ fileName: "manifest.json", mime: "application/json", sha256: firstExport.manifestSha256 });
+    const manifestBytes = Buffer.from(firstExport.manifestFile.contentBase64, "base64");
+    expect(manifestBytes.toString("utf8").endsWith("\n")).toBe(true);
+    expect(JSON.parse(manifestBytes.toString("utf8"))).toEqual(firstExport.manifest);
+    expect(createHash("sha256").update(manifestBytes).digest("hex")).toBe(firstExport.manifestSha256);
     expect(firstExport.assets[0]).toMatchObject({ downloadFileName: "survivor-pixel-32.png", mime: "image/png" });
     expect(firstExport.assets[0]?.pngBase64.startsWith("iVBORw0KGgo")).toBe(true);
     expect(Buffer.from(firstExport.assets[0]!.pngBase64, "base64").subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));

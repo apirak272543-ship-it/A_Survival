@@ -39,3 +39,7 @@ After adding `creator.composition.exportPreview` and the explicit `ดาวน�
 ## Animation-to-skin texture boundary check
 
 After the composition texture adapter was extended so animation subjects produce a validated `skin` texture and parts-derived `skinLayout`, a fresh player landing check still showed only the normal player surface. No skin layout, texture export, PNG download, composition, registry, review or creator controls appeared. This remains a player boundary check; no authenticated creator preview, skin export execution or device acceptance is claimed.
+
+## Manifest sidecar export boundary check
+
+After adding the deterministic `manifest.json` sidecar and explicit manifest download button to the creator export result, a fresh player landing check still displayed only normal player controls. No manifest, PNG download, texture, skin, composition, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator export/download execution is claimed.
