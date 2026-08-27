@@ -1,5 +1,7 @@
 export const CATALOG_LIMIT_PER_CATEGORY = 400;
 
+import { PLANT_ITEMS } from "@/game/data/plantCatalog";
+
 export type ItemCategory =
   | "sword"
   | "bow"
@@ -8,7 +10,8 @@ export type ItemCategory =
   | "material"
   | "furniture"
   | "decoration"
-  | "structure";
+  | "structure"
+  | "tool";
 
 export type ItemTier = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type ProvenanceType = "drop" | "craft" | "harvest" | "reward" | "starter";
@@ -25,6 +28,9 @@ export type ItemDefinition = {
   effect: string;
   iconAssetId?: string;
   modelAssetId?: string;
+  placementBlockId?: string;
+  isBlockItem?: boolean;
+  toolTag?: "pickaxe" | "axe" | "shears";
 };
 
 export type ItemProvenance = {
@@ -119,6 +125,7 @@ const materialNames = ["Alloy", "Fiber", "Crystal", "Circuit", "Essence", "Resin
 const furnitureNames = ["Wardrobe", "Workbench", "Storage Chest", "Lantern", "Bedroll", "Field Kitchen", "Signal Table", "Pet Nook"];
 const decorationNames = ["Rune Banner", "Holo Planter", "Crystal Vase", "Wall Sigil", "Garden Arch", "Wind Chime", "Star Map", "Portal Lamp"];
 const structureNames = ["Foundation", "Wall Panel", "Roof Segment", "Door Frame", "Window Module", "Bridge Tile", "Fence Unit", "Power Pylon"];
+const toolNames = ["Pickaxe", "Axe", "Shears"];
 
 const categoryNames: Record<ItemCategory, string[]> = {
   sword: swordNames,
@@ -129,6 +136,7 @@ const categoryNames: Record<ItemCategory, string[]> = {
   furniture: furnitureNames,
   decoration: decorationNames,
   structure: structureNames,
+  tool: toolNames,
 };
 
 const soilForSeed = (index: number): SoilId => SOILS[index % SOILS.length]!.id;
@@ -137,7 +145,7 @@ function iconAssetIdForCategory(category: ItemCategory) {
   if (category === "sword") return "items.blade";
   if (category === "bow" || category === "ranged") return "items.energy";
   if (category === "seed") return "items.seed";
-  if (category === "material" || category === "furniture" || category === "decoration" || category === "structure") return "items.buildingCube";
+  if (category === "material" || category === "furniture" || category === "decoration" || category === "structure" || category === "tool") return "items.buildingCube";
   return "items.energy";
 }
 
@@ -147,7 +155,8 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
     const prefix = palette[index % palette.length]!;
     const noun = categoryNames[category][Math.floor(index / palette.length) % categoryNames[category].length]!;
     const tier = tierForPosition(index);
-    const equippable = category === "sword" || category === "bow" || category === "ranged";
+    const equippable = category === "sword" || category === "bow" || category === "ranged" || category === "tool";
+    const toolTag = category === "tool" ? (["pickaxe", "axe", "shears"] as const)[index % 3] : undefined;
     const soilId = category === "seed" ? soilForSeed(index) : undefined;
     const seedSoil = soilId ? SOILS.find(soil => soil.id === soilId) : undefined;
 
@@ -158,8 +167,9 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
       tier,
       stackLimit: equippable ? 1 : category === "furniture" || category === "decoration" || category === "structure" ? 1 : 99,
       equippable,
-      tags: category === "seed" ? ["plant", ...(seedSoil?.compatiblePlantTags ?? [])] : [category, tier],
+      tags: category === "seed" ? ["plant", ...(seedSoil?.compatiblePlantTags ?? [])] : [category, tier, ...(toolTag ? [toolTag] : [])],
       soilId,
+      toolTag,
       iconAssetId: iconAssetIdForCategory(category),
       effect:
         category === "sword"
@@ -168,9 +178,11 @@ function createCategory(category: ItemCategory): ItemDefinition[] {
             ? "ยิงระยะไกลและเพิ่มโอกาส critical ตามระยะ"
             : category === "ranged"
               ? "ยิงพลังงานและบริหารความร้อนของอาวุธ"
-              : category === "seed"
+                : category === "seed"
                 ? `เติบโตได้ดีบน ${seedSoil?.name ?? "ดินที่เหมาะสม"}`
-                : category === "structure"
+                : category === "tool"
+                  ? `เครื่องมือสำหรับ ${toolTag ?? "เก็บทรัพยากร"}`
+                  : category === "structure"
                   ? "ชิ้นส่วน modular ที่วาง หมุน ย้าย และเก็บคืนได้"
                   : "ใช้ในระบบคราฟต์ ตกแต่ง หรือเอาชีวิตรอด",
     };
@@ -181,7 +193,20 @@ export const ITEM_CATALOG = Object.fromEntries(
   (Object.keys(categoryNames) as ItemCategory[]).map(category => [category, createCategory(category)]),
 ) as Record<ItemCategory, ItemDefinition[]>;
 
-export const ALL_ITEMS = Object.values(ITEM_CATALOG).flat();
+export const BLOCK_ITEM_DEFINITIONS: ItemDefinition[] = [
+  { id: "block-obsidian-stone", category: "structure", name: "Obsidian Stone Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "stone"], effect: "วางเป็นบล็อกหิน obsidian ได้", iconAssetId: "items.buildingCube", placementBlockId: "terrain.obsidian", isBlockItem: true },
+  { id: "block-obsidian-ash", category: "structure", name: "Ash Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "ash"], effect: "วางเป็นบล็อกเถ้าภูเขาไฟได้", iconAssetId: "items.buildingCube", placementBlockId: "terrain.ash", isBlockItem: true },
+  { id: "block-obsidian-sand", category: "structure", name: "Obsidian Sand Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "sand", "gravity"], effect: "วางเป็นทราย Obsidian ได้; ต้องมีบล็อกพยุง ไม่เช่นนั้นจะตก", iconAssetId: "items.buildingCube", placementBlockId: "terrain.obsidian.sand", isBlockItem: true },
+  { id: "block-obsidian-pebble", category: "structure", name: "Obsidian Pebble Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "rock"], effect: "วางเป็นก้อนหินขนาดหนึ่งบล็อกได้", iconAssetId: "items.buildingCube", placementBlockId: "rock.obsidian.small", isBlockItem: true },
+  { id: "block-obsidian-slab", category: "structure", name: "Obsidian Slab Block", tier: "uncommon", stackLimit: 64, equippable: false, tags: ["block", "placeable", "obstacle"], effect: "วางเป็นบล็อกสันหินได้", iconAssetId: "items.buildingCube", placementBlockId: "obstacle.obsidian.slab", isBlockItem: true },
+  { id: "block-aether-ore", category: "structure", name: "Aether Ore Block", tier: "rare", stackLimit: 64, equippable: false, tags: ["block", "placeable", "ore"], effect: "วางเป็นบล็อกแร่ aether ได้", iconAssetId: "items.buildingCube", placementBlockId: "ore.aether.block", isBlockItem: true },
+  { id: "block-obsidian-log", category: "structure", name: "Obsidian Log Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "log"], effect: "วางเป็นท่อนไม้หนึ่งบล็อกได้", iconAssetId: "items.buildingCube", placementBlockId: "wood.obsidian.log", isBlockItem: true },
+  { id: "block-obsidian-leaves", category: "structure", name: "Obsidian Leaf Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "leaf"], effect: "วางเป็นใบไม้หนึ่งบล็อกได้", iconAssetId: "items.buildingCube", placementBlockId: "leaves.obsidian", isBlockItem: true },
+  { id: "block-obsidian-sprout", category: "structure", name: "Obsidian Sprout Block", tier: "common", stackLimit: 64, equippable: false, tags: ["block", "placeable", "plant"], effect: "วางเป็นต้นอ่อนหนึ่งบล็อกได้", iconAssetId: "items.buildingCube", placementBlockId: "flora.obsidian.sprout", isBlockItem: true },
+  { id: "block-obsidian-cactus", category: "structure", name: "Obsidian Thorn Cactus Block", tier: "uncommon", stackLimit: 64, equippable: false, tags: ["block", "placeable", "plant", "thorn", "hazard"], effect: "วางเป็นกระบองเพชรหนามหนึ่งบล็อกได้; สัมผัสแล้วเสียพลังชีวิต", iconAssetId: "items.buildingCube", placementBlockId: "flora.obsidian.thorn-cactus", isBlockItem: true },
+];
+
+export const ALL_ITEMS = Object.values(ITEM_CATALOG).flat().concat(BLOCK_ITEM_DEFINITIONS, PLANT_ITEMS);
 
 export const MAP_CATALOG = [
   { id: "obsidian-frontier", name: "Obsidian Frontier", biome: "Ruined alien volcanic frontier", radiusMeters: 500, threat: 2, accent: "#00f3ff", status: "playable" },
@@ -249,14 +274,14 @@ export function createStarterInstance(definitionId: string, sequence: number): I
   };
 }
 
-export function createMapRewardInstance(definitionId: string, sequence: number, mapId: string, eventId: string, provenanceType: Extract<ItemProvenance["type"], "drop" | "harvest" | "reward"> = "harvest"): ItemInstance {
+export function createMapRewardInstance(definitionId: string, sequence: number, mapId: string, eventId: string, provenanceType: Extract<ItemProvenance["type"], "drop" | "harvest" | "reward"> = "harvest", quantity = 1): ItemInstance {
   const definition = getItemDefinition(definitionId);
   if (!definition) throw new Error(`Unknown map reward definition: ${definitionId}`);
   const stamp = 1800000000000 + sequence;
   return {
     instanceId: `inst-${mapId}-${eventId}-${sequence}`,
     definitionId,
-    quantity: 1,
+    quantity: Math.max(1, Math.min(definition.stackLimit, Math.floor(quantity))),
     enhancement: 0,
     provenance: {
       eventId,

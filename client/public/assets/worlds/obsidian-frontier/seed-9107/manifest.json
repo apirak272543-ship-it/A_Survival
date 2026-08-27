@@ -1,0 +1,10 @@
+{
+  "mapId": "obsidian-frontier",
+  "profileId": "obsidian-frontier-v1",
+  "generatorVersion": "0.1.0",
+  "seed": 9107,
+  "radius": 32,
+  "chunkSize": 16,
+  "worldHash": "913030d290198f92fbd1d8e0c7cc21caa88ddba83be9055f6573f91c845a8daf",
+  "blockFirst": true
+}

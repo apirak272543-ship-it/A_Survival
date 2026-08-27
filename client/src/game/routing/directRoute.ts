@@ -9,7 +9,10 @@ export function resolveDirectRoute(search: string): DirectRouteScreen {
   return requested && supportedScreens.has(requested as DirectRouteScreen) ? requested as DirectRouteScreen : "landing";
 }
 
-export function resolveDirectMapId(search: string, availableMapIds: readonly string[], fallback = "obsidian-frontier") {
+export const RUNTIME_MAP_ID = "obsidian-frontier";
+
+/** Only the approved vertical-slice map may be entered from a runtime URL. */
+export function resolveDirectMapId(search: string, availableMapIds: readonly string[], fallback = RUNTIME_MAP_ID) {
   const requested = new URLSearchParams(search).get("map");
-  return requested && availableMapIds.includes(requested) ? requested : fallback;
+  return requested === RUNTIME_MAP_ID && availableMapIds.includes(requested) ? requested : fallback;
 }

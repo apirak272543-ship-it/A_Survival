@@ -8,9 +8,10 @@ describe("direct route contract", () => {
     expect(resolveDirectRoute("?route=unknown")).toBe("landing");
   });
 
-  it("uses a known map or safely falls back to MAP_001", () => {
+  it("only enters the approved Obsidian vertical-slice map and safely falls back for other ids", () => {
     const maps = ["obsidian-frontier", "ashen-hellscape"];
-    expect(resolveDirectMapId("?route=game&map=ashen-hellscape", maps)).toBe("ashen-hellscape");
+    expect(resolveDirectMapId("?route=game&map=obsidian-frontier", maps)).toBe("obsidian-frontier");
+    expect(resolveDirectMapId("?route=game&map=ashen-hellscape", maps)).toBe("obsidian-frontier");
     expect(resolveDirectMapId("?route=game&map=unknown", maps)).toBe("obsidian-frontier");
   });
 });

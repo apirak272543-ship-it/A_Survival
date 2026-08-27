@@ -277,7 +277,14 @@
       "mime": "image/png",
       "fallback": "terrain.obsidian",
       "sha256": "1215621744b5e7d364b8cfa2fcd9fa90b7655a3a2990dd8116f2a5fa1a1d5567"
+    },
+    "terrain.foliage": {
+      "kind": "texture",
+      "path": "textures/terrain/foliage.png",
+      "mime": "image/png",
+      "fallback": "terrain.moss",
+      "sha256": "c5c8d4d1582ee7ed2501b190f1ad78b6a2cc72e662182c21ba66e58e262c05c7"
     }
   },
-  "packSha256": "47a8cf71c3441386045269859bf4a8c9401cfad7f1c730fb6af7091cab545a73"
+  "packSha256": "a9ab23266b741cc4c9542c028e7e1c0284fe9cc8029785eef0f7a8f03efd8e38"
 }

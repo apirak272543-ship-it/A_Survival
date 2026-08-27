@@ -20,12 +20,22 @@ describe("Arcane hotbar item actions", () => {
     expect(result.instance?.instanceId).toBe(seed.instanceId);
   });
 
-  it("keeps deployable items available for contextual placement", () => {
+  it("keeps Home deployable items available for contextual placement", () => {
     const structure = createStarterInstance("structure-001", 3);
     const result = dispatchHotbarAction([structure], { 2: "structure-001" }, 2);
     expect(result.accepted).toBe(true);
     expect(result.kind).toBe("deploy");
+    expect(result.message).toContain("Home grid");
     expect(result.inventory).toEqual([structure]);
     expect(getHotbarActionKind("material")).toBe("harvest");
+  });
+
+  it("labels a block item as world placement without consuming before acceptance", () => {
+    const block = createStarterInstance("block-obsidian-slab", 12);
+    const result = dispatchHotbarAction([block], { 2: "block-obsidian-slab" }, 2);
+    expect(result.accepted).toBe(true);
+    expect(result.kind).toBe("deploy");
+    expect(result.message).toContain("วางในโลก");
+    expect(result.inventory).toEqual([block]);
   });
 });

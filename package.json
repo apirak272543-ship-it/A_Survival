@@ -10,7 +10,10 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "world:generate": "tsx tools/world-generator.ts",
+    "content:generate": "tsx tools/content-generator.ts",
+    "content:suite": "tsx tools/content-suite-generator.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

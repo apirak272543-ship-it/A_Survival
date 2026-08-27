@@ -1,0 +1,34 @@
+[
+  {
+    "kind": "block",
+    "name": "Obsidian Fire Block",
+    "description": "Readable volcanic glass building block with fictional fire energy.",
+    "material": "obsidian",
+    "element": "fire",
+    "biome": "obsidian-frontier",
+    "gameplayRole": "building-block",
+    "rarity": "rare",
+    "theme": "volcanic fantasy",
+    "conceptNote": "Dark volcanic glass with restrained fiery cracks; block silhouette first.",
+    "conceptSource": "human-input",
+    "baseModelId": "model.template.block",
+    "seed": 829173
+  },
+  {
+    "kind": "mob",
+    "name": "Glass Stalker Variant",
+    "description": "A crystal-shadow scout with fictional stealth behavior.",
+    "material": "crystal",
+    "element": "shadow",
+    "biome": "obsidian-frontier",
+    "gameplayRole": "mob",
+    "rarity": "uncommon",
+    "theme": "obsidian frontier",
+    "conceptSource": "human-input",
+    "baseModelId": "model.template.mob",
+    "animationSetId": "animation.humanoid.template",
+    "behaviorId": "behavior.template.guard",
+    "lootTableId": "loot.glass-stalker",
+    "seed": 829174
+  }
+]

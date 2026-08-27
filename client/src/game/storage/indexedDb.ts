@@ -1,6 +1,10 @@
 import Dexie, { type Table } from "dexie";
+import type { ItemInstance } from "@/game/data/catalog";
+import type { WorldBlock } from "@/game/data/blockModules";
+import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
+import { DEFAULT_CAMERA_MODE, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
 
 export const OFFLINE_QUEUE_LIMIT = 1000;
 
@@ -26,8 +30,16 @@ export type OfflineMapState = {
   playerId: string;
   fogOfWar: string;
   harvestedNodes: Record<string, number>;
+  worldStorageById: Record<string, ItemInstance[]>;
+  worldBlockOverrides: Record<string, WorldBlock | null>;
+  worldPlants: Record<string, WorldPlantState>;
+  cameraMode: CameraMode;
   updatedAt: number;
 };
+
+export function createDefaultOfflineMapState(mapId: string, playerId: string, cameraMode: CameraMode = DEFAULT_CAMERA_MODE): OfflineMapState {
+  return { mapId, playerId, fogOfWar: "", harvestedNodes: {}, worldStorageById: {}, worldBlockOverrides: {}, worldPlants: {}, cameraMode: normalizeCameraMode(cameraMode), updatedAt: 0 };
+}
 
 class ArcaneOfflineDatabase extends Dexie {
   profiles!: Table<OfflineProfileRecord, string>;
@@ -49,6 +61,17 @@ export const offlineDb = new ArcaneOfflineDatabase();
 export async function loadOfflineProfile(playerId?: string) {
   if (playerId) return offlineDb.profiles.get(playerId);
   return offlineDb.profiles.orderBy("updatedAt").last();
+}
+
+export async function loadOfflineMapState(mapId: string, playerId: string) {
+  const state = await offlineDb.mapStates.get([mapId, playerId]);
+  return state ? { ...state, worldStorageById: state.worldStorageById ?? {}, worldBlockOverrides: state.worldBlockOverrides ?? {}, worldPlants: state.worldPlants ?? {}, cameraMode: normalizeCameraMode(state.cameraMode) } : undefined;
+}
+
+export async function saveOfflineMapState(state: OfflineMapState) {
+  const next = { ...state, worldStorageById: state.worldStorageById ?? {}, worldBlockOverrides: state.worldBlockOverrides ?? {}, worldPlants: state.worldPlants ?? {}, cameraMode: normalizeCameraMode(state.cameraMode), updatedAt: Date.now() };
+  await offlineDb.mapStates.put(next);
+  return next;
 }
 
 export async function saveOfflineProfile(session: LocalGameSession, existing?: OfflineProfileRecord | null) {

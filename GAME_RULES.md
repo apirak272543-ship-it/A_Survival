@@ -44,6 +44,8 @@
 
 ระบบต้องรองรับอย่างน้อย **100 map modules** ที่แยกส่งมอบและ commit ได้ทีละแผนที่ แต่ละแผนที่มี biome ที่สอดคล้องทั้งฉาก NPC, landmark, ทรัพยากร, regular monster, elite, surprise encounter และ event boss เฉพาะถิ่น การพัฒนาต้องทำแบบ **ทีละ 1 แผนที่**: ทำ visual/เกมเพลย์/asset pack/streaming/tests ของแผนที่ปัจจุบันให้เรียบร้อยและตรวจผ่านก่อน จึงเริ่มแผนที่ถัดไป ชุด biome เริ่มต้นครอบคลุม Obsidian Frontier, Ashen Hellscape, Mars Expanse, Saharan Glass, Congo Verdant, Stonecrest Range, Wildpine Highlands และ Astral Drift โดยต้องขยายเป็นครอบครัวของแผนที่ที่หลากหลาย
 
+A_Survival ต้องรองรับเส้นทางการเล่นหลายแบบในโลกเดียวกัน ได้แก่ สายต่อสู้และสำรวจ, สาย survival/เก็บทรัพยากร, และ **สายชาวบ้านสงบสุข** ที่เน้นปลูกพืช ตัดไม้ ทุบหิน สร้างบ้าน จัดการฟาร์ม ตกแต่งพื้นที่ เลี้ยง companion และค้าหรือสะสมทรัพยากรโดยหลีกเลี่ยงการต่อสู้เท่าที่ทำได้ การออกแบบ biome, block, NPC, encounter และ reward ต้องไม่ทำให้ combat เป็นเงื่อนไขเดียวของความก้าวหน้า
+
 ทุก biome มีวงจรกลางวัน 15 นาทีและกลางคืน 15 นาที ยกเว้น biome ที่มีเหตุผลด้านเนื้อหาให้เป็น eternal night, void หรือสภาพเฉพาะ แสง สี เงา soundscape และ motion effect เปลี่ยนตามเวลาและ biome NPC มอนสเตอร์ เหตุการณ์ไม่คาดฝัน และ boss event ในต้นแบบสามารถทำงานจาก client-side game state แต่ต้องมีข้อมูลและสถานะที่ตรวจสอบได้
 
 ## 6. Survival, Home และ Farming

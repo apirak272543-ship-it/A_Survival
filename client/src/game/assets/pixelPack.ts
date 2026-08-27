@@ -11,7 +11,9 @@ import { resolveAssetUrl } from "@/game/assets/assetPackLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { BiomeDecoration } from "@/game/data/biomeProfiles";
+import { getBlockDefinition, type WorldBlock } from "@/game/data/blockModules";
 import type { RenderDistanceConfig } from "@/game/systems/renderDistance";
+import { sampleObsidianTerrainHeight } from "@/game/systems/terrainHeight";
 
 export const PIXEL_PACK_MANIFEST = {
   id: "arcane-frontier-voxel-pixel",
@@ -204,7 +206,7 @@ function resolveTextureAssetUrl(assetId: string, fallbackPath: string) {
 function createPixelMaterial(scene: Scene, name: string, textureAssetId?: string) {
   const material = new StandardMaterial(name, scene);
   material.diffuseColor = Color3.White();
-  material.emissiveColor = new Color3(0.18, 0.18, 0.18);
+  material.emissiveColor = textureAssetId?.startsWith("terrain.") ? new Color3(0.025, 0.03, 0.035) : new Color3(0.08, 0.08, 0.08);
   material.specularColor = Color3.Black();
   material.backFaceCulling = false;
   if (textureAssetId) {
@@ -221,6 +223,38 @@ function createPixelMaterial(scene: Scene, name: string, textureAssetId?: string
     }
   }
   return material;
+}
+
+const BLOCK_MATERIALS_BY_SCENE = new WeakMap<Scene, Map<string, StandardMaterial>>();
+
+function getPixelBlockMaterial(scene: Scene, assetId: string) {
+  let materials = BLOCK_MATERIALS_BY_SCENE.get(scene);
+  if (!materials) {
+    materials = new Map();
+    BLOCK_MATERIALS_BY_SCENE.set(scene, materials);
+  }
+  const existing = materials.get(assetId);
+  if (existing) return existing;
+  const material = createPixelMaterial(scene, `world-block-material-${assetId.replace(/[^a-z0-9-]/gi, "-")}`, assetId);
+  material.diffuseColor = Color3.White();
+  material.specularColor = Color3.Black();
+  materials.set(assetId, material);
+  return material;
+}
+
+export function createPixelBlockMesh(scene: Scene, block: WorldBlock): Mesh {
+  const definition = getBlockDefinition(block.blockId);
+  const mesh = MeshBuilder.CreateBox(`world-block-${block.key}`, { size: 1 }, scene);
+  mesh.position.set(block.x + 0.5, block.y + 0.5, block.z + 0.5);
+  mesh.material = getPixelBlockMaterial(scene, definition?.assetId ?? "terrain.obsidian");
+  mesh.metadata = { ...block, worldBlock: true, replaceable: true };
+  return mesh;
+}
+
+export function updatePixelBlockMesh(mesh: Mesh, block: WorldBlock) {
+  mesh.position.set(block.x + 0.5, block.y + 0.5, block.z + 0.5);
+  mesh.metadata = { ...block, worldBlock: true, replaceable: true };
+  mesh.setEnabled(block.state !== "broken");
 }
 
 const FACE_DEFINITIONS = [
@@ -345,7 +379,7 @@ export const PIXEL_CHUNK_SIZE = 16;
 
 export function createPixelTerrainChunks(scene: Scene, width: number, depth: number, tileSize = 2, chunkSize = PIXEL_CHUNK_SIZE, terrainAssetIds: string[] = ["terrain.obsidian"], renderDistance: RenderDistanceConfig = { preset: "balanced", visibleRadiusMeters: 96, prefetchRadiusMeters: 128, label: "Balanced · recommended" }) {
   const root = new TransformNode("pixel-terrain-root", scene);
-  const terrainColors = [paletteColor.void, paletteColor.ink, paletteColor.indigo, paletteColor.obsidian, paletteColor.ash];
+  const terrainColors = [paletteColor.ash, paletteColor.ash.scale(0.82), paletteColor.indigo.scale(0.82), paletteColor.obsidian.scale(1.18)];
   const terrainFamilies = terrainAssetIds.length > 0 ? terrainAssetIds : ["terrain.obsidian"];
   const terrainMaterials: Record<string, StandardMaterial> = {};
   terrainFamilies.forEach(assetId => { terrainMaterials[assetId] = createPixelMaterial(scene, `pixel-terrain-material-${assetId.replaceAll(".", "-")}`, assetId); });
@@ -368,6 +402,17 @@ export function createPixelTerrainChunks(scene: Scene, width: number, depth: num
     const uvs: number[] = [];
     const indices: number[] = [];
     let vertex = 0;
+    const addQuad = (points: number[][], normal: number[], color: Color3) => {
+      const start = vertex;
+      points.forEach(point => {
+        positions.push(point[0]!, point[1]!, point[2]!);
+        normals.push(normal[0]!, normal[1]!, normal[2]!);
+        colors.push(color.r, color.g, color.b, 1);
+      });
+      uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
+      indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
+      vertex += 4;
+    };
     for (let z = 0; z < chunkSize; z += 1) {
       for (let x = 0; x < chunkSize; x += 1) {
         const left = x * tileSize;
@@ -376,13 +421,19 @@ export function createPixelTerrainChunks(scene: Scene, width: number, depth: num
         const bottom = top + tileSize;
         const absoluteX = chunkX * chunkSize + x;
         const absoluteZ = chunkZ * chunkSize + z;
+        const height = sampleObsidianTerrainHeight(absoluteX, absoluteZ);
         const tile = terrainColors[Math.abs(absoluteX * 17 + absoluteZ * 31 + ((absoluteX ^ absoluteZ) % 3)) % terrainColors.length]!;
-        positions.push(left, 0, top, right, 0, top, right, 0, bottom, left, 0, bottom);
-        for (let index = 0; index < 4; index += 1) normals.push(0, 1, 0);
-        for (let index = 0; index < 4; index += 1) colors.push(tile.r, tile.g, tile.b, 1);
-        uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
-        indices.push(vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3);
-        vertex += 4;
+        addQuad([[left, height, top], [right, height, top], [right, height, bottom], [left, height, bottom]], [0, 1, 0], tile);
+        const sideColor = tile.scale(0.72);
+        const sides = [
+          { neighbor: sampleObsidianTerrainHeight(absoluteX, absoluteZ - 1), points: [[left, 0, top], [right, 0, top], [right, height, top], [left, height, top]], normal: [0, 0, -1] },
+          { neighbor: sampleObsidianTerrainHeight(absoluteX, absoluteZ + 1), points: [[right, 0, bottom], [left, 0, bottom], [left, height, bottom], [right, height, bottom]], normal: [0, 0, 1] },
+          { neighbor: sampleObsidianTerrainHeight(absoluteX - 1, absoluteZ), points: [[left, 0, bottom], [left, 0, top], [left, height, top], [left, height, bottom]], normal: [-1, 0, 0] },
+          { neighbor: sampleObsidianTerrainHeight(absoluteX + 1, absoluteZ), points: [[right, 0, top], [right, 0, bottom], [right, height, bottom], [right, height, top]], normal: [1, 0, 0] },
+        ];
+        sides.forEach(side => {
+          if (height > side.neighbor) addQuad(side.points, side.normal, sideColor);
+        });
       }
     }
     const vertexData = new VertexData();
@@ -426,6 +477,7 @@ export function createPixelTerrainChunks(scene: Scene, width: number, depth: num
       mapRadiusMeters,
       terrainAssetIds: terrainFamilies,
       terrainMaterials,
+      assignChunk,
       renderDistancePreset: renderDistance.preset,
       centerX: 0,
       centerZ: 0,
@@ -445,6 +497,7 @@ export function updatePixelTerrainStream(root: TransformNode, position: { x: num
     centerZ: number;
     terrainAssetIds: string[];
     terrainMaterials: Record<string, StandardMaterial>;
+    assignChunk: (mesh: Mesh, chunkX: number, chunkZ: number, terrainAssetId: string) => void;
   } | undefined;
   if (!stream) return;
   const centerX = Math.floor(position.x / stream.chunkWorldSize);
@@ -460,10 +513,8 @@ export function updatePixelTerrainStream(root: TransformNode, position: { x: num
     const slotZ = Math.floor(index / slotsPerAxis) - stream.slotRadius;
     const chunkX = centerX + slotX;
     const chunkZ = centerZ + slotZ;
-    mesh.position.x = chunkX * stream.chunkWorldSize;
-    mesh.position.z = chunkZ * stream.chunkWorldSize;
     const terrainAssetId = stream.terrainAssetIds[Math.abs(chunkX * 5 + chunkZ * 11) % stream.terrainAssetIds.length] ?? stream.terrainAssetIds[0];
-    if (terrainAssetId) mesh.material = stream.terrainMaterials[terrainAssetId];
+    if (terrainAssetId) stream.assignChunk(mesh, chunkX, chunkZ, terrainAssetId);
     mesh.metadata = { ...mesh.metadata, assetId: terrainAssetId, terrainFamily: stream.terrainAssetIds, chunk: { ...mesh.metadata?.chunk, x: chunkX, z: chunkZ }, inMap: Math.abs(chunkX) <= mapChunkRadius && Math.abs(chunkZ) <= mapChunkRadius };
     mesh.setEnabled(Boolean(mesh.metadata.inMap));
   });

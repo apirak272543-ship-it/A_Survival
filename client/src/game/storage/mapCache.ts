@@ -1,6 +1,6 @@
 import type { MapDefinition } from "@/game/data/maps";
 
-const CACHE_NAME = "arcane-frontier-map-modules-v2";
+const CACHE_NAME = "arcane-frontier-map-modules-v3";
 
 export type MapPreparationUpdate = {
   progress: number;

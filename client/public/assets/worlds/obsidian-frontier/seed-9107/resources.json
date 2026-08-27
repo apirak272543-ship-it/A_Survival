@@ -1,0 +1,911 @@
+[
+  {
+    "id": "resource-1",
+    "x": 14,
+    "y": 1,
+    "z": 28,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-2",
+    "x": 24,
+    "y": 1,
+    "z": -12,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-3",
+    "x": 8,
+    "y": 1,
+    "z": 6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-4",
+    "x": -14,
+    "y": 1,
+    "z": -19,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-5",
+    "x": 20,
+    "y": 1,
+    "z": -21,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-6",
+    "x": 25,
+    "y": 1,
+    "z": -10,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-7",
+    "x": 28,
+    "y": 1,
+    "z": -15,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-8",
+    "x": -27,
+    "y": 1,
+    "z": 11,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-9",
+    "x": 27,
+    "y": 1,
+    "z": -11,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-10",
+    "x": -29,
+    "y": 1,
+    "z": 8,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-11",
+    "x": 28,
+    "y": 1,
+    "z": 31,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-12",
+    "x": 4,
+    "y": 1,
+    "z": -21,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-13",
+    "x": -24,
+    "y": 1,
+    "z": 15,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-14",
+    "x": -29,
+    "y": 1,
+    "z": -1,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-15",
+    "x": 29,
+    "y": 1,
+    "z": 1,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-16",
+    "x": 1,
+    "y": 1,
+    "z": 6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-17",
+    "x": 14,
+    "y": 1,
+    "z": 16,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-18",
+    "x": -13,
+    "y": 1,
+    "z": 28,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-19",
+    "x": 10,
+    "y": 1,
+    "z": -29,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-20",
+    "x": -12,
+    "y": 1,
+    "z": 1,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-21",
+    "x": -10,
+    "y": 1,
+    "z": 2,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-22",
+    "x": 10,
+    "y": 1,
+    "z": -2,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-23",
+    "x": -1,
+    "y": 1,
+    "z": 31,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-24",
+    "x": 1,
+    "y": 1,
+    "z": -31,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-25",
+    "x": 18,
+    "y": 1,
+    "z": 3,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-26",
+    "x": -13,
+    "y": 1,
+    "z": 4,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-27",
+    "x": 8,
+    "y": 1,
+    "z": 23,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-28",
+    "x": 8,
+    "y": 1,
+    "z": 31,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-29",
+    "x": -17,
+    "y": 1,
+    "z": -6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-30",
+    "x": -20,
+    "y": 1,
+    "z": 18,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-31",
+    "x": -7,
+    "y": 1,
+    "z": -26,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-32",
+    "x": 7,
+    "y": 1,
+    "z": -28,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "ember-steppe"
+  },
+  {
+    "id": "resource-33",
+    "x": -22,
+    "y": 1,
+    "z": -29,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-34",
+    "x": 11,
+    "y": 1,
+    "z": 4,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-35",
+    "x": -3,
+    "y": 1,
+    "z": -24,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-36",
+    "x": 0,
+    "y": 1,
+    "z": -31,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-37",
+    "x": -6,
+    "y": 1,
+    "z": -6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-38",
+    "x": 6,
+    "y": 1,
+    "z": 6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-39",
+    "x": -24,
+    "y": 1,
+    "z": 8,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-40",
+    "x": 24,
+    "y": 1,
+    "z": -8,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-41",
+    "x": -11,
+    "y": 1,
+    "z": 15,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-42",
+    "x": 11,
+    "y": 1,
+    "z": -15,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-43",
+    "x": 20,
+    "y": 1,
+    "z": 30,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-44",
+    "x": 22,
+    "y": 1,
+    "z": -5,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-45",
+    "x": 29,
+    "y": 1,
+    "z": -6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-46",
+    "x": -7,
+    "y": 1,
+    "z": 2,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-47",
+    "x": 15,
+    "y": 1,
+    "z": -2,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-48",
+    "x": -24,
+    "y": 1,
+    "z": -9,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-49",
+    "x": 26,
+    "y": 1,
+    "z": 15,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-50",
+    "x": -17,
+    "y": 1,
+    "z": -7,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-51",
+    "x": 17,
+    "y": 1,
+    "z": 7,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-52",
+    "x": -6,
+    "y": 1,
+    "z": -11,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-53",
+    "x": 28,
+    "y": 1,
+    "z": -3,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-54",
+    "x": 19,
+    "y": 1,
+    "z": 6,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-55",
+    "x": -26,
+    "y": 1,
+    "z": -29,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-56",
+    "x": -26,
+    "y": 1,
+    "z": -17,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-57",
+    "x": -30,
+    "y": 1,
+    "z": -24,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-58",
+    "x": -13,
+    "y": 1,
+    "z": 27,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-59",
+    "x": 13,
+    "y": 1,
+    "z": -27,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-60",
+    "x": 22,
+    "y": 1,
+    "z": -21,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-61",
+    "x": 12,
+    "y": 1,
+    "z": -19,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "ember-steppe"
+  },
+  {
+    "id": "resource-62",
+    "x": -7,
+    "y": 1,
+    "z": -21,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-63",
+    "x": 7,
+    "y": 1,
+    "z": 21,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-64",
+    "x": -29,
+    "y": 1,
+    "z": 27,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-65",
+    "x": 29,
+    "y": 1,
+    "z": -27,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-66",
+    "x": 30,
+    "y": 1,
+    "z": -21,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-67",
+    "x": 9,
+    "y": 1,
+    "z": 10,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-68",
+    "x": 11,
+    "y": 1,
+    "z": -4,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-69",
+    "x": 7,
+    "y": 1,
+    "z": 10,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-70",
+    "x": -22,
+    "y": 1,
+    "z": 17,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-71",
+    "x": 10,
+    "y": 1,
+    "z": 12,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-72",
+    "x": 28,
+    "y": 1,
+    "z": -25,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-73",
+    "x": -31,
+    "y": 1,
+    "z": -19,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-74",
+    "x": 31,
+    "y": 1,
+    "z": 19,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-75",
+    "x": -31,
+    "y": 1,
+    "z": -4,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-76",
+    "x": 27,
+    "y": 1,
+    "z": 8,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-77",
+    "x": 20,
+    "y": 1,
+    "z": -27,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-78",
+    "x": 31,
+    "y": 1,
+    "z": -4,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-79",
+    "x": -29,
+    "y": 1,
+    "z": -30,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-80",
+    "x": -5,
+    "y": 1,
+    "z": 3,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-81",
+    "x": 5,
+    "y": 1,
+    "z": -3,
+    "definitionId": "ore.aether.block",
+    "rarity": "rare",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-82",
+    "x": -8,
+    "y": 1,
+    "z": -7,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-83",
+    "x": 24,
+    "y": 1,
+    "z": 12,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-84",
+    "x": 21,
+    "y": 1,
+    "z": -24,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-85",
+    "x": 13,
+    "y": 1,
+    "z": -8,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-86",
+    "x": -21,
+    "y": 1,
+    "z": -11,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-87",
+    "x": 21,
+    "y": 1,
+    "z": 11,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-88",
+    "x": 28,
+    "y": 2,
+    "z": -32,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "ash-hills"
+  },
+  {
+    "id": "resource-89",
+    "x": 22,
+    "y": 1,
+    "z": -32,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-90",
+    "x": 10,
+    "y": 1,
+    "z": 0,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-91",
+    "x": -26,
+    "y": 1,
+    "z": 27,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-92",
+    "x": -12,
+    "y": 1,
+    "z": -28,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-93",
+    "x": 12,
+    "y": 1,
+    "z": 28,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-94",
+    "x": -28,
+    "y": 1,
+    "z": -1,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-95",
+    "x": 9,
+    "y": 1,
+    "z": 32,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-96",
+    "x": 9,
+    "y": 1,
+    "z": -26,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-97",
+    "x": -2,
+    "y": 1,
+    "z": -25,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-98",
+    "x": 10,
+    "y": 1,
+    "z": 19,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-99",
+    "x": -6,
+    "y": 1,
+    "z": -24,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  },
+  {
+    "id": "resource-100",
+    "x": 23,
+    "y": 1,
+    "z": 12,
+    "definitionId": "ore.aether.block",
+    "rarity": "common",
+    "biome": "ash-hills"
+  },
+  {
+    "id": "resource-101",
+    "x": -16,
+    "y": 1,
+    "z": -13,
+    "definitionId": "ore.aether.block",
+    "rarity": "uncommon",
+    "biome": "aether-vent"
+  }
+]

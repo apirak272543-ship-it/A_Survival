@@ -1,0 +1,746 @@
+[
+  {
+    "id": "water-1",
+    "x": -20,
+    "y": 1,
+    "z": 24,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-2",
+    "x": 3,
+    "y": 1,
+    "z": 4,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-3",
+    "x": 9,
+    "y": 1,
+    "z": -10,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-4",
+    "x": -27,
+    "y": 1,
+    "z": -24,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-5",
+    "x": 30,
+    "y": 1,
+    "z": -5,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-6",
+    "x": 32,
+    "y": 1,
+    "z": -21,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-7",
+    "x": -4,
+    "y": 1,
+    "z": 29,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-8",
+    "x": 25,
+    "y": 1,
+    "z": 32,
+    "kind": "lake",
+    "flowDirection": "north"
+  },
+  {
+    "id": "water-10",
+    "x": -8,
+    "y": 1,
+    "z": 20,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-11",
+    "x": -24,
+    "y": 1,
+    "z": -7,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-12",
+    "x": 16,
+    "y": 1,
+    "z": -21,
+    "kind": "stream",
+    "flowDirection": "west"
+  },
+  {
+    "id": "water-13",
+    "x": 29,
+    "y": 1,
+    "z": -2,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-14",
+    "x": -16,
+    "y": 1,
+    "z": -18,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-15",
+    "x": 2,
+    "y": 1,
+    "z": 29,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-16",
+    "x": 30,
+    "y": 1,
+    "z": 27,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-17",
+    "x": -13,
+    "y": 1,
+    "z": 31,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-18",
+    "x": 13,
+    "y": 1,
+    "z": -31,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-19",
+    "x": 14,
+    "y": 1,
+    "z": 13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-20",
+    "x": 22,
+    "y": 2,
+    "z": -28,
+    "kind": "lake",
+    "flowDirection": "north"
+  },
+  {
+    "id": "water-21",
+    "x": -10,
+    "y": 1,
+    "z": 27,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-23",
+    "x": 1,
+    "y": 1,
+    "z": -17,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-24",
+    "x": -14,
+    "y": 1,
+    "z": 3,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-25",
+    "x": -12,
+    "y": 1,
+    "z": 6,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-26",
+    "x": 1,
+    "y": 1,
+    "z": -4,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-27",
+    "x": -26,
+    "y": 1,
+    "z": 22,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-28",
+    "x": 26,
+    "y": 1,
+    "z": -22,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-29",
+    "x": 2,
+    "y": 1,
+    "z": -29,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-30",
+    "x": -23,
+    "y": 1,
+    "z": -12,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-31",
+    "x": 13,
+    "y": 1,
+    "z": -32,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-32",
+    "x": 26,
+    "y": 1,
+    "z": 11,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-33",
+    "x": -9,
+    "y": 1,
+    "z": 27,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-34",
+    "x": 9,
+    "y": 1,
+    "z": -27,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-35",
+    "x": -28,
+    "y": 1,
+    "z": -15,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-36",
+    "x": 17,
+    "y": 1,
+    "z": -12,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-37",
+    "x": 22,
+    "y": 1,
+    "z": -15,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-38",
+    "x": 10,
+    "y": 1,
+    "z": 7,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-39",
+    "x": -23,
+    "y": 1,
+    "z": 13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-40",
+    "x": 23,
+    "y": 1,
+    "z": -13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-41",
+    "x": 2,
+    "y": 1,
+    "z": 8,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-42",
+    "x": 16,
+    "y": 1,
+    "z": -22,
+    "kind": "stream",
+    "flowDirection": "west"
+  },
+  {
+    "id": "water-43",
+    "x": 26,
+    "y": 1,
+    "z": 0,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-44",
+    "x": 20,
+    "y": 1,
+    "z": -9,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-45",
+    "x": -12,
+    "y": 1,
+    "z": -19,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-46",
+    "x": -17,
+    "y": 1,
+    "z": -2,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-47",
+    "x": 21,
+    "y": 1,
+    "z": 14,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-48",
+    "x": 2,
+    "y": 1,
+    "z": 28,
+    "kind": "stream",
+    "flowDirection": "north"
+  },
+  {
+    "id": "water-49",
+    "x": -17,
+    "y": 1,
+    "z": 24,
+    "kind": "spring",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-50",
+    "x": 19,
+    "y": 1,
+    "z": -10,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-51",
+    "x": -13,
+    "y": 1,
+    "z": -24,
+    "kind": "stream",
+    "flowDirection": "east"
+  },
+  {
+    "id": "water-53",
+    "x": 32,
+    "y": 1,
+    "z": -29,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-54",
+    "x": -32,
+    "y": 1,
+    "z": 26,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-55",
+    "x": 1,
+    "y": 1,
+    "z": 32,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-56",
+    "x": 6,
+    "y": 1,
+    "z": -25,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-57",
+    "x": 4,
+    "y": 1,
+    "z": 17,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-58",
+    "x": -17,
+    "y": 1,
+    "z": 32,
+    "kind": "stream",
+    "flowDirection": "north"
+  },
+  {
+    "id": "water-59",
+    "x": 0,
+    "y": 1,
+    "z": 9,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-60",
+    "x": -22,
+    "y": 1,
+    "z": 13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-61",
+    "x": -5,
+    "y": 1,
+    "z": -14,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-62",
+    "x": 13,
+    "y": 1,
+    "z": 20,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-63",
+    "x": -17,
+    "y": 1,
+    "z": -4,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-64",
+    "x": -2,
+    "y": 1,
+    "z": -20,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-65",
+    "x": 26,
+    "y": 1,
+    "z": -13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-66",
+    "x": -29,
+    "y": 1,
+    "z": -4,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-67",
+    "x": 18,
+    "y": 1,
+    "z": 25,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-68",
+    "x": -18,
+    "y": 1,
+    "z": 23,
+    "kind": "stream",
+    "flowDirection": "south"
+  },
+  {
+    "id": "water-69",
+    "x": -15,
+    "y": 1,
+    "z": -9,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-70",
+    "x": 15,
+    "y": 1,
+    "z": 9,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-71",
+    "x": -11,
+    "y": 1,
+    "z": 13,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-72",
+    "x": 11,
+    "y": 1,
+    "z": -13,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-73",
+    "x": -17,
+    "y": 1,
+    "z": -24,
+    "kind": "stream",
+    "flowDirection": "north"
+  },
+  {
+    "id": "water-74",
+    "x": -19,
+    "y": 1,
+    "z": -10,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-75",
+    "x": -18,
+    "y": 1,
+    "z": -9,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-76",
+    "x": 9,
+    "y": 1,
+    "z": 0,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-77",
+    "x": 28,
+    "y": 1,
+    "z": 19,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-78",
+    "x": -18,
+    "y": 1,
+    "z": 3,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-79",
+    "x": -22,
+    "y": 1,
+    "z": 28,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-80",
+    "x": 32,
+    "y": 1,
+    "z": 3,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-81",
+    "x": -3,
+    "y": 1,
+    "z": 15,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-82",
+    "x": 3,
+    "y": 1,
+    "z": -15,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-83",
+    "x": 14,
+    "y": 1,
+    "z": -28,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-84",
+    "x": 17,
+    "y": 1,
+    "z": 30,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-85",
+    "x": -23,
+    "y": 1,
+    "z": -31,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-86",
+    "x": 23,
+    "y": 1,
+    "z": 31,
+    "kind": "lake",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-87",
+    "x": -26,
+    "y": 1,
+    "z": 0,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-88",
+    "x": 5,
+    "y": 1,
+    "z": -24,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-89",
+    "x": -1,
+    "y": 1,
+    "z": -30,
+    "kind": "lake",
+    "flowDirection": "east"
+  },
+  {
+    "id": "water-90",
+    "x": -11,
+    "y": 1,
+    "z": -31,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-91",
+    "x": 11,
+    "y": 1,
+    "z": 31,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-92",
+    "x": -10,
+    "y": 1,
+    "z": -13,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-93",
+    "x": -17,
+    "y": 1,
+    "z": 18,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-94",
+    "x": 18,
+    "y": 1,
+    "z": -24,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-95",
+    "x": 14,
+    "y": 1,
+    "z": -8,
+    "kind": "stream",
+    "flowDirection": "still"
+  },
+  {
+    "id": "water-96",
+    "x": -32,
+    "y": 1,
+    "z": 11,
+    "kind": "stream",
+    "flowDirection": "still"
+  }
+]

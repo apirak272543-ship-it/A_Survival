@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { inspectSyncPayload, normalizePlayerId } from "./gameIntegrity";
+import { aiNpcService, SPECIAL_AI_NPC_MAPS } from "./aiNpcService";
 
 const playerIdSchema = z.string().trim().min(3).max(24).regex(/^[a-zA-Z0-9_-]+$/, "Player ID accepts letters, numbers, underscores, and hyphens only");
 const vectorClockSchema = z.record(z.string(), z.number().int().min(0).max(10_000_000));
@@ -28,6 +29,20 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  aiNpc: router({
+    turn: publicProcedure.input(z.object({
+      playerId: playerIdSchema,
+      mapId: z.enum(SPECIAL_AI_NPC_MAPS),
+      npcId: z.string().trim().regex(/^[a-z0-9-]+:special-ai$/i).max(96),
+      message: z.string().trim().min(1).max(300),
+      phase: z.enum(["day", "night"]),
+      biome: z.string().trim().min(1).max(80),
+      position: z.object({ x: z.number().finite().min(-500).max(500), z: z.number().finite().min(-500).max(500) }),
+      localFacts: z.array(z.string().trim().min(1).max(120)).max(8),
+      nearbyBlockIds: z.array(z.string().trim().min(1).max(80)).max(12),
+    })).mutation(({ input }) => aiNpcService.turn(input)),
   }),
 
   game: router({
