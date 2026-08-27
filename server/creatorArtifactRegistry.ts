@@ -1,7 +1,13 @@
-import { desc, eq } from "drizzle-orm";
-import { creatorArtifacts, type CreatorArtifact } from "../drizzle/schema";
+import { and, desc, eq } from "drizzle-orm";
+import {
+  creatorArtifactReviewEvents,
+  creatorArtifacts,
+  type CreatorArtifact,
+  type CreatorArtifactReviewEvent,
+} from "../drizzle/schema";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
+import { transitionCreatorDomainArtifactReview, type CreatorArtifactReviewAction, type CreatorArtifactReviewStatus } from "./creatorDomainArtifactReview";
 import type { TexturePackOutput } from "./generators/texturePackBuilder";
 
 export type CreatorArtifactAssetRef = {
@@ -111,8 +117,66 @@ export async function registerTexturePackArtifact(input: {
   return saved[0];
 }
 
-export async function listCreatorArtifacts(limit = 50): Promise<CreatorArtifact[]> {
+export async function reviewTexturePackArtifact(input: {
+  artifactKey: string;
+  action: CreatorArtifactReviewAction;
+  note?: string;
+  reviewedByUserId: number;
+}): Promise<CreatorArtifact> {
   const db = await getDb();
   if (!db) throw new CreatorArtifactRegistryUnavailableError();
-  return db.select().from(creatorArtifacts).orderBy(desc(creatorArtifacts.createdAt)).limit(Math.max(1, Math.min(100, Math.trunc(limit))));
+
+  return db.transaction(async tx => {
+    const existing = await tx.select().from(creatorArtifacts).where(eq(creatorArtifacts.artifactKey, input.artifactKey)).limit(1);
+    const current = existing[0];
+    if (!current) throw new Error("Creator artifact was not found");
+    const transition = transitionCreatorDomainArtifactReview({
+      status: current.reviewStatus as CreatorArtifactReviewStatus,
+      action: input.action,
+      note: input.note,
+    });
+    const reviewedAt = new Date();
+    await tx.update(creatorArtifacts).set({
+      reviewStatus: transition.to,
+      reviewNote: transition.note,
+      reviewedByUserId: input.reviewedByUserId,
+      reviewedAt,
+    }).where(and(
+      eq(creatorArtifacts.artifactKey, input.artifactKey),
+      eq(creatorArtifacts.reviewStatus, transition.from),
+    ));
+    const savedRows = await tx.select().from(creatorArtifacts).where(eq(creatorArtifacts.artifactKey, input.artifactKey)).limit(1);
+    const saved = savedRows[0];
+    if (!saved) throw new Error("Creator artifact was not readable after review");
+    if (saved.reviewStatus !== transition.to || saved.reviewedByUserId !== input.reviewedByUserId) throw new Error("Creator artifact review was changed concurrently");
+    await tx.insert(creatorArtifactReviewEvents).values({
+      artifactRecordId: saved.id,
+      artifactKey: saved.artifactKey,
+      action: transition.action,
+      fromStatus: transition.from,
+      toStatus: transition.to,
+      note: transition.note,
+      reviewerUserId: input.reviewedByUserId,
+    });
+    return saved;
+  });
+}
+
+export async function listCreatorArtifactReviewEvents(input: { artifactKey: string; limit?: number }): Promise<CreatorArtifactReviewEvent[]> {
+  const db = await getDb();
+  if (!db) throw new CreatorArtifactRegistryUnavailableError();
+  return db.select().from(creatorArtifactReviewEvents)
+    .where(eq(creatorArtifactReviewEvents.artifactKey, input.artifactKey))
+    .orderBy(desc(creatorArtifactReviewEvents.createdAt))
+    .limit(Math.max(1, Math.min(100, Math.trunc(input.limit ?? 50))));
+}
+
+export async function listCreatorArtifacts(input: number | { limit?: number; reviewStatus?: CreatorArtifactReviewStatus } = 50): Promise<CreatorArtifact[]> {
+  const db = await getDb();
+  if (!db) throw new CreatorArtifactRegistryUnavailableError();
+  const options = typeof input === "number" ? { limit: input } : input;
+  const limit = Math.max(1, Math.min(100, Math.trunc(options.limit ?? 50)));
+  const statusFilter = options.reviewStatus ? eq(creatorArtifacts.reviewStatus, options.reviewStatus) : undefined;
+  if (statusFilter) return db.select().from(creatorArtifacts).where(statusFilter).orderBy(desc(creatorArtifacts.createdAt)).limit(limit);
+  return db.select().from(creatorArtifacts).orderBy(desc(creatorArtifacts.createdAt)).limit(limit);
 }

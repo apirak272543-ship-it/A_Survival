@@ -37,7 +37,7 @@ import {
   type TexturePackInput,
 } from "./generators/texturePackBuilder";
 import { adminProcedure, router } from "./_core/trpc";
-import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
+import { listCreatorArtifactReviewEvents, listCreatorArtifacts, registerTexturePackArtifact, reviewTexturePackArtifact } from "./creatorArtifactRegistry";
 import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
 import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, getCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
 import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtifactCompatibility";
@@ -339,7 +339,9 @@ export const creatorRouter = router({
       const artifact = await registerTexturePackArtifact({ output, createdByUserId: ctx.user.id });
       return { artifact, validation };
     }),
-    list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional()).query(({ input }) => listCreatorArtifacts(input?.limit)),
+    list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional(), reviewStatus: z.enum(["draft", "approved", "rejected"]).optional() }).optional()).query(({ input }) => listCreatorArtifacts(input ? { limit: input.limit, reviewStatus: input.reviewStatus } : undefined)),
+    review: adminProcedure.input(creatorArtifactReviewSchema).mutation(async ({ input, ctx }) => ({ previewOnly: true as const, runtimeImportAllowed: false as const, artifact: await reviewTexturePackArtifact({ ...input, reviewedByUserId: ctx.user.id }) })),
+    audit: adminProcedure.input(z.object({ artifactKey: z.string().trim().min(8).max(191), limit: z.number().int().min(1).max(100).optional() })).query(({ input }) => listCreatorArtifactReviewEvents(input)),
   }),
   world: router({
     preview: adminProcedure.input(z.object({

@@ -114,6 +114,8 @@ describe("creator texture router", () => {
 
     await expect(caller.creator.texture.generate({ input: validTextureInput(), seed: "creator-seed" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.register({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.review({ artifactKey: "texture-pack:blocked:0.1.0:hash", action: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.list({ limit: 20 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
@@ -123,6 +125,15 @@ describe("creator texture router", () => {
     await expect(caller.creator.composition.register(input)).rejects.toMatchObject({
       message: "Creator artifact registry requires DATABASE_URL and configured object storage",
     });
+  });
+
+  it("keeps texture review listing unavailable until durable registry services are configured", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const unavailable = { message: "Creator artifact registry requires DATABASE_URL and configured object storage" };
+
+    await expect(caller.creator.texture.list({ limit: 20 })).rejects.toMatchObject(unavailable);
+    await expect(caller.creator.texture.review({ artifactKey: "texture-pack:missing:0.1.0:hash", action: "approve" })).rejects.toMatchObject(unavailable);
+    await expect(caller.creator.texture.audit({ artifactKey: "texture-pack:missing:0.1.0:hash", limit: 20 })).rejects.toMatchObject(unavailable);
   });
 
   it("returns stable generator output for the same seed and input", async () => {
@@ -198,5 +209,8 @@ describe("creator texture router", () => {
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.weapon.preview({ seed: 1, count: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.review({ artifactKey: "texture-pack:blocked:0.1.0:hash", action: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.audit({ artifactKey: "texture-pack:blocked:0.1.0:hash", limit: 20 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.texture.list({ limit: 20 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

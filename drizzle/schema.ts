@@ -112,15 +112,40 @@ export const creatorArtifacts = mysqlTable("creatorArtifacts", {
   manifest: json("manifest").$type<Record<string, unknown>>().notNull(),
   assets: json("assets").$type<Record<string, unknown>>().notNull(),
   provenance: json("provenance").$type<Record<string, unknown>>().notNull(),
+  reviewStatus: mysqlEnum("reviewStatus", ["draft", "approved", "rejected"]).default("draft").notNull(),
+  reviewNote: varchar("reviewNote", { length: 512 }),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [
   index("creatorArtifacts_packId_idx").on(table.packId),
   index("creatorArtifacts_createdByUserId_idx").on(table.createdByUserId),
+  index("creatorArtifacts_reviewStatus_idx").on(table.reviewStatus),
 ]);
 
 export type CreatorArtifact = typeof creatorArtifacts.$inferSelect;
+
+/** Immutable admin audit events for texture-pack artifact review transitions. */
+export const creatorArtifactReviewEvents = mysqlTable("creatorArtifactReviewEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  artifactRecordId: int("artifactRecordId").notNull().references(() => creatorArtifacts.id),
+  artifactKey: varchar("artifactKey", { length: 191 }).notNull(),
+  action: mysqlEnum("action", ["approve", "reject", "reopen"]).notNull(),
+  fromStatus: mysqlEnum("fromStatus", ["draft", "approved", "rejected"]).notNull(),
+  toStatus: mysqlEnum("toStatus", ["draft", "approved", "rejected"]).notNull(),
+  note: varchar("note", { length: 512 }),
+  reviewerUserId: int("reviewerUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  index("creatorArtifactReviewEvents_artifactRecordId_idx").on(table.artifactRecordId),
+  index("creatorArtifactReviewEvents_artifactKey_idx").on(table.artifactKey),
+  index("creatorArtifactReviewEvents_reviewerUserId_idx").on(table.reviewerUserId),
+  index("creatorArtifactReviewEvents_createdAt_idx").on(table.createdAt),
+]);
+
+export type CreatorArtifactReviewEvent = typeof creatorArtifactReviewEvents.$inferSelect;
 
 /** Admin-only metadata registry for non-texture Builder previews; runtime import remains explicitly disabled. */
 export const creatorDomainArtifacts = mysqlTable("creatorDomainArtifacts", {

@@ -63,3 +63,7 @@ After adding the explicit admin-only composition texture registration action, a 
 ## Unauthenticated creator-workbench gate check
 
 A fresh visit to `/creator-workbench` without an authenticated session displayed `DEVELOPER ONLY`, stated that Creator Studio access was unavailable, requested an administrator login, and offered only `กลับหน้าผู้เล่น`. The composition register action and Workbench controls were not rendered. This verifies the unauthenticated route gate only; it does not claim an authenticated creator session or durable registration.
+
+## Texture review workflow boundary check
+
+After adding the texture artifact review/list/audit routes and Thai Workbench review controls, a fresh player landing check still displayed only the normal player surface with คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No texture review, artifact registry, approve/reject/reopen, audit, composition, register, export or creator controls appeared. This is player boundary evidence only; no authenticated admin review execution, DB migration, storage operation or runtime publish claim is made.
