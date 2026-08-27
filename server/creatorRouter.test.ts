@@ -163,6 +163,21 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews procedural weapon artifacts against content catalog without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "procedural-catalog-seed", count: 8, category: "melee", samplePerCategory: 8 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ generatorId: "content.generator", generatorVersion: "0.1.0", seed: "procedural-catalog-seed", weaponCount: 8, category: "melee" });
+    expect(result.summary.weaponCount).toBe(8);
+    expect(result.summary.catalogCategoryIds).toContain("weapon-sword");
+    expect(result.summary.unresolvedReferenceTypes["catalog-definition"]).toBe(8);
+    expect(result.summary.unresolvedReferenceTypes["asset-binding"]).toBe(8);
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews real Obsidian spawn points with procedural loot without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.worldSpawnLootPreview({ seed: "world-structure-seed", radius: 32, sampleSpawnCount: 16 });
@@ -259,6 +274,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.worldBiomeResourceContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleResourceCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "blocked-seed", count: 8, category: "melee", samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -278,6 +294,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.worldBiomeResourceContentCatalogPreview({ seed: "blocked-seed", radius: 32, sampleResourceCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.worldSpawnLootPreview({ seed: "blocked-seed", radius: 32, sampleSpawnCount: 16 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "blocked-seed", count: 8, category: "melee", samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
