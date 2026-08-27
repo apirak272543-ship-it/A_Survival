@@ -223,6 +223,18 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews quest gameplay event bridge without completing quests or importing runtime", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.questGameplayEventPreview({ seed: "quest-event-router-seed", sampleQuestCount: 8, completedQuestCount: 20 });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "quest-event-router-seed", sampleQuestCount: 8, completedQuestCount: 20 });
+    expect(result.summary).toMatchObject({ sampleQuestCount: 8, supportedObjectiveCount: 0, unsupportedObjectiveCount: 8, missingRuntimeEventCount: 5, missingTargetBindingCount: 8, unresolvedReferenceCount: 13, runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.assessments[0]).toMatchObject({ objectiveKind: "visit", supported: false });
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews story offline map state namespace without writing IndexedDB", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.storyOfflineMapStatePreview({ seed: "story-offline-state-router-seed", playerId: "preview-player", requestedMapIds: ["obsidian-frontier", "story-map-002"], completedQuestCount: 20 });
@@ -436,6 +448,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.storyProgressionContractPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.storyMapCachePolicyPreview({ seed: "blocked-seed", requestedMapIds: ["obsidian-frontier"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.storyOfflineMapStatePreview({ seed: "blocked-seed", requestedMapIds: ["obsidian-frontier"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.questGameplayEventPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -466,6 +479,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.storyProgressionContractPreview({ seed: "blocked-seed", completedQuestCount: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.storyMapCachePolicyPreview({ seed: "blocked-seed", requestedMapIds: ["obsidian-frontier"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.storyOfflineMapStatePreview({ seed: "blocked-seed", requestedMapIds: ["obsidian-frontier"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.questGameplayEventPreview({ seed: "blocked-seed", sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
