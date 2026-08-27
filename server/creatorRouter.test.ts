@@ -106,12 +106,23 @@ describe("creator texture router", () => {
     await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.exportPreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.byteCompatibility({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.register({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
     const caller = appRouter.createCaller(createContext(null));
 
     await expect(caller.creator.texture.generate({ input: validTextureInput(), seed: "creator-seed" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.register({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const input = { ...validCompositionInput(), source: "starter-authored" as const, provenanceRef: "procedural-starter-authored", textureSampling: "nearest" as const };
+
+    await expect(caller.creator.composition.register(input)).rejects.toMatchObject({
+      message: "Creator artifact registry requires DATABASE_URL and configured object storage",
+    });
   });
 
   it("returns stable generator output for the same seed and input", async () => {
