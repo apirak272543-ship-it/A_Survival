@@ -66,6 +66,7 @@ import type { WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { DEFAULT_IN_MAP_SETTINGS, normalizeInMapSettings, VIEW_DISTANCE_BLOCKS, type InMapSettings } from "@/game/systems/cameraModes";
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { ASSET_CREDITS, type AssetCreditStatus } from "@/game/data/assetProvenance";
+import { createCreditsPresentation } from "@/game/systems/creditsPresentationContract";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 import { CODEX_CATEGORIES, type CodexCategoryId, type CodexEntry } from "@/game/systems/codexSystem";
 import { createCodexDiscoverySnapshot } from "@/game/systems/codexDiscoveryContract";
@@ -322,12 +323,13 @@ function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncReq
 
 function CreditsSheet({ manifest, close }: { manifest: AssetPackManifest | null; close: () => void }) {
   const statusLabel: Record<AssetCreditStatus, string> = { "project-original": "งานของโปรเจกต์", "license-verified": "ตรวจ license แล้ว", "awaiting-contact": "รอติดต่อเจ้าของ", "reference-only": "ใช้เป็น reference เท่านั้น" };
-  const grouped = ASSET_CREDITS.reduce<Record<string, typeof ASSET_CREDITS>>((groups, credit) => { (groups[credit.category] ??= []).push(credit); return groups; }, {});
+  const presentation = createCreditsPresentation(ASSET_CREDITS);
+  const sections = presentation.valid ? presentation.sections : [];
   const runtimeAssetCount = manifest ? Object.keys(manifest.entries).length : 0;
   return <div className="settings-scrim credits-scrim" onPointerDown={close}><section className="credits-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="เครดิตและที่มาของ asset">
     <header><div><p className="eyebrow">Credits · asset provenance</p><h3>เครดิตและผู้สนับสนุน</h3><p className="credits-lead">หน้านี้บอกที่มาของภาพ เสียง และ reference ที่ใช้ตัดสินใจออกแบบ โดยแยกของที่แจกในเกมออกจากเอกสารอ้างอิงให้ชัดเจน</p></div><button className="icon-button" onClick={close} aria-label="ปิดเครดิต"><X size={18} /></button></header>
     <div className="credits-pack"><div><small>RUNTIME ASSET PACK</small><b>{manifest?.displayName ?? "กำลังอ่าน manifest"}</b><span>{manifest ? `v${manifest.version} · ${runtimeAssetCount} assets · ${manifest.artStatus ?? "สถานะไม่ได้ระบุ"}` : "ยังอ่าน manifest ไม่สำเร็จ"}</span></div><div><small>DESIGN SOURCE</small><b>{manifest?.designSource ?? "ไม่พบข้อมูล"}</b><span>manifest/assetId/SHA เป็น source ของตัว resolver</span></div></div>
-    <div className="credits-list">{Object.entries(grouped).map(([category, credits]) => <section key={category} className="credit-group"><h4>{category}</h4>{credits.map(credit => <article key={credit.assetId} className="credit-card"><div><b>{credit.title}</b><span>{credit.attribution}</span><small>{credit.notes}</small></div><div className={`credit-status ${credit.status}`}><strong>{statusLabel[credit.status]}</strong>{credit.license && <small>{credit.license}</small>}{credit.sourceUrl && <a href={credit.sourceUrl} target="_blank" rel="noreferrer">เปิดแหล่งอ้างอิง</a>}</div></article>)}</section>)}</div>
+    <div className="credits-list">{!presentation.valid && <p className="credits-empty">ข้อมูลเครดิตบางส่วนไม่ผ่านการตรวจ จึงซ่อนรายการที่อาจไม่ปลอดภัย ({presentation.rejected.length} รายการ)</p>}{sections.map(section => <section key={section.id} className="credit-group"><h4>{section.title}</h4><p className="credits-section-description">{section.description}</p>{section.entries.map(credit => <article key={credit.assetId} className="credit-card"><div><b>{credit.title}</b><span>{credit.attribution}</span><small>{[credit.category, credit.notes].filter(Boolean).join(" · ")}</small></div><div className={`credit-status ${credit.status}`}><strong>{statusLabel[credit.status]}</strong>{credit.reviewRequired && <small>ต้องตรวจสอบสิทธิ์ก่อนนำไปแจก</small>}{credit.license && <small>{credit.license}</small>}{credit.sourceUrl && <a href={credit.sourceUrl} target="_blank" rel="noreferrer">เปิดแหล่งอ้างอิง</a>}</div></article>)}</section>)}</div>
     <p className="credits-footnote">Reference-only ไม่ถูกโหลดเป็น runtime asset และไม่มีการอ้างว่าเป็นผลงานของผู้ให้บริการใด หากพบเจ้าของผลงานที่ต้องแก้เครดิต โปรดติดต่อทีมโปรเจกต์เพื่อปรับ registry ก่อนนำไปแจกต่อ</p>
   </section></div>;
 }
