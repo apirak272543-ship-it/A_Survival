@@ -23,6 +23,19 @@ function createContext(role: UserRole | null): TrpcContext {
   };
 }
 
+function validCompositionInput() {
+  return {
+    templateId: "fern-icon",
+    subject: "item" as const,
+    canvasWidth: 4,
+    canvasHeight: 4,
+    layers: [{ id: "base", label: "พื้นฐาน", role: "base" as const, zIndex: 0, visible: true, opacity: 1 }],
+    parts: [{ id: "body", label: "ส่วนหลัก", slot: "body" as const, x: 0, y: 0, width: 4, height: 4, layerIds: ["base"] }],
+    palette: [{ id: "leaf-green", label: "เขียวใบไม้", hex: "#3f8f5b", semantic: "ใบไม้" }],
+    pixels: [{ x: 2, y: 1, colorId: "leaf-green" }],
+  };
+}
+
 function validTextureInput(): TexturePackInput {
   return {
     id: "creator-test-pack",
@@ -53,11 +66,22 @@ describe("creator texture router", () => {
     expect(result.output.assets[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("previews composition output through the texture builder without auto-registering it", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
+
+    expect(result).toMatchObject({ previewOnly: true, runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false }, registerRequiresSeparateAction: true, reviewRequired: true, validation: { valid: true, issues: [] } });
+    expect(result.compositionHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.output.assets[0]?.pngBase64.startsWith("iVBORw0KGgo")).toBe(true);
+    expect(result.output.assets[0]?.provenanceRef).toContain("composition-sha256=");
+  });
+
   it("keeps generator writes out of regular player users", async () => {
     const caller = appRouter.createCaller(createContext("user"));
 
     await expect(caller.creator.texture.build(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.texture.register(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -138,5 +162,6 @@ describe("creator texture router", () => {
       weakness: "A blocked preview",
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.weapon.preview({ seed: 1, count: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

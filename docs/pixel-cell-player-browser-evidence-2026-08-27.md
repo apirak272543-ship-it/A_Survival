@@ -15,3 +15,7 @@ At the time of this evidence, the pixel-cell builder focused tests, `pnpm check`
 ## Creator access boundary
 
 Opening `http://localhost:3000/creator-workbench` without an authenticated admin session rendered only the Thai `DEVELOPER ONLY` gate and `กลับหน้าผู้เล่น`. The composition card, pixel grid, palette controls, and preview action were not rendered. This confirms the route-level protection but is explicitly **not** authenticated admin E2E evidence; no login or authorization state was fabricated for this check.
+
+## Handoff regression boundary
+
+After adding `creator.composition.texturePreview`, the player landing was reloaded and still rendered only the `Arcane Frontier` player surface with คู่มือ, เครดิต, ตั้งค่า and the game entry action. No texture builder, PNG, composition, pixel, palette, registry, review or creator controls appeared. This remains a boundary smoke check; it does not replace authenticated admin preview evidence.

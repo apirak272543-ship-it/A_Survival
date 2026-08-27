@@ -42,6 +42,7 @@ import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerforman
 import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, getCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
 import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtifactCompatibility";
 import { buildCreatorComposition } from "./creatorCompositionBuilder";
+import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -146,6 +147,12 @@ const creatorCompositionInputSchema = z.object({
   parts: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), slot: z.enum(["head", "body", "arm", "leg", "tool", "weapon", "surface", "accent"]), x: z.number().int().min(0).max(127), y: z.number().int().min(0).max(127), width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128), layerIds: z.array(z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/)).min(1).max(32) })).min(1).max(64),
   palette: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), hex: z.string().trim().regex(/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/), semantic: z.string().trim().min(1).max(80) })).min(1).max(64),
   pixels: z.array(z.object({ x: z.number().int().min(0).max(127), y: z.number().int().min(0).max(127), colorId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/) })).max(16_384),
+});
+
+const creatorCompositionTexturePreviewSchema = creatorCompositionInputSchema.extend({
+  source: z.enum(["generated", "starter-authored", "provided", "reference-only"]),
+  provenanceRef: z.string().trim().min(1).max(512),
+  textureSampling: z.enum(["nearest", "linear"]).default("nearest"),
 });
 
 const creatorArtifactCompatibilitySchema = z.object({
@@ -399,6 +406,20 @@ export const creatorRouter = router({
   }),
   composition: router({
     preview: adminProcedure.input(creatorCompositionInputSchema).mutation(({ input }) => buildCreatorComposition(input)),
+    texturePreview: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => {
+      const composition = buildCreatorComposition(input);
+      const textureInput = buildCompositionTextureInput(composition, { source: input.source, provenanceRef: input.provenanceRef, textureSampling: input.textureSampling });
+      const output = buildTexturePack(textureInput);
+      return {
+        previewOnly: true as const,
+        compositionHash: composition.registryMetadata.contentSha256,
+        output,
+        validation: validateTexturePackOutput(output, textureInput),
+        runtimePolicy: { runtimeImportAllowed: false as const, playerVisible: false as const, cacheable: false as const },
+        registerRequiresSeparateAction: true as const,
+        reviewRequired: true as const,
+      };
+    }),
   }),
   artifact: router({
     preview: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(({ input }) => ({ previewOnly: true as const, reviewStatus: "draft" as const, ...buildCreatorDomainArtifactMetadata(input) })),
