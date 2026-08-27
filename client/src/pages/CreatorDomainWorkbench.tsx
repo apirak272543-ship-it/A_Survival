@@ -4,6 +4,7 @@ import {
   Blocks,
   Building2,
   CheckCircle2,
+  Gauge,
   Hammer,
   LockKeyhole,
   Map,
@@ -22,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 
-type CreatorDomain = "world" | "block" | "structure" | "item" | "weapon" | "animation" | "quest";
+type CreatorDomain = "world" | "block" | "structure" | "item" | "weapon" | "animation" | "quest" | "profiler";
 
 type DomainCard = {
   id: CreatorDomain;
@@ -39,6 +40,7 @@ const DOMAIN_CARDS: DomainCard[] = [
   { id: "weapon", title: "ทดลองอาวุธ", detail: "เลือกหมวด วัสดุจากระบบ และดูผลลัพธ์ตาม seed", icon: Swords },
   { id: "animation", title: "จัดชุดแอนิเมชัน", detail: "กำหนดโปรไฟล์การเคลื่อนไหวและกฎประหยัดเครื่อง", icon: Sparkles },
   { id: "quest", title: "วางเส้นเรื่องและเควส", detail: "ตรวจสายเควส 100 แผนที่และล็อกแผนที่อนาคต", icon: ScrollText },
+  { id: "profiler", title: "ตรวจ performance runtime", detail: "วาง snapshot จาก QA แล้วอ่าน cadence กับคำแนะนำแบบไม่แก้เกม", icon: Gauge },
 ];
 
 const BLOCK_OPTIONS = [
@@ -121,6 +123,17 @@ export default function CreatorDomainWorkbench() {
   const [animationSeed, setAnimationSeed] = useState("animation-preview");
   const [questMapCount, setQuestMapCount] = useState("100");
   const [questSeed, setQuestSeed] = useState("story-preview");
+  const [profilerTier, setProfilerTier] = useState("balanced");
+  const [profilerTargetFps, setProfilerTargetFps] = useState("60");
+  const [profilerViewDistance, setProfilerViewDistance] = useState("20");
+  const [profilerWindowMs, setProfilerWindowMs] = useState("1000");
+  const [profilerRenderedFrames, setProfilerRenderedFrames] = useState("0");
+  const [profilerThrottledFrames, setProfilerThrottledFrames] = useState("0");
+  const [profilerAverageFrameMs, setProfilerAverageFrameMs] = useState("");
+  const [profilerP95FrameMs, setProfilerP95FrameMs] = useState("");
+  const [profilerWorstFrameMs, setProfilerWorstFrameMs] = useState("");
+  const [profilerTotalMeshes, setProfilerTotalMeshes] = useState("0");
+  const [profilerActiveMeshes, setProfilerActiveMeshes] = useState("0");
 
   const worldPreview = trpc.creator.world.preview.useMutation();
   const blockPreview = trpc.creator.block.preview.useMutation();
@@ -129,9 +142,10 @@ export default function CreatorDomainWorkbench() {
   const weaponPreview = trpc.creator.weapon.preview.useMutation();
   const animationPreview = trpc.creator.animation.preview.useMutation();
   const questPreview = trpc.creator.quest.preview.useMutation();
+  const profilerPreview = trpc.creator.profiler.preview.useMutation();
 
-  const busy = worldPreview.isPending || blockPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending || animationPreview.isPending || questPreview.isPending;
-  const lastError = worldPreview.error ?? blockPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error ?? animationPreview.error ?? questPreview.error;
+  const busy = worldPreview.isPending || blockPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending || animationPreview.isPending || questPreview.isPending || profilerPreview.isPending;
+  const lastError = worldPreview.error ?? blockPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error ?? animationPreview.error ?? questPreview.error ?? profilerPreview.error;
 
   const runPreview = () => {
     setStatus("กำลังตรวจข้อมูลและเรียก generator ฝั่งผู้พัฒนา…");
@@ -157,6 +171,22 @@ export default function CreatorDomainWorkbench() {
     }
     if (domain === "quest") {
       questPreview.mutate({ mapCount: Number(questMapCount), seed: questSeed }, { onSuccess: result => setStatus(`โครงเรื่องผ่าน · ${result.summary.totalQuests} เควส · อนาคตยังล็อกอยู่`) });
+      return;
+    }
+    if (domain === "profiler") {
+      profilerPreview.mutate({
+        tier: profilerTier as "low" | "balanced" | "high",
+        effectiveTargetFps: Number(profilerTargetFps),
+        viewDistanceBlocks: Number(profilerViewDistance),
+        sampleWindowMs: Number(profilerWindowMs),
+        renderedFrames: Number(profilerRenderedFrames),
+        throttledFrames: Number(profilerThrottledFrames),
+        averageFrameMs: profilerAverageFrameMs.trim() ? Number(profilerAverageFrameMs) : null,
+        p95FrameMs: profilerP95FrameMs.trim() ? Number(profilerP95FrameMs) : null,
+        worstFrameMs: profilerWorstFrameMs.trim() ? Number(profilerWorstFrameMs) : null,
+        totalMeshes: Number(profilerTotalMeshes),
+        activeMeshes: Number(profilerActiveMeshes),
+      }, { onSuccess: result => setStatus(`profiler preview สำเร็จ · ${result.status} · observed ${result.observedFps ?? "—"} FPS`) });
       return;
     }
     weaponPreview.mutate({ seed: Number(weaponSeed), count: Number(weaponCount), category: weaponCategory as "melee" | "ranged" | "magic", rarity: weaponRarity as "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic" }, { onSuccess: result => setStatus(`ทดลองอาวุธสำเร็จ · ได้ ${result.records.length} แบบ`) });
@@ -192,6 +222,10 @@ export default function CreatorDomainWorkbench() {
       if (!result) return <p className="text-sm text-amber-200">ผลลัพธ์ animation ไม่ครบตาม contract</p>;
       return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><ResultPill label="โปรไฟล์" value={result.id} /><ResultPill label="จำนวน state" value={result.stateCount} /><ResultPill label="เฟรมต่อวินาที" value={result.fps} /><ResultPill label="off-screen" value={result.sleepsOffscreen ? "หยุดพัก" : "ทำงานต่อ"} /><ResultPill label="dead state" value={result.deadVisible ? "แสดง" : "ซ่อน"} /><ResultPill label="asset" value={result.assetId} /></div>;
     }
+    if (domain === "profiler" && profilerPreview.data) {
+      const result = profilerPreview.data;
+      return <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><ResultPill label="สถานะ" value={result.status} /><ResultPill label="observed FPS" value={result.observedFps ?? "—"} /><ResultPill label="frame budget" value={`${result.targetFrameMs} ms`} /><ResultPill label="active mesh ratio" value={result.activeMeshRatio === null ? "—" : `${Math.round(result.activeMeshRatio * 100)}%`} /></div><div className="grid gap-2">{result.recommendations.map(item => <div key={item.code} className="rounded-lg border border-white/8 bg-black/15 p-3"><p className="text-xs font-bold text-cyan-100">{item.title}</p><p className="mt-1 text-[11px] leading-relaxed text-slate-400">{item.detail}</p></div>)}</div><div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3 text-[11px] leading-relaxed text-amber-100/70">preview only · ไม่ benchmark อุปกรณ์ · ไม่ปรับ tier อัตโนมัติ · ไม่แก้ save/player runtime · ไม่เขียน network</div></div>;
+    }
     return <p className="text-sm text-slate-500">กด “ทดลอง preview” เพื่อให้ระบบแสดงผลลัพธ์ที่ตรวจแล้ว</p>;
   };
 
@@ -219,6 +253,7 @@ export default function CreatorDomainWorkbench() {
             {domain === "weapon" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label="seed อาวุธ" htmlFor="weapon-seed"><Input id="weapon-seed" value={weaponSeed} onChange={event => setWeaponSeed(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="จำนวนแบบที่อยากดู" htmlFor="weapon-count"><SelectField id="weapon-count" value={weaponCount} onChange={setWeaponCount}><option value="1">1 แบบ</option><option value="3">3 แบบ</option><option value="8">8 แบบ</option><option value="16">16 แบบ</option></SelectField></Field><Field label="หมวดอาวุธ" htmlFor="weapon-category"><SelectField id="weapon-category" value={weaponCategory} onChange={setWeaponCategory}><option value="melee">ประชิด</option><option value="ranged">ระยะไกล</option><option value="magic">เวทมนตร์</option></SelectField></Field><Field label="ระดับความหายาก" htmlFor="weapon-rarity"><SelectField id="weapon-rarity" value={weaponRarity} onChange={setWeaponRarity}><option value="common">ทั่วไป</option><option value="uncommon">ไม่ธรรมดา</option><option value="rare">หายาก</option><option value="epic">มหากาพย์</option><option value="legendary">ตำนาน</option><option value="mythic">มายา</option></SelectField></Field></div>}
             {domain === "animation" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><Field label="รหัสโปรไฟล์" htmlFor="animation-id"><Input id="animation-id" value={animationId} onChange={event => setAnimationId(event.target.value)} className="border-white/10 bg-white/[0.04] font-mono text-xs" /></Field><Field label="ชื่อโปรไฟล์" htmlFor="animation-name"><Input id="animation-name" value={animationName} onChange={event => setAnimationName(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><Field label="asset animation" htmlFor="animation-asset"><Input id="animation-asset" value={animationAssetId} onChange={event => setAnimationAssetId(event.target.value)} className="border-white/10 bg-white/[0.04] font-mono text-xs" /></Field><Field label="ที่มา" htmlFor="animation-provenance"><Input id="animation-provenance" value={animationProvenance} onChange={event => setAnimationProvenance(event.target.value)} className="border-white/10 bg-white/[0.04] font-mono text-xs" /></Field><Field label="เฟรมต่อวินาที" htmlFor="animation-fps"><SelectField id="animation-fps" value={animationFps} onChange={setAnimationFps}><option value="8">8 fps</option><option value="12">12 fps</option><option value="24">24 fps</option><option value="30">30 fps</option><option value="60">60 fps</option></SelectField></Field><Field label="seed โปรไฟล์" htmlFor="animation-seed"><Input id="animation-seed" value={animationSeed} onChange={event => setAnimationSeed(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><div className="rounded-xl border border-white/8 bg-black/15 p-3 text-xs leading-relaxed text-slate-400 md:col-span-2 xl:col-span-3">state มาตรฐานประกอบด้วย idle, walk, run, dash, attack, hurt และ dead โดยใช้ข้อมูลล่วงหน้าและ policy หยุดพักเมื่ออยู่นอกระยะ ไม่สร้าง animation ใหม่ระหว่างวาดฉาก</div></div>}
             {domain === "quest" && <div className="grid gap-4 md:grid-cols-2"><Field label="จำนวนแผนที่ในแผนเรื่อง" htmlFor="quest-map-count"><SelectField id="quest-map-count" value={questMapCount} onChange={setQuestMapCount}><option value="100">100 แผนที่</option><option value="10">10 แผนที่สำหรับตรวจบทแรก</option><option value="3">3 แผนที่สำหรับตรวจ gate</option></SelectField></Field><Field label="seed เส้นเรื่อง" htmlFor="quest-seed"><Input id="quest-seed" value={questSeed} onChange={event => setQuestSeed(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3 text-xs leading-relaxed text-amber-100/70 md:col-span-2">แผนที่ 1 คือ Obsidian Frontier ที่เล่นได้ ส่วนแผนที่ 2–100 เป็น planned data และจะไม่ถูก import, cache หรือเปิดให้เลือกใน player runtime จนกว่าจะมีระบบปลดล็อกและ asset/runtime acceptance แยกต่างหาก</div></div>}
+            {domain === "profiler" && <div className="space-y-4"><div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.04] p-3 text-xs leading-relaxed text-cyan-100/80">วางค่าจาก QA snapshot หนึ่ง window เพื่ออ่านคำแนะนำเชิงนโยบายเท่านั้น ช่องนี้ไม่เชื่อม player HUD, ไม่บันทึก save และไม่ส่ง snapshot เข้า network อัตโนมัติ</div><div className="grid gap-4 md:grid-cols-3"><Field label="tier ที่ snapshot ใช้" htmlFor="profiler-tier"><SelectField id="profiler-tier" value={profilerTier} onChange={setProfilerTier}><option value="low">ประหยัดอุปกรณ์</option><option value="balanced">สมดุล</option><option value="high">คุณภาพสูง</option></SelectField></Field><Field label="effective target FPS" htmlFor="profiler-target-fps"><Input id="profiler-target-fps" value={profilerTargetFps} onChange={event => setProfilerTargetFps(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="view distance (blocks)" htmlFor="profiler-view-distance"><Input id="profiler-view-distance" value={profilerViewDistance} onChange={event => setProfilerViewDistance(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="sample window (ms)" htmlFor="profiler-window"><Input id="profiler-window" value={profilerWindowMs} onChange={event => setProfilerWindowMs(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="rendered frames" htmlFor="profiler-rendered"><Input id="profiler-rendered" value={profilerRenderedFrames} onChange={event => setProfilerRenderedFrames(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="throttled callbacks" htmlFor="profiler-throttled"><Input id="profiler-throttled" value={profilerThrottledFrames} onChange={event => setProfilerThrottledFrames(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="average frame (ms) · ว่างได้" htmlFor="profiler-average"><Input id="profiler-average" value={profilerAverageFrameMs} onChange={event => setProfilerAverageFrameMs(event.target.value)} inputMode="decimal" className="border-white/10 bg-white/[0.04]" /></Field><Field label="p95 frame (ms) · ว่างได้" htmlFor="profiler-p95"><Input id="profiler-p95" value={profilerP95FrameMs} onChange={event => setProfilerP95FrameMs(event.target.value)} inputMode="decimal" className="border-white/10 bg-white/[0.04]" /></Field><Field label="worst frame (ms) · ว่างได้" htmlFor="profiler-worst"><Input id="profiler-worst" value={profilerWorstFrameMs} onChange={event => setProfilerWorstFrameMs(event.target.value)} inputMode="decimal" className="border-white/10 bg-white/[0.04]" /></Field><Field label="total meshes" htmlFor="profiler-total-meshes"><Input id="profiler-total-meshes" value={profilerTotalMeshes} onChange={event => setProfilerTotalMeshes(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="active meshes" htmlFor="profiler-active-meshes"><Input id="profiler-active-meshes" value={profilerActiveMeshes} onChange={event => setProfilerActiveMeshes(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field></div></div>}
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/10 bg-cyan-300/[0.04] p-3"><p className="flex items-center gap-2 text-xs text-slate-300"><Sparkles size={15} className="text-cyan-300" /> {status}</p><Button onClick={runPreview} disabled={busy} className="gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"><ShieldCheck size={15} /> {busy ? "กำลังตรวจ…" : "ทดลอง preview"}</Button></div>
             {lastError && <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-300/20 bg-red-300/[0.05] p-3 text-xs text-red-200" role="alert"><TriangleAlert size={15} className="mt-0.5 shrink-0" /> {lastError.message}</div>}
           </CardContent></Card>

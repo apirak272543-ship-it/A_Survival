@@ -38,6 +38,7 @@ import {
 } from "./generators/texturePackBuilder";
 import { adminProcedure, router } from "./_core/trpc";
 import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
+import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -117,6 +118,20 @@ const itemPreviewSchema = z.object({
 });
 
 type ItemPreviewRequest = z.infer<typeof itemPreviewSchema>;
+
+export const runtimeProfilerSnapshotSchema = z.object({
+  tier: z.enum(["low", "balanced", "high"]),
+  effectiveTargetFps: z.number().finite().min(1).max(240),
+  viewDistanceBlocks: z.number().finite().min(0).max(500),
+  sampleWindowMs: z.number().finite().min(0).max(60_000),
+  renderedFrames: z.number().int().min(0).max(100_000),
+  throttledFrames: z.number().int().min(0).max(100_000),
+  averageFrameMs: z.number().finite().min(0).max(60_000).nullable(),
+  p95FrameMs: z.number().finite().min(0).max(60_000).nullable(),
+  worstFrameMs: z.number().finite().min(0).max(60_000).nullable(),
+  totalMeshes: z.number().int().min(0).max(1_000_000),
+  activeMeshes: z.number().int().min(0).max(1_000_000),
+});
 
 function buildNoCodeItemInput(input: ItemPreviewRequest) {
   const stats: ItemStats = {
@@ -341,6 +356,12 @@ export const creatorRouter = router({
       const generated = generateUniversalItem({ item: buildNoCodeItemInput(input), maxPowerBudget: input.maxPowerBudget });
       return { previewOnly: true as const, output: generated, validation: { valid: true as const, issues: [] as string[] } };
     }),
+  }),
+  profiler: router({
+    preview: adminProcedure.input(runtimeProfilerSnapshotSchema).mutation(({ input }) => ({
+      ...analyzeRuntimePerformanceSnapshot(input),
+      source: "creator-snapshot" as const,
+    })),
   }),
   weapon: router({
     preview: adminProcedure.input(z.object({
