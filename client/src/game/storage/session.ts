@@ -6,6 +6,7 @@ import { DEFAULT_HOTBAR_BINDINGS, type HotbarBindings } from "@/game/systems/ite
 import { PLAYER_INVENTORY_SLOTS } from "@/game/systems/inventorySystem";
 import { DEFAULT_CAMERA_MODE, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
 import { normalizeTargetFps, normalizeViewDistanceBlocks, type TargetFps, type ViewDistanceBlocks } from "@/game/systems/renderDistance";
+import { createDefaultStoryProgressState, normalizeStoryProgressState, type StoryProgressState } from "@/game/systems/storyProgressionSystem";
 
 const SESSION_KEY = "arcane-frontier.session.v1";
 const SETTINGS_KEY = "arcane-frontier.settings.v1";
@@ -39,6 +40,7 @@ export type LocalGameSession = {
   home: HomeState;
   pendingActions: HomeAction[];
   discoveredItemIds: string[];
+  storyProgress: StoryProgressState;
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -100,6 +102,7 @@ export function createSession(playerId: string): LocalGameSession {
       petEquipment: {},
     },
     pendingActions: [],
+    storyProgress: createDefaultStoryProgressState(),
   };
 }
 
@@ -149,6 +152,7 @@ export function normalizeSession(candidate: Partial<LocalGameSession>): LocalGam
       petEquipment: home.petEquipment ?? {},
     },
     pendingActions: candidate.pendingActions ?? [],
+    storyProgress: normalizeStoryProgressState(candidate.storyProgress),
   };
 }
 
