@@ -7,6 +7,7 @@ import { PLAYER_INVENTORY_SLOTS } from "@/game/systems/inventorySystem";
 import { DEFAULT_CAMERA_MODE, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
 import { normalizeTargetFps, normalizeViewDistanceBlocks, type TargetFps, type ViewDistanceBlocks } from "@/game/systems/renderDistance";
 import { createDefaultStoryProgressState, normalizeStoryProgressState, type StoryProgressState } from "@/game/systems/storyProgressionSystem";
+import { normalizePerformanceTier, type PerformanceTier } from "@/game/systems/performanceProfile";
 
 const SESSION_KEY = "arcane-frontier.session.v1";
 const SETTINGS_KEY = "arcane-frontier.settings.v1";
@@ -14,6 +15,7 @@ const SETTINGS_KEY = "arcane-frontier.settings.v1";
 export type GameSettings = {
   language: "th" | "en";
   quality: "low" | "medium" | "high";
+  performanceTier: PerformanceTier;
   effectIntensity: "low" | "medium" | "high";
   musicVolume: number;
   sfxVolume: number;
@@ -46,6 +48,7 @@ export type LocalGameSession = {
 export const DEFAULT_SETTINGS: GameSettings = {
   language: "th",
   quality: "high",
+  performanceTier: "balanced",
   effectIntensity: "high",
   musicVolume: 70,
   sfxVolume: 80,
@@ -194,13 +197,14 @@ export function getSettings(): GameSettings {
     if (!raw) return DEFAULT_SETTINGS;
     const candidate = JSON.parse(raw) as Partial<GameSettings>;
     const language = candidate.language === "en" ? "en" : "th";
+    const performanceTier = normalizePerformanceTier(candidate.performanceTier, DEFAULT_SETTINGS.performanceTier);
     const renderDistance = candidate.renderDistance === "near" || candidate.renderDistance === "far" ? candidate.renderDistance : "balanced";
     const viewDistanceBlocks = normalizeViewDistanceBlocks(candidate.viewDistanceBlocks, DEFAULT_SETTINGS.viewDistanceBlocks);
     const targetFps = normalizeTargetFps(candidate.targetFps, DEFAULT_SETTINGS.targetFps);
     const cameraDefaultMode = normalizeCameraMode(candidate.cameraDefaultMode, DEFAULT_SETTINGS.cameraDefaultMode);
     const touchScale = typeof candidate.touchScale === "number" ? Math.max(0.8, Math.min(1.25, candidate.touchScale)) : DEFAULT_SETTINGS.touchScale;
     const touchOpacity = typeof candidate.touchOpacity === "number" ? Math.max(0.45, Math.min(1, candidate.touchOpacity)) : DEFAULT_SETTINGS.touchOpacity;
-    return { ...DEFAULT_SETTINGS, ...candidate, language, renderDistance, viewDistanceBlocks, targetFps, cameraDefaultMode, touchScale, touchOpacity };
+    return { ...DEFAULT_SETTINGS, ...candidate, language, performanceTier, renderDistance, viewDistanceBlocks, targetFps, cameraDefaultMode, touchScale, touchOpacity };
   } catch {
     return DEFAULT_SETTINGS;
   }

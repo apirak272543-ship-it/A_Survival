@@ -9,10 +9,12 @@ import { setActiveAssetPackManifest } from "@/game/assets/pixelPack";
 import type { BlockToolTag, WorldBlock } from "@/game/data/blockModules";
 import type { ItemInstance } from "@/game/data/catalog";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
+import { getPerformanceBudget, type PerformanceTier } from "@/game/systems/performanceProfile";
 
 type GameCanvasProps = {
   mapId: string;
   reducedMotion?: boolean;
+  performanceTier?: PerformanceTier;
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onReward?: (reward: GameReward) => void;
   onBlockAction?: BlockActionHandler;
@@ -40,11 +42,16 @@ type GameCanvasProps = {
 };
 
 export default function GameCanvas(props: GameCanvasProps) {
-  const { mapId, reducedMotion, renderDistance, cameraMode, viewDistanceBlocks } = props;
+  const { mapId, reducedMotion, performanceTier, renderDistance, cameraMode, viewDistanceBlocks } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const performanceBudgetRef = useRef(getPerformanceBudget(performanceTier, viewDistanceBlocks, props.targetFps));
   const startedRef = useRef(false);
   const latestPropsRef = useRef<GameCanvasProps>(props);
   latestPropsRef.current = props;
+
+  useEffect(() => {
+    performanceBudgetRef.current = getPerformanceBudget(performanceTier, viewDistanceBlocks, props.targetFps);
+  }, [performanceTier, viewDistanceBlocks, props.targetFps]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,6 +87,7 @@ export default function GameCanvas(props: GameCanvasProps) {
         get worldFarmState() { return latestPropsRef.current.worldFarmState; },
         get companion() { return latestPropsRef.current.companion; },
         get reducedMotion() { return latestPropsRef.current.reducedMotion; },
+        get performanceTier() { return latestPropsRef.current.performanceTier; },
         get renderDistance() { return latestPropsRef.current.renderDistance; },
         get viewDistanceBlocks() { return latestPropsRef.current.viewDistanceBlocks; },
         get targetFps() { return latestPropsRef.current.targetFps; },
@@ -103,7 +111,7 @@ export default function GameCanvas(props: GameCanvasProps) {
       let lastRenderedAt = -Infinity;
       engine.runRenderLoop(() => {
         const now = performance.now();
-        const targetFps = Math.max(5, Math.min(120, Number(latestPropsRef.current.targetFps ?? 60)));
+        const targetFps = performanceBudgetRef.current.targetFps;
         if (now - lastRenderedAt < 1000 / targetFps) return;
         lastRenderedAt = now;
         game.scene.render();

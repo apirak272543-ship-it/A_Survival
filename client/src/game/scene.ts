@@ -36,7 +36,8 @@ import { loadPackModel } from "@/game/assets/glbPack";
 import { canSpendStamina, createStaminaState, regenerateStamina, spendStamina, staminaPercent, type StaminaState } from "@/game/systems/staminaSystem";
 import { chunkKey, getStreamingChunkKeys } from "@/game/systems/visibleRegionSystem";
 import { updatePixelTerrainStream } from "@/game/assets/pixelPack";
-import { getBlockRenderDistanceConfig, getRenderDistanceConfig, normalizeViewDistanceBlocks, type RenderDistancePreset, type ViewDistanceBlocks } from "@/game/systems/renderDistance";
+import { getBlockRenderDistanceConfig, getRenderDistanceConfig, normalizeViewDistanceBlocks, type RenderDistancePreset, type TargetFps, type ViewDistanceBlocks } from "@/game/systems/renderDistance";
+import { getPerformanceBudget, type PerformanceBudget, type PerformanceTier } from "@/game/systems/performanceProfile";
 import { cameraRelativeMovement, getCameraModePose, normalizeCameraMode, type CameraMode } from "@/game/systems/cameraModes";
 import { sampleObsidianTerrainHeight } from "@/game/systems/terrainHeight";
 import { getBlockDefinition, type BlockToolTag, type WorldBlock } from "@/game/data/blockModules";
@@ -76,6 +77,11 @@ export type GameSnapshot = {
   worldStorageId?: string;
   worldStorageSlots?: number;
   worldStorageCapacity?: number;
+  performanceTier?: PerformanceTier;
+  mobSimulationRadiusMeters?: number;
+  animationRadiusMeters?: number;
+  physicsRadiusMeters?: number;
+  targetFpsBudget?: number;
 };
 
 export type GameReward = {
@@ -143,6 +149,7 @@ type GameOptions = {
   renderDistance?: RenderDistancePreset;
   viewDistanceBlocks?: ViewDistanceBlocks | number;
   targetFps?: number;
+  performanceTier?: PerformanceTier;
   initialWorldPlants?: Record<string, WorldPlantState>;
   initialWorldStorageById?: Record<string, ItemInstance[]>;
   cameraMode?: CameraMode;
@@ -209,7 +216,8 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const visualProfile = getBiomeVisualProfile(options.mapId);
   const worldMetersPerUnit = 1;
   const worldRadius = Math.max(500, Math.round(mapDefinition?.radiusMeters ?? 500));
-  let activeViewDistanceBlocks: ViewDistanceBlocks = normalizeViewDistanceBlocks(options.viewDistanceBlocks, 20);
+  let activePerformanceBudget: PerformanceBudget & { viewDistanceBlocks: ViewDistanceBlocks; targetFps: TargetFps } = getPerformanceBudget(options.performanceTier, options.viewDistanceBlocks, options.targetFps);
+  let activeViewDistanceBlocks: ViewDistanceBlocks = activePerformanceBudget.viewDistanceBlocks;
   let renderDistance = getRenderDistanceConfig(options.renderDistance, activeViewDistanceBlocks, worldRadius);
   const overheadCamera = new ArcRotateCamera("arcane-overhead-camera", -Math.PI / 4, Math.PI / 3.65, 26, new Vector3(0, 0.5, 0), scene);
   const sideCamera = new ArcRotateCamera("arcane-side-camera", -Math.PI / 2.6, Math.PI / 2.75, 15, new Vector3(0, 1.5, 0), scene);
@@ -416,14 +424,16 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
   const updateTerrainVisibility = (position: Vector3, now: number) => {
     if (now - lastTerrainVisibilityUpdate < 180) return;
     lastTerrainVisibilityUpdate = now;
-    const activeRenderDistance = getRenderDistanceConfig(options.renderDistance, options.viewDistanceBlocks, worldRadius);
+    activePerformanceBudget = getPerformanceBudget(options.performanceTier, options.viewDistanceBlocks ?? activeViewDistanceBlocks, options.targetFps);
+    activeViewDistanceBlocks = activePerformanceBudget.viewDistanceBlocks;
+    const activeRenderDistance = getRenderDistanceConfig(options.renderDistance, activePerformanceBudget.viewDistanceBlocks, worldRadius);
     const visible = getStreamingChunkKeys({ positionX: position.x, positionZ: position.z, chunkWorldSize: 16, visibleRadiusMeters: activeRenderDistance.visibleRadiusMeters, mapRadiusMeters: worldRadius });
     updatePixelTerrainStream(ground, { x: position.x, z: position.z }, worldRadius);
     terrainChunks.forEach(chunk => {
       const chunkInfo = chunk.metadata?.chunk as { x?: number; z?: number } | undefined;
       chunk.setEnabled(Boolean(chunk.metadata?.inMap && chunkInfo && visible.has(chunkKey(chunkInfo.x ?? 0, chunkInfo.z ?? 0))));
     });
-    ground.metadata = { ...ground.metadata, visibleChunkCount: visible.size, totalChunkCount: terrainChunks.length, streamRadiusMeters: activeRenderDistance.visibleRadiusMeters, prefetchRadiusMeters: activeRenderDistance.prefetchRadiusMeters, renderDistancePreset: activeRenderDistance.preset, viewDistanceBlocks: activeRenderDistance.visibleRadiusBlocks ?? activeRenderDistance.visibleRadiusMeters };
+    ground.metadata = { ...ground.metadata, visibleChunkCount: visible.size, totalChunkCount: terrainChunks.length, streamRadiusMeters: activeRenderDistance.visibleRadiusMeters, prefetchRadiusMeters: activeRenderDistance.prefetchRadiusMeters, renderDistancePreset: activeRenderDistance.preset, viewDistanceBlocks: activeRenderDistance.visibleRadiusBlocks ?? activeRenderDistance.visibleRadiusMeters, performanceTier: activePerformanceBudget.tier, targetFpsBudget: activePerformanceBudget.targetFps, mobSimulationRadiusMeters: activePerformanceBudget.mobSimulationRadiusMeters, animationRadiusMeters: activePerformanceBudget.animationRadiusMeters, physicsRadiusMeters: activePerformanceBudget.physicsRadiusMeters, maxParticleCount: activePerformanceBudget.maxParticleCount, shadowQuality: activePerformanceBudget.shadowQuality, lodPolicy: activePerformanceBudget.lodPolicy };
   };
   if (!isMap001) {
     for (let i = 0; i < 12; i += 1) {
@@ -1131,8 +1141,9 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     if (control.type === "move") move = { x: control.x, y: control.y };
     if (control.type === "set-camera-mode") applyCameraMode(control.mode);
     if (control.type === "set-view-distance") {
-      activeViewDistanceBlocks = control.blocks;
-      renderDistance = getRenderDistanceConfig(effectiveRenderDistancePreset(options.renderDistance, activeViewDistanceBlocks));
+      activePerformanceBudget = getPerformanceBudget(options.performanceTier, control.blocks, options.targetFps);
+      activeViewDistanceBlocks = activePerformanceBudget.viewDistanceBlocks;
+      renderDistance = getRenderDistanceConfig(effectiveRenderDistancePreset(options.renderDistance, activeViewDistanceBlocks), activeViewDistanceBlocks, worldRadius);
       updateTerrainVisibility(player.position, performance.now());
     }
     if (control.type === "attack") {
@@ -1281,7 +1292,10 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     if (options.paused) return;
     if (isMap001) {
       const now = Date.now();
-      for (const plant of Array.from(worldPlantStates.values())) updateWorldPlantMesh(plant, now);
+      for (const plant of Array.from(worldPlantStates.values())) {
+        const distance = Vector3.Distance(player.position, new Vector3(plant.x + 0.5, plant.y + 0.5, plant.z + 0.5));
+        if (distance <= activePerformanceBudget.animationRadiusMeters) updateWorldPlantMesh(plant, now);
+      }
     }
     const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
     const keyboardX = (keyState.has("d") ? 1 : 0) - (keyState.has("a") ? 1 : 0);
@@ -1345,7 +1359,17 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
     const activeRepellentAuras = isMap001 ? getActiveRepellentAuras(Object.fromEntries(worldPlantStates), Date.now()) : [];
     let repelledEnemyCount = 0;
     enemies.forEach((enemy, index) => {
-      if (!enemy.metadata?.alive) return;
+      if (!enemy.metadata?.alive || enemy.metadata?.visibilityLocked) return;
+      const distanceToPlayer = Vector3.Distance(player.position, enemy.position);
+      if (distanceToPlayer > activePerformanceBudget.mobSimulationRadiusMeters) {
+        enemy.setEnabled(false);
+        enemy.metadata = { ...enemy.metadata, sleeping: true };
+        return;
+      }
+      if (enemy.metadata?.sleeping) {
+        enemy.setEnabled(true);
+        enemy.metadata = { ...enemy.metadata, sleeping: false };
+      }
       const repellent = isMap001 ? getRepellentInfluence({ x: enemy.position.x, z: enemy.position.z }, activeRepellentAuras) : { repelled: false as const };
       if (repellent.repelled) {
         const away = enemy.position.subtract(new Vector3(repellent.aura.x, enemy.position.y, repellent.aura.z));
@@ -1699,6 +1723,11 @@ export async function createGameScene(engine: Engine, canvas: HTMLCanvasElement,
         aiNpcAvailable: isMap001 && Vector3.Distance(player.position, specialAiNpc.position) <= 8,
         cameraMode: activeCameraMode,
         viewDistanceBlocks: Number(ground.metadata?.viewDistanceBlocks ?? renderDistance.visibleRadiusBlocks ?? renderDistance.visibleRadiusMeters),
+        performanceTier: activePerformanceBudget.tier,
+        mobSimulationRadiusMeters: activePerformanceBudget.mobSimulationRadiusMeters,
+        animationRadiusMeters: activePerformanceBudget.animationRadiusMeters,
+        physicsRadiusMeters: activePerformanceBudget.physicsRadiusMeters,
+        targetFpsBudget: activePerformanceBudget.targetFps,
         farmPlots: isMap001 ? OBSIDIAN_FARM_PLOTS.length : 0,
         plantedCrops: isMap001 ? worldPlantStates.size : 0,
         matureCrops: isMap001 ? countMatureWorldPlants(Object.fromEntries(worldPlantStates), Date.now()) : 0,
