@@ -2,6 +2,7 @@ const SHELL_CACHE = "arcane-frontier-static-v2";
 const MAP_CACHE = "arcane-frontier-map-modules-v3";
 const ASSET_CACHE = "arcane-frontier-assets-v2";
 const RUNTIME_CACHE = "arcane-frontier-runtime-v2";
+const RUNTIME_MAP_IDS = new Set(["obsidian-frontier"]);
 const SHELL = ["/", "/manifest.webmanifest"];
 const PACK_MANIFESTS = ["/assets/packs/arcane-frontier-voxel-pixel/manifest.json"];
 const ACTIVE_CACHES = [SHELL_CACHE, MAP_CACHE, ASSET_CACHE, RUNTIME_CACHE];
@@ -58,6 +59,16 @@ async function cacheFirstWithRevalidate(request, cacheName) {
   return hit || refresh;
 }
 
+function isRuntimeMapModulePath(pathname) {
+  const match = new RegExp("^/offline-map-modules/([^/]+)\\.json$").exec(pathname);
+  if (!match) return false;
+  try {
+    return RUNTIME_MAP_IDS.has(decodeURIComponent(match[1]));
+  } catch {
+    return false;
+  }
+}
+
 async function networkFirstNavigation(request) {
   try {
     const response = await fetch(request);
@@ -76,7 +87,7 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   if (url.pathname.startsWith("/offline-map-modules/")) {
-    event.respondWith(cacheFirst(request, MAP_CACHE));
+    if (isRuntimeMapModulePath(url.pathname)) event.respondWith(cacheFirst(request, MAP_CACHE));
     return;
   }
   if (request.mode === "navigate") {
