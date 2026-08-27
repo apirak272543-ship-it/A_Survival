@@ -14,6 +14,7 @@ export type CreatorCompositionTextureExport = {
   compositionHash: string;
   packSha256: string;
   manifestSha256: string;
+  bundleSha256: string;
   manifest: TexturePackOutput["manifest"];
   manifestFile: {
     fileName: "manifest.json";

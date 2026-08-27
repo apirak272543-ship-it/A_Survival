@@ -88,6 +88,16 @@ describe("creator texture router", () => {
     expect(result.assets[0]?.provenanceRef).toContain("composition-sha256=");
   });
 
+  it("validates composition PNG, manifest and ZIP bytes only through a separate admin action", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.composition.byteCompatibility({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
+
+    expect(result).toMatchObject({ schemaVersion: "a-survival.creator-composition-texture-compatibility.v1", decision: "compatible", previewOnly: true, runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false } });
+    expect(result.checkedFiles).toContain("manifest.json");
+    expect(result.checkedFiles.some(file => file.endsWith(".png"))).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
   it("keeps generator writes out of regular player users", async () => {
     const caller = appRouter.createCaller(createContext("user"));
 
@@ -95,6 +105,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.texture.register(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.exportPreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.byteCompatibility({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {

@@ -51,3 +51,7 @@ After adding deterministic ZIP assembly and the manual `ดาวน์โหล
 ## Final ZIP bundle boundary check
 
 After the archive size/path guards and final ZIP download UI were added, a fresh player landing check still displayed only the normal player surface. No ZIP, manifest, PNG download, texture, skin, composition, registry, review or creator controls appeared. This remains player boundary evidence only; no authenticated creator package download execution is claimed.
+
+## Texture byte compatibility boundary check
+
+After adding the admin-only byte compatibility route/result for manifest, PNG and ZIP verification, a fresh player landing check still displayed only normal player controls. No compatibility result, ZIP/manifest/PNG download, texture, skin, composition, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator compatibility execution is claimed.

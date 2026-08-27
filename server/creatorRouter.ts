@@ -44,6 +44,7 @@ import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtif
 import { buildCreatorComposition } from "./creatorCompositionBuilder";
 import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter";
 import { buildCreatorCompositionTextureExport } from "./creatorCompositionTextureExport";
+import { validateCreatorCompositionTextureExport } from "./creatorCompositionTextureCompatibility";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -307,6 +308,13 @@ function buildGeneratedTextureResponse(input: TexturePackRequest, seed: string) 
   return { artifact, preview: registry.preview(artifact) };
 }
 
+function buildCompositionTextureExport(input: z.infer<typeof creatorCompositionTexturePreviewSchema>) {
+  const composition = buildCreatorComposition(input);
+  const textureInput = buildCompositionTextureInput(composition, { source: input.source, provenanceRef: input.provenanceRef, textureSampling: input.textureSampling });
+  const output = buildTexturePack(textureInput);
+  return buildCreatorCompositionTextureExport({ output, compositionHash: composition.registryMetadata.contentSha256 });
+}
+
 /**
  * Creator routes deliberately use adminProcedure. The current user model has
  * only user/admin roles; until a creator-specific role exists, generator
@@ -421,12 +429,8 @@ export const creatorRouter = router({
         reviewRequired: true as const,
       };
     }),
-    exportPreview: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => {
-      const composition = buildCreatorComposition(input);
-      const textureInput = buildCompositionTextureInput(composition, { source: input.source, provenanceRef: input.provenanceRef, textureSampling: input.textureSampling });
-      const output = buildTexturePack(textureInput);
-      return buildCreatorCompositionTextureExport({ output, compositionHash: composition.registryMetadata.contentSha256 });
-    }),
+    exportPreview: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => buildCompositionTextureExport(input)),
+    byteCompatibility: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => validateCreatorCompositionTextureExport(buildCompositionTextureExport(input))),
   }),
   artifact: router({
     preview: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(({ input }) => ({ previewOnly: true as const, reviewStatus: "draft" as const, ...buildCreatorDomainArtifactMetadata(input) })),
