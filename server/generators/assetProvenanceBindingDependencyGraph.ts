@@ -62,7 +62,10 @@ export type AssetProvenanceBindingReferenceType =
   | "asset-kind"
   | "asset-provenance"
   | "pack-integrity"
-  | "durable-registry";
+  | "durable-registry"
+  | "fallback-binding"
+  | "fallback-kind"
+  | "fallback-cycle";
 
 export type AssetProvenanceBindingReference = {
   sourceKey: string;
@@ -85,6 +88,17 @@ export type AssetProvenanceBindingRecord = {
   provenanceAssetId?: string;
   provenanceStatus: AssetCredit["status"] | "missing";
   status: BindingStatus;
+};
+
+type FallbackAuditStatus = "terminal" | "chain-valid" | "missing-target" | "kind-mismatch" | "cycle";
+
+export type AssetProvenanceFallbackRecord = {
+  assetId: string;
+  fallbackAssetId?: string;
+  fallbackPath: string[];
+  terminalAssetId?: string;
+  status: FallbackAuditStatus;
+  depth: number;
 };
 
 export type AssetProvenanceBindingDependencyGraphInput = {
@@ -138,9 +152,16 @@ export type AssetProvenanceBindingDependencyGraphOutput = {
     logicalAssetIds: string[];
     verifiedAssetIds: string[];
     blockedAssetIds: string[];
+    fallbackCount: number;
+    fallbackVerifiedCount: number;
+    fallbackBlockedCount: number;
+    fallbackMissingTargetCount: number;
+    fallbackKindMismatchCount: number;
+    fallbackCycleCount: number;
     unresolvedReferenceCount: number;
     unresolvedReferenceTypes: Record<AssetProvenanceBindingReferenceType, number>;
   };
+  fallbacks: AssetProvenanceFallbackRecord[];
   unresolvedReferences: AssetProvenanceBindingReference[];
   nodes: DependencyGraphNode[];
   graph: DependencyGraphValidation;
@@ -205,17 +226,63 @@ function packIntegrityMatches(manifest: RuntimeAssetPackManifest, fileStates: Re
   return Boolean(manifest.packSha256 && manifest.packSha256.toLowerCase() === orderedEntryDigestHash && Object.entries(manifest.entries).every(([assetId, entry]) => fileHashMatches(entry, fileStates[assetId])));
 }
 
+function buildRuntimeNode(manifest: RuntimeAssetPackManifest, assetId: string, entry: RuntimeAssetEntry, fileState: RuntimeAssetFileState | undefined, rulesVersion: string, packNode: DependencyGraphNode): DependencyGraphNode {
+  return {
+    key: `asset:${assetId}`,
+    kind: runtimeEntryKind(entry.kind),
+    generatorId: "asset.pack.manifest",
+    generatorVersion: ASSET_PROVENANCE_BINDING_GENERATOR_VERSION,
+    schemaVersion: "a-survival.asset-pack-entry.v1",
+    seed: `${manifest.id}:${assetId}`,
+    rulesVersion,
+    contentHash: hashStableJson({ assetId, entry, fileState } as never),
+    dependencies: [dependencyFor(packNode)],
+  };
+}
+
 function provenanceStatus(credit: AssetCredit | null): AssetCredit["status"] | "missing" {
   return credit?.status ?? "missing";
 }
 
 function unresolvedReferenceTypes(unresolvedReferences: AssetProvenanceBindingReference[]) {
-  const referenceTypes: AssetProvenanceBindingReferenceType[] = ["plant-binding", "item-binding", "asset-integrity", "asset-kind", "asset-provenance", "pack-integrity", "durable-registry"];
+  const referenceTypes: AssetProvenanceBindingReferenceType[] = ["plant-binding", "item-binding", "asset-integrity", "asset-kind", "asset-provenance", "pack-integrity", "durable-registry", "fallback-binding", "fallback-kind", "fallback-cycle"];
   return Object.fromEntries(referenceTypes.map(type => [type, unresolvedReferences.filter(reference => reference.referenceType === type).length])) as Record<AssetProvenanceBindingReferenceType, number>;
 }
 
 function pushUnresolved(unresolvedReferences: AssetProvenanceBindingReference[], sourceKey: string, referenceType: AssetProvenanceBindingReferenceType, referenceId: string, reason: string) {
   unresolvedReferences.push({ sourceKey, referenceType, referenceId, reason });
+}
+
+function dependencyForExpectedKind(target: DependencyGraphNode, expectedKind: GeneratorKind): GeneratorDependency {
+  return { key: target.key, kind: expectedKind, required: true, generatorId: target.generatorId, generatorVersion: target.generatorVersion, contentHash: target.contentHash };
+}
+
+function inspectFallbackChain(assetId: string, manifest: RuntimeAssetPackManifest): AssetProvenanceFallbackRecord {
+  const fallbackPath = [assetId];
+  const firstEntry = manifest.entries[assetId];
+  if (!firstEntry?.fallback || firstEntry.fallback === assetId) {
+    return { assetId, ...(firstEntry?.fallback ? { fallbackAssetId: firstEntry.fallback } : {}), fallbackPath, terminalAssetId: assetId, status: "terminal", depth: 0 };
+  }
+  let currentAssetId = assetId;
+  let currentEntry = firstEntry;
+  while (currentEntry.fallback) {
+    const nextAssetId = currentEntry.fallback;
+    if (fallbackPath.includes(nextAssetId)) {
+      return { assetId, fallbackAssetId: firstEntry.fallback, fallbackPath: [...fallbackPath, nextAssetId], status: "cycle", depth: fallbackPath.length - 1 };
+    }
+    fallbackPath.push(nextAssetId);
+    const nextEntry = manifest.entries[nextAssetId];
+    if (!nextEntry) {
+      return { assetId, fallbackAssetId: firstEntry.fallback, fallbackPath, status: "missing-target", depth: fallbackPath.length - 1 };
+    }
+    if (nextEntry.kind !== currentEntry.kind) {
+      return { assetId, fallbackAssetId: firstEntry.fallback, fallbackPath, terminalAssetId: nextAssetId, status: "kind-mismatch", depth: fallbackPath.length - 1 };
+    }
+    currentAssetId = nextAssetId;
+    currentEntry = nextEntry;
+    if (currentEntry.fallback === currentAssetId) return { assetId, fallbackAssetId: firstEntry.fallback, fallbackPath, terminalAssetId: currentAssetId, status: "chain-valid", depth: fallbackPath.length - 1 };
+  }
+  return { assetId, fallbackAssetId: firstEntry.fallback, fallbackPath, terminalAssetId: currentAssetId, status: fallbackPath.length > 1 ? "chain-valid" : "terminal", depth: fallbackPath.length - 1 };
 }
 
 function selectSamples(sources: AssetProvenanceBindingSources, input: AssetProvenanceBindingDependencyGraphInput) {
@@ -271,6 +338,40 @@ export function buildAssetProvenanceBindingDependencyGraphFromSources(input: Ass
     pushUnresolved(unresolvedReferences, packNode.key, "durable-registry", sources.manifest.id, "asset provenance has no durable registry snapshot binding");
   }
 
+  const runtimeNodes = new Map<string, DependencyGraphNode>();
+  const fallbackRecords = manifestEntryIds.map(assetId => inspectFallbackChain(assetId, sources.manifest));
+  const fallbackNodes: DependencyGraphNode[] = [];
+  for (const fallback of fallbackRecords) {
+    const firstEntry = sources.manifest.entries[fallback.assetId]!;
+    const fallbackNode: DependencyGraphNode = {
+      key: `fallback:${fallback.assetId}`,
+      kind: "texture",
+      generatorId: "asset.provenance.binding",
+      generatorVersion: ASSET_PROVENANCE_BINDING_GENERATOR_VERSION,
+      schemaVersion: ASSET_PROVENANCE_BINDING_SCHEMA_VERSION,
+      seed: input.seed,
+      rulesVersion,
+      contentHash: hashStableJson(fallback as never),
+      dependencies: [dependencyFor(packNode)],
+    };
+    if (fallback.status === "missing-target") {
+      const missingAssetId = fallback.fallbackPath[fallback.fallbackPath.length - 1]!;
+      fallbackNode.dependencies.push(missingDependency(`asset:${missingAssetId}`, runtimeEntryKind(firstEntry.kind)));
+      pushUnresolved(unresolvedReferences, fallbackNode.key, "fallback-binding", fallback.assetId, `fallback target ${missingAssetId} is not present in the active manifest`);
+    } else if (fallback.status === "kind-mismatch") {
+      const mismatchAssetId = fallback.fallbackPath[fallback.fallbackPath.length - 1]!;
+      const mismatchEntry = sources.manifest.entries[mismatchAssetId]!;
+      const mismatchNode = runtimeNodes.get(mismatchAssetId) ?? buildRuntimeNode(sources.manifest, mismatchAssetId, mismatchEntry, sources.fileStates[mismatchAssetId], rulesVersion, packNode);
+      runtimeNodes.set(mismatchAssetId, mismatchNode);
+      fallbackNode.dependencies.push(dependencyForExpectedKind(mismatchNode, runtimeEntryKind(firstEntry.kind)));
+      pushUnresolved(unresolvedReferences, fallbackNode.key, "fallback-kind", fallback.assetId, `fallback target ${mismatchAssetId} declares kind ${mismatchEntry.kind} but source declares ${firstEntry.kind}`);
+    } else if (fallback.status === "cycle") {
+      fallbackNode.dependencies.push(missingDependency(`fallback-cycle:${fallback.assetId}`, "other"));
+      pushUnresolved(unresolvedReferences, fallbackNode.key, "fallback-cycle", fallback.assetId, `fallback chain cycles through ${fallback.fallbackPath.join(" -> ")}`);
+    }
+    fallbackNodes.push(fallbackNode);
+  }
+
   const requestedBindings: Array<{ source: BindingSource; sourceId: string; assetId?: string }> = [];
   for (const plant of plants) {
     requestedBindings.push({ source: "plant", sourceId: plant.id, assetId: plant.assetId });
@@ -283,7 +384,6 @@ export function buildAssetProvenanceBindingDependencyGraphFromSources(input: Ass
     const key = `${binding.source}:${binding.sourceId}:${binding.assetId ?? ""}`;
     if (!uniqueBindings.has(key)) uniqueBindings.set(key, binding);
   }
-  const runtimeNodes = new Map<string, DependencyGraphNode>();
   const bindingNodes: DependencyGraphNode[] = [];
   const bindings: AssetProvenanceBindingRecord[] = [];
   for (const binding of Array.from(uniqueBindings.values())) {
@@ -324,17 +424,7 @@ export function buildAssetProvenanceBindingDependencyGraphFromSources(input: Ass
       dependencies: [dependencyFor(packNode)],
     };
     if (entry) {
-      const runtimeNode = runtimeNodes.get(assetId) ?? {
-        key: `asset:${assetId}`,
-        kind: runtimeEntryKind(entry.kind),
-        generatorId: "asset.pack.manifest",
-        generatorVersion: ASSET_PROVENANCE_BINDING_GENERATOR_VERSION,
-        schemaVersion: "a-survival.asset-pack-entry.v1",
-        seed: `${sources.manifest.id}:${assetId}`,
-        rulesVersion,
-        contentHash: hashStableJson({ assetId, entry, fileState } as never),
-        dependencies: [dependencyFor(packNode)],
-      } satisfies DependencyGraphNode;
+      const runtimeNode = runtimeNodes.get(assetId) ?? buildRuntimeNode(sources.manifest, assetId, entry, fileState, rulesVersion, packNode);
       runtimeNodes.set(assetId, runtimeNode);
       bindingNode.dependencies.push({ key: runtimeNode.key, kind: "texture", required: true, generatorId: runtimeNode.generatorId, generatorVersion: runtimeNode.generatorVersion, contentHash: runtimeNode.contentHash });
       if (entry.kind !== "texture") pushUnresolved(unresolvedReferences, sourceKey, "asset-kind", assetId, `binding requires texture but active manifest declares ${entry.kind}`);
@@ -383,13 +473,13 @@ export function buildAssetProvenanceBindingDependencyGraphFromSources(input: Ass
     seed: input.seed,
     rulesVersion,
     contentHash,
-    dependencies: bindingNodes.sort((left, right) => compareStrings(left.key, right.key)).map(dependencyFor),
+    dependencies: [...bindingNodes, ...fallbackNodes].sort((left, right) => compareStrings(left.key, right.key)).map(dependencyFor),
   };
   const directProvenanceNodes = uniqueAssetIds.filter(assetId => sources.directAssetCredits[assetId]).map(assetId => {
     const credit = sources.directAssetCredits[assetId]!;
     return { key: `provenance:entry:${assetId}`, kind: "other" as const, generatorId: "asset.provenance", generatorVersion: ASSET_PROVENANCE_BINDING_GENERATOR_VERSION, schemaVersion: "a-survival.asset-provenance.v1", seed: assetId, rulesVersion, contentHash: hashStableJson(credit as never), dependencies: [] } satisfies DependencyGraphNode;
   });
-  const nodes = [packNode, ...(provenanceNode ? [provenanceNode] : []), ...(durableRegistryNode ? [durableRegistryNode] : []), ...Array.from(runtimeNodes.values()), ...directProvenanceNodes, ...bindingNodes, rootNode].sort((left, right) => compareStrings(left.key, right.key));
+  const nodes = [packNode, ...(provenanceNode ? [provenanceNode] : []), ...(durableRegistryNode ? [durableRegistryNode] : []), ...Array.from(runtimeNodes.values()), ...directProvenanceNodes, ...bindingNodes, ...fallbackNodes, rootNode].sort((left, right) => compareStrings(left.key, right.key));
   const missingAssetBindingCount = sortedBindings.filter(binding => binding.status === "missing-asset").length;
   const integrityBlockedBindingCount = sortedBindings.filter(binding => binding.status === "integrity-blocked").length;
   const kindMismatchBindingCount = sortedBindings.filter(binding => binding.status === "kind-mismatch").length;
@@ -398,7 +488,8 @@ export function buildAssetProvenanceBindingDependencyGraphFromSources(input: Ass
     artifact: { generatorId: "asset.provenance.binding", generatorVersion: ASSET_PROVENANCE_BINDING_GENERATOR_VERSION, schemaVersion: ASSET_PROVENANCE_BINDING_SCHEMA_VERSION, seed: input.seed, rulesVersion, contentHash, plantCatalogHash, itemCatalogHash, manifestHash, plantCount: sources.plants.length, itemCount: sources.items.length, sampledPlantCount: plants.length, sampledItemCount: items.length, auditedBindingCount: sortedBindings.length },
     runtimePack: { id: sources.manifest.id, namespace: sources.manifest.namespace, version: sources.manifest.version, contentHash: manifestHash, entryCount: manifestEntryIds.length, packIntegrityVerified, provenanceVerified, durableRegistryVerified },
     bindings: sortedBindings,
-    summary: { plantCount: sources.plants.length, itemCount: sources.items.length, sampledPlantCount: plants.length, sampledItemCount: items.length, auditedBindingCount: sortedBindings.length, uniqueAssetCount: uniqueAssetIds.length, verifiedBindingCount: sortedBindings.filter(binding => binding.status === "verified").length, blockedBindingCount: sortedBindings.filter(binding => binding.status !== "verified").length, missingAssetBindingCount, integrityBlockedBindingCount, kindMismatchBindingCount, provenanceBlockedBindingCount, logicalAssetIds: uniqueAssetIds, verifiedAssetIds, blockedAssetIds, unresolvedReferenceCount: sortedUnresolvedReferences.length, unresolvedReferenceTypes: unresolvedReferenceTypes(sortedUnresolvedReferences) },
+    summary: { plantCount: sources.plants.length, itemCount: sources.items.length, sampledPlantCount: plants.length, sampledItemCount: items.length, auditedBindingCount: sortedBindings.length, uniqueAssetCount: uniqueAssetIds.length, verifiedBindingCount: sortedBindings.filter(binding => binding.status === "verified").length, blockedBindingCount: sortedBindings.filter(binding => binding.status !== "verified").length, missingAssetBindingCount, integrityBlockedBindingCount, kindMismatchBindingCount, provenanceBlockedBindingCount, logicalAssetIds: uniqueAssetIds, verifiedAssetIds, blockedAssetIds, fallbackCount: fallbackRecords.filter(fallback => Boolean(fallback.fallbackAssetId)).length, fallbackVerifiedCount: fallbackRecords.filter(fallback => fallback.status === "terminal" || fallback.status === "chain-valid").length, fallbackBlockedCount: fallbackRecords.filter(fallback => fallback.status !== "terminal" && fallback.status !== "chain-valid").length, fallbackMissingTargetCount: fallbackRecords.filter(fallback => fallback.status === "missing-target").length, fallbackKindMismatchCount: fallbackRecords.filter(fallback => fallback.status === "kind-mismatch").length, fallbackCycleCount: fallbackRecords.filter(fallback => fallback.status === "cycle").length, unresolvedReferenceCount: sortedUnresolvedReferences.length, unresolvedReferenceTypes: unresolvedReferenceTypes(sortedUnresolvedReferences) },
+    fallbacks: fallbackRecords.sort((left, right) => compareStrings(left.assetId, right.assetId)),
     unresolvedReferences: sortedUnresolvedReferences,
     nodes,
     graph: validateGeneratorDependencyGraph(nodes),

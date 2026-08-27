@@ -47,6 +47,11 @@ describe("asset provenance binding dependency graph", () => {
     expect(first.summary.unresolvedReferenceTypes["asset-provenance"]).toBe(0);
     expect(first.summary.unresolvedReferenceTypes["pack-integrity"]).toBe(0);
     expect(first.summary.unresolvedReferenceTypes["durable-registry"]).toBe(1);
+    expect(first.summary.fallbackCount).toBeGreaterThan(0);
+    expect(first.summary.fallbackBlockedCount).toBeGreaterThan(0);
+    expect(first.summary.fallbackCycleCount).toBeGreaterThan(0);
+    expect(first.summary.unresolvedReferenceTypes["fallback-cycle"]).toBeGreaterThan(0);
+    expect(first.fallbacks.some(fallback => fallback.assetId === "items.blade" && fallback.status === "cycle")).toBe(true);
     expect(first.graph.valid).toBe(false);
     expect(first.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "registry:asset-provenance:arcane-frontier-voxel-pixel")).toBe(true);
     expect(first.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
@@ -71,6 +76,56 @@ describe("asset provenance binding dependency graph", () => {
     expect(output.summary.kindMismatchBindingCount).toBeGreaterThan(0);
     expect(output.bindings.some(binding => binding.assetId === "items.seed" && binding.status === "kind-mismatch")).toBe(true);
     expect(output.graph.issues.some(issue => issue.code === "DEPENDENCY_KIND_MISMATCH" && issue.dependencyKey === "asset:items.seed")).toBe(true);
+  });
+
+  it("blocks a missing fallback target while retaining the primary manifest entry", () => {
+    const sources = readActiveAssetProvenanceBindingSources();
+    const manifest: RuntimeAssetPackManifest = {
+      ...sources.manifest,
+      entries: { ...sources.manifest.entries, "items.seed": { ...sources.manifest.entries["items.seed"]!, fallback: "missing.fallback" } },
+    };
+    const output = buildAssetProvenanceBindingDependencyGraphFromSources(
+      { seed: "asset-provenance-missing-fallback-seed", plantSampleCount: 1, itemSampleCount: 1 },
+      { ...sources, manifest },
+    );
+
+    expect(output.fallbacks.some(fallback => fallback.assetId === "items.seed" && fallback.status === "missing-target" && fallback.fallbackPath.at(-1) === "missing.fallback")).toBe(true);
+    expect(output.summary.fallbackMissingTargetCount).toBeGreaterThan(0);
+    expect(output.summary.unresolvedReferenceTypes["fallback-binding"]).toBeGreaterThan(0);
+    expect(output.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "asset:missing.fallback")).toBe(true);
+  });
+
+  it("blocks a fallback kind mismatch without deleting the primary binding", () => {
+    const sources = readActiveAssetProvenanceBindingSources();
+    const manifest: RuntimeAssetPackManifest = {
+      ...sources.manifest,
+      entries: { ...sources.manifest.entries, "items.seed": { ...sources.manifest.entries["items.seed"]!, fallback: "models.survivor" } },
+    };
+    const output = buildAssetProvenanceBindingDependencyGraphFromSources(
+      { seed: "asset-provenance-fallback-kind-seed", plantSampleCount: 1, itemSampleCount: 1 },
+      { ...sources, manifest },
+    );
+
+    expect(output.fallbacks.some(fallback => fallback.assetId === "items.seed" && fallback.status === "kind-mismatch")).toBe(true);
+    expect(output.summary.fallbackKindMismatchCount).toBeGreaterThan(0);
+    expect(output.summary.unresolvedReferenceTypes["fallback-kind"]).toBeGreaterThan(0);
+    expect(output.graph.issues.some(issue => issue.code === "DEPENDENCY_KIND_MISMATCH" && issue.dependencyKey === "asset:models.survivor")).toBe(true);
+  });
+
+  it("blocks an explicit fallback cycle and changes the artifact hash when fallback input changes", () => {
+    const sources = readActiveAssetProvenanceBindingSources();
+    const first = buildAssetProvenanceBindingDependencyGraphFromSources({ seed: "asset-provenance-fallback-hash-seed", plantSampleCount: 1, itemSampleCount: 1 }, sources);
+    const manifest: RuntimeAssetPackManifest = {
+      ...sources.manifest,
+      entries: { ...sources.manifest.entries, "items.seed": { ...sources.manifest.entries["items.seed"]!, fallback: "items.energy" }, "items.energy": { ...sources.manifest.entries["items.energy"]!, fallback: "items.seed" } },
+    };
+    const cycle = buildAssetProvenanceBindingDependencyGraphFromSources({ seed: "asset-provenance-fallback-hash-seed", plantSampleCount: 1, itemSampleCount: 1 }, { ...sources, manifest });
+
+    expect(cycle.fallbacks.some(fallback => fallback.assetId === "items.seed" && fallback.status === "cycle")).toBe(true);
+    expect(cycle.summary.fallbackCycleCount).toBeGreaterThan(0);
+    expect(cycle.summary.unresolvedReferenceTypes["fallback-cycle"]).toBeGreaterThan(0);
+    expect(cycle.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY" && issue.dependencyKey === "fallback-cycle:items.seed")).toBe(true);
+    expect(first.artifact.contentHash).not.toBe(cycle.artifact.contentHash);
   });
 
   it("blocks a changed local digest and pack integrity while retaining the manifest reference", () => {
