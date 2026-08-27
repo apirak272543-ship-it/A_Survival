@@ -86,3 +86,12 @@ Plant catalog generator เดิมยังคงเป็น runtime owner �
 `server/generators/questRewardDispatchDependencyGraph.ts` เป็น read-only preview adapter ที่ใช้ quest progression จริงและตรวจ candidate quest ของ MAP_001 โดยสร้าง dependency graph สำหรับ story completion, item/inventory transition และ persistence/ability owners ที่ยังขาด Graph preview ถูกเปิดผ่าน `creator.dependencyGraph.questRewardDispatchPreview` ซึ่งอยู่หลัง creator guard สำหรับ GM/admin/master และคืน `previewOnly: true` พร้อม runtime policy `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }` เท่านั้น
 
 การทดสอบ pure อยู่ที่ `server/questRewardDispatchSystem.test.ts` และ `server/questRewardDispatchDependencyGraph.test.ts`; authorization/preview contract อยู่ใน `server/creatorRouter.test.ts` โดยต้องยืนยัน item-only atomic success, capacity failure, missing definition, duplicate provenance, future-map rejection, missing reputation/ability owner, deterministic output, preview-only behavior และ `FORBIDDEN` สำหรับผู้ใช้ทั่วไปหรือ unauthenticated caller
+
+
+## Quest reward pending-action persistence boundary
+
+`client/src/game/systems/questRewardPendingAction.ts` แปลงเฉพาะผลลัพธ์ `accepted: true` จาก pure `dispatchQuestReward` ให้เป็น `HomeAction` ชนิด `quest-reward-dispatch` ที่ JSON-safe และมี deterministic action ID จาก quest/event IDs โดยตรวจ MAP_001 quest ID, ลำดับ quest, reward event/instance pairing, reward provenance, duplicate IDs, `createdAt` และ sequence base ก่อนสร้าง action
+
+`HomeAction` จึงมีชนิดข้อมูลสำหรับ pending reward action และ `server/syncActionValidation.ts` มี `isSafeQuestRewardDispatchPayload` เป็น shape/allow-list gate สำหรับ Obsidian Frontier, quest 1–20, event IDs ที่ผูกกับ MAP_001 และ bounded reward instance IDs/sequence base เท่านั้น Future map, malformed IDs, duplicate arrays และค่าที่เกินขอบเขตถูกปฏิเสธ
+
+ขอบเขตนี้ยัง **ไม่ใช่ persistence integration**: ไม่มี caller จาก `ArcaneFrontier`, ไม่มีการ append action เข้า player session, ไม่มี `queueSessionPendingActions`/IndexedDB write, ไม่มี server sync route สำหรับชนิดใหม่นี้ และไม่มี authoritative reward completion. Dependency preview แสดง pending-action contract เป็น node แต่ candidate ที่มี reputation/ability owner หายจะยังสร้าง action ไม่ได้และ graph ยังคง invalid. งานต่อไปต้องเพิ่ม caller/persistence/idempotency review แยก checkpoint โดยห้าม bypass event, reputation, ability หรือ future-map blockers
