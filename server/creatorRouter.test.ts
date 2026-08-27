@@ -80,6 +80,7 @@ describe("creator texture router", () => {
   it("exposes deterministic no-code previews without importing them into the player runtime", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const world = await caller.creator.world.preview({ seed: 9107, radius: 8, difficulty: "normal" });
+    const block = await caller.creator.block.preview({ blockId: "terrain.obsidian" });
     const structure = await caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "creator-structure", minPlacementScore: 0 });
     const item = await caller.creator.item.preview({
       id: "obsidian-field-tool",
@@ -98,6 +99,7 @@ describe("creator texture router", () => {
 
     expect(world).toMatchObject({ previewOnly: true, mapId: "obsidian-frontier", metadata: { playerFacingWorldGenerationUi: false } });
     expect(world.counts.blocks).toBeGreaterThan(0);
+    expect(block).toMatchObject({ previewOnly: true, runtimeImportAllowed: false, definition: { id: "terrain.obsidian", kind: "terrain", assetId: "terrain.obsidian" } });
     expect(structure.previewOnly).toBe(true);
     expect(structure.output.schemaVersion).toBe("a-survival.structure-generation.v1");
     expect(item.previewOnly).toBe(true);
@@ -112,6 +114,7 @@ describe("creator texture router", () => {
     const caller = appRouter.createCaller(createContext("user"));
 
     await expect(caller.creator.world.preview({ seed: 1, radius: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.block.preview({ blockId: "terrain.obsidian" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.item.preview({
       id: "blocked-tool",

@@ -9,6 +9,7 @@ import {
   DEFAULT_GENERATOR_MAP_ID,
   generateWorld,
 } from "../tools/world-generator";
+import { OBSIDIAN_BLOCKS, getBlockDefinition } from "../client/src/game/data/blockModules";
 import {
   generateStructurePlacements,
   STRUCTURE_BLUEPRINT_LIBRARY,
@@ -264,6 +265,13 @@ export const creatorRouter = router({
         counts: { blocks: world.blocks.length, terrain: world.terrain.length, water: world.water.length, caves: world.caves.length, resources: world.resources.length, structures: world.structures.length, spawnPoints: world.spawnPoints.length },
         sampleBlockIds: Array.from(new Set(world.blocks.slice(0, 24).map(block => block.blockId))),
       };
+    }),
+  }),
+  block: router({
+    preview: adminProcedure.input(z.object({ blockId: z.string().trim().min(3).max(96) })).mutation(({ input }) => {
+      const definition = getBlockDefinition(input.blockId);
+      if (!definition || !Object.prototype.hasOwnProperty.call(OBSIDIAN_BLOCKS, input.blockId)) throw new Error(`Unknown Obsidian block definition: ${input.blockId}`);
+      return { previewOnly: true as const, runtimeImportAllowed: false as const, definition };
     }),
   }),
   structure: router({

@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 
-type CreatorDomain = "world" | "structure" | "item" | "weapon";
+type CreatorDomain = "world" | "block" | "structure" | "item" | "weapon";
 
 type DomainCard = {
   id: CreatorDomain;
@@ -32,9 +32,20 @@ type DomainCard = {
 
 const DOMAIN_CARDS: DomainCard[] = [
   { id: "world", title: "ทดลองแผนที่", detail: "กำหนดเมล็ด ระยะ และระดับความยากของ Obsidian Frontier", icon: Map },
+  { id: "block", title: "ออกแบบบล็อก", detail: "เลือกกฎบล็อก การชน เครื่องมือ และของดรอป", icon: Blocks },
   { id: "structure", title: "ประกอบสิ่งปลูกสร้าง", detail: "เลือกแม่แบบและตรวจว่าพื้นที่วางได้หรือไม่", icon: Building2 },
   { id: "item", title: "ออกแบบไอเทม", detail: "กรอกคุณสมบัติเป็นภาษาคน แล้วให้ระบบตรวจสมดุล", icon: Hammer },
   { id: "weapon", title: "ทดลองอาวุธ", detail: "เลือกหมวด วัสดุจากระบบ และดูผลลัพธ์ตาม seed", icon: Swords },
+];
+
+const BLOCK_OPTIONS = [
+  { id: "terrain.obsidian", title: "หินออบซิเดียน", detail: "บล็อกพื้นฐาน แข็งเต็มช่อง" },
+  { id: "terrain.obsidian.sand", title: "ทรายออบซิเดียน", detail: "บล็อกตกเมื่อไม่มีตัวรองรับ" },
+  { id: "rock.obsidian.large", title: "ก้อนหินแผ่นใหญ่", detail: "สิ่งกีดขวางทรง slab" },
+  { id: "ore.aether.block", title: "แร่ Aether", detail: "แร่สำหรับเก็บเกี่ยว" },
+  { id: "flora.obsidian.sprout", title: "ต้นอ่อนผลึก", detail: "พืชทรงบางสำหรับเก็บเกี่ยว" },
+  { id: "flora.obsidian.thorn-cactus", title: "กระบองเพชรหนาม", detail: "พืชที่มีความเสียหาย" },
+  { id: "storage.obsidian.chest", title: "หีบออบซิเดียน", detail: "ที่เก็บของในโลก" },
 ];
 
 const STRUCTURE_OPTIONS = [
@@ -63,6 +74,7 @@ export default function CreatorDomainWorkbench() {
   const [worldSeed, setWorldSeed] = useState("9107");
   const [worldRadius, setWorldRadius] = useState("32");
   const [worldDifficulty, setWorldDifficulty] = useState("normal");
+  const [blockId, setBlockId] = useState(BLOCK_OPTIONS[0]!.id);
   const [structureId, setStructureId] = useState(STRUCTURE_OPTIONS[0]!.id);
   const [structureSeed, setStructureSeed] = useState("lantern-preview");
   const [structureX, setStructureX] = useState("0");
@@ -84,17 +96,22 @@ export default function CreatorDomainWorkbench() {
   const [weaponRarity, setWeaponRarity] = useState("common");
 
   const worldPreview = trpc.creator.world.preview.useMutation();
+  const blockPreview = trpc.creator.block.preview.useMutation();
   const structurePreview = trpc.creator.structure.preview.useMutation();
   const itemPreview = trpc.creator.item.preview.useMutation();
   const weaponPreview = trpc.creator.weapon.preview.useMutation();
 
-  const busy = worldPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending;
-  const lastError = worldPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error;
+  const busy = worldPreview.isPending || blockPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending;
+  const lastError = worldPreview.error ?? blockPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error;
 
   const runPreview = () => {
     setStatus("กำลังตรวจข้อมูลและเรียก generator ฝั่งผู้พัฒนา…");
     if (domain === "world") {
       worldPreview.mutate({ seed: Number(worldSeed), radius: Number(worldRadius), difficulty: worldDifficulty as "peaceful" | "normal" | "hard" }, { onSuccess: result => setStatus(`ทดลองแผนที่สำเร็จ · hash ${result.worldHash.slice(0, 12)}…`) });
+      return;
+    }
+    if (domain === "block") {
+      blockPreview.mutate({ blockId }, { onSuccess: result => setStatus(`ตรวจบล็อกสำเร็จ · ${result.definition.action} · ${result.definition.collisionShape}`) });
       return;
     }
     if (domain === "structure") {
@@ -112,6 +129,10 @@ export default function CreatorDomainWorkbench() {
     if (domain === "world" && worldPreview.data) {
       const result = worldPreview.data;
       return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><ResultPill label="แผนที่" value={result.mapId} /><ResultPill label="บล็อกที่เตรียมไว้" value={result.counts.blocks} /><ResultPill label="พื้นที่ terrain" value={result.counts.terrain} /><ResultPill label="สิ่งปลูกสร้าง" value={result.counts.structures} /><ResultPill label="จุดเกิด" value={result.counts.spawnPoints} /><ResultPill label="world hash" value={`${result.worldHash.slice(0, 16)}…`} /></div>;
+    }
+    if (domain === "block" && blockPreview.data) {
+      const definition = blockPreview.data.definition;
+      return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><ResultPill label="บล็อก" value={definition.id} /><ResultPill label="การชน" value={definition.collisionShape} /><ResultPill label="การกระทำ" value={definition.action} /><ResultPill label="เครื่องมือ" value={definition.requiredToolTag ?? "มือเปล่า"} /><ResultPill label="ของดรอป" value={`${definition.dropDefinitionId} × ${definition.dropQuantity}`} /><ResultPill label="การรองรับ" value={definition.canFloat ? "ลอยได้" : "ต้องมีบล็อกรองรับ"} /></div>;
     }
     if (domain === "structure" && structurePreview.data) {
       const result = structurePreview.data;
@@ -146,6 +167,7 @@ export default function CreatorDomainWorkbench() {
         <section className="space-y-5">
           <Card className="border-white/10 bg-[#0c1422]/90"><CardHeader className="border-b border-white/8 pb-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-black tracking-[0.18em] text-cyan-300">NO-CODE INPUT</p><CardTitle className="mt-1 text-2xl font-black text-white">{DOMAIN_CARDS.find(card => card.id === domain)?.title}</CardTitle><p className="mt-2 text-sm leading-relaxed text-slate-400">กรอกค่าที่เข้าใจง่าย แล้วกดทดลอง ระบบจะตรวจข้อจำกัดของ A_Survival ให้ก่อน</p></div><Badge className="border-emerald-300/20 bg-emerald-300/10 text-[10px] text-emerald-200"><Blocks size={12} className="mr-1" /> preview เท่านั้น</Badge></div></CardHeader><CardContent className="pt-5">
             {domain === "world" && <div className="grid gap-4 md:grid-cols-3"><Field label="เมล็ดสร้างโลก" htmlFor="world-seed"><Input id="world-seed" value={worldSeed} onChange={event => setWorldSeed(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="รัศมีทดลอง (สูงสุด 64 ใน preview)" htmlFor="world-radius"><SelectField id="world-radius" value={worldRadius} onChange={setWorldRadius}><option value="8">8 บล็อก</option><option value="16">16 บล็อก</option><option value="32">32 บล็อก</option><option value="64">64 บล็อก</option></SelectField></Field><Field label="ระดับความยาก" htmlFor="world-difficulty"><SelectField id="world-difficulty" value={worldDifficulty} onChange={setWorldDifficulty}><option value="peaceful">สงบ</option><option value="normal">ปกติ</option><option value="hard">ยาก</option></SelectField></Field></div>}
+            {domain === "block" && <div className="space-y-4"><Field label="แม่แบบบล็อกของ Obsidian" htmlFor="block-id"><SelectField id="block-id" value={blockId} onChange={setBlockId}>{BLOCK_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.title} · {option.detail}</option>)}</SelectField></Field><div className="rounded-xl border border-white/8 bg-black/15 p-3 text-xs leading-relaxed text-slate-400">ระบบจะอ่านกฎจาก registry กลาง: การชน, การทุบ/ตัด/เก็บเกี่ยว, ความแข็ง, เครื่องมือที่เหมาะสม, ของดรอป, การรองรับ และ hazard ถ้ามี ไม่สร้างบล็อกใหม่เข้าเกมโดยอัตโนมัติ</div></div>}
             {domain === "structure" && <div className="space-y-4"><Field label="แม่แบบสิ่งปลูกสร้าง" htmlFor="structure-id"><SelectField id="structure-id" value={structureId} onChange={setStructureId}>{STRUCTURE_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.title} · {option.detail}</option>)}</SelectField></Field><div className="grid gap-4 md:grid-cols-3"><Field label="seed ทดลอง" htmlFor="structure-seed"><Input id="structure-seed" value={structureSeed} onChange={event => setStructureSeed(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><Field label="พิกัด X" htmlFor="structure-x"><Input id="structure-x" value={structureX} onChange={event => setStructureX(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="พิกัด Z" htmlFor="structure-z"><Input id="structure-z" value={structureZ} onChange={event => setStructureZ(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field></div></div>}
             {domain === "item" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><Field label="ชื่อที่คนจะเห็น" htmlFor="item-name"><Input id="item-name" value={itemName} onChange={event => { setItemName(event.target.value); if (!itemId || itemId === "obsidian-field-tool") setItemId(event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "new-item"); }} className="border-white/10 bg-white/[0.04]" /></Field><Field label="หมวดไอเทม" htmlFor="item-family"><SelectField id="item-family" value={itemFamily} onChange={setItemFamily}><option value="tool">เครื่องมือ</option><option value="melee">อาวุธประชิด</option><option value="ranged">อาวุธระยะไกล</option><option value="magic">เวทมนตร์</option><option value="armor">เกราะ</option><option value="consumable">ของใช้แล้วหมด</option><option value="material">วัสดุ</option></SelectField></Field><Field label="บทบาท" htmlFor="item-role"><SelectField id="item-role" value={itemRole} onChange={setItemRole}><option value="farmer">ชาวฟาร์ม</option><option value="dps">โจมตี</option><option value="tank">รับความเสียหาย</option><option value="mage">นักเวท</option><option value="support">สนับสนุน</option><option value="explorer">สำรวจ</option><option value="crafter">ประดิษฐ์</option></SelectField></Field><Field label="ช่วงความก้าวหน้า" htmlFor="item-progression"><SelectField id="item-progression" value={itemProgression} onChange={setItemProgression}><option value="early">ช่วงต้น</option><option value="mid">ช่วงกลาง</option><option value="late">ช่วงท้าย</option><option value="special">พิเศษ</option></SelectField></Field><Field label="ธาตุ" htmlFor="item-element"><SelectField id="item-element" value={itemElement} onChange={setItemElement}><option value="neutral">กลาง</option><option value="fire">ไฟ</option><option value="ice">น้ำแข็ง</option><option value="lightning">สายฟ้า</option><option value="nature">ธรรมชาติ</option><option value="arcane">อาร์เคน</option></SelectField></Field><Field label="วัสดุหลัก" htmlFor="item-material"><Input id="item-material" value={itemMaterial} onChange={event => setItemMaterial(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><Field label="จุดประสงค์" htmlFor="item-purpose"><Input id="item-purpose" value={itemPurpose} onChange={event => setItemPurpose(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><Field label="เอกลักษณ์" htmlFor="item-identity"><Input id="item-identity" value={itemIdentity} onChange={event => setItemIdentity(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field><Field label="ข้อจำกัด/จุดอ่อน" htmlFor="item-weakness"><Input id="item-weakness" value={itemWeakness} onChange={event => setItemWeakness(event.target.value)} className="border-white/10 bg-white/[0.04]" /></Field></div>}
             {domain === "weapon" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Field label="seed อาวุธ" htmlFor="weapon-seed"><Input id="weapon-seed" value={weaponSeed} onChange={event => setWeaponSeed(event.target.value)} inputMode="numeric" className="border-white/10 bg-white/[0.04]" /></Field><Field label="จำนวนแบบที่อยากดู" htmlFor="weapon-count"><SelectField id="weapon-count" value={weaponCount} onChange={setWeaponCount}><option value="1">1 แบบ</option><option value="3">3 แบบ</option><option value="8">8 แบบ</option><option value="16">16 แบบ</option></SelectField></Field><Field label="หมวดอาวุธ" htmlFor="weapon-category"><SelectField id="weapon-category" value={weaponCategory} onChange={setWeaponCategory}><option value="melee">ประชิด</option><option value="ranged">ระยะไกล</option><option value="magic">เวทมนตร์</option></SelectField></Field><Field label="ระดับความหายาก" htmlFor="weapon-rarity"><SelectField id="weapon-rarity" value={weaponRarity} onChange={setWeaponRarity}><option value="common">ทั่วไป</option><option value="uncommon">ไม่ธรรมดา</option><option value="rare">หายาก</option><option value="epic">มหากาพย์</option><option value="legendary">ตำนาน</option><option value="mythic">มายา</option></SelectField></Field></div>}
