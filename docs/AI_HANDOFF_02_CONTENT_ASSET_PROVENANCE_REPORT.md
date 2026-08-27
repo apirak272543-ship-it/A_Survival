@@ -25,6 +25,8 @@
 | `server/plantAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 7 รายการสำหรับ plant deterministic output, logical-vs-runtime distinction, file SHA mismatch, kind mismatch, unknown provenance, durable-registry blocker, hash change และ input bounds |
 | `server/generators/contentAssetProvenanceDependencyGraph.ts` | เพิ่ม pure generic `content.catalog` asset audit ครบทุก category, active-pack/file hash/kind/provenance/durable-registry checks และ central dependency graph output |
 | `server/contentAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 5 รายการสำหรับ all-category logical metadata, wrong kind, injected registry, deterministic hash และ bounds |
+| `server/generators/assetPackProvenanceDependencyGraph.ts` | เพิ่ม bounded per-entry active-pack audit, direct-credit/pack-level provenance fallback, file SHA/kind checks และ required blockers สำหรับ reference-only/unknown provenance |
+| `server/assetPackProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 6 รายการสำหรับ deterministic fallback, direct reference-only credit, unknown provenance, simultaneous hash/kind blockers, hash sensitivity และ manifest bounds |
 | `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` | รายงาน completion นี้; ไม่แก้ `docs/OWNER_REQUIREMENTS_MATRIX.md` หรือ `docs/AI_COORDINATION_REGISTRY.md` เพราะ AI-0 เป็น owner ของทะเบียนกลาง |
 
 ไม่มีการแก้ไฟล์ที่ AI-0 จองไว้ ได้แก่ `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`, offline map-state/cache/direct route/map registry, Creator Workbench/creator router, authority/auth, database schema/migration, player UI และ runtime render loop. ไม่มีการเพิ่ม binary/PNG/GLB, ใช้ external asset หรือเรียก Google/Gemini/LLM/image generation
@@ -38,10 +40,11 @@
 | Branch/worktree | `ai-2/content-ai2-content-001` / `/home/ubuntu/A_Survival_ai2` |
 | Base SHA ที่ checkout จริง | `d282e8ed7ecbbde83637d892e3edbd2440efd5c8` (`origin/main` หลัง fetch ล่าสุด) |
 | Registry reservation | `AI2-CONTENT-001` เป็น `RESERVED`; AI-0 เป็น owner ของ `main` และ registry ตามกติกา |
-| Files reserved | `server/generators/plantAssetProvenanceDependencyGraph.ts`, `server/plantAssetProvenanceDependencyGraph.test.ts`, `server/generators/contentAssetProvenanceDependencyGraph.ts`, `server/contentAssetProvenanceDependencyGraph.test.ts`, `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` |
+| Files reserved | `server/generators/plantAssetProvenanceDependencyGraph.ts`, `server/plantAssetProvenanceDependencyGraph.test.ts`, `server/generators/contentAssetProvenanceDependencyGraph.ts`, `server/contentAssetProvenanceDependencyGraph.test.ts`, `server/generators/assetPackProvenanceDependencyGraph.ts`, `server/assetPackProvenanceDependencyGraph.test.ts`, `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` |
 | Initial implementation commit | `caf2fadaf12b1bf255a729ba0a1afbefecd58c2c` (`caf2fad`) |
 | Previous implementation commit | `bea46236b06cae923a2dba7e0dad378f78935a6b` (`bea4623`) |
-| Latest implementation commit | `5be13ff` (generic content provenance audit) |
+| Earlier generic implementation commit | `5be13ff` (generic content provenance audit) |
+| Latest implementation commit | `2080ce3` (per-entry asset-pack provenance audit) |
 | Report commit | Included in the final branch history; final branch HEAD is reported with the completion evidence |
 | Remote branch | `origin/ai-2/content-ai2-content-001` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ทั้ง `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md` |
@@ -53,9 +56,9 @@
 
 | Check | ผลที่รันจริง |
 |---|---|
-| Focused provenance suite | ผ่าน `2` test files / `12` tests: plant and generic content provenance adapters |
-| Focused owner suite | ผ่าน `8` test files / `33` tests: plant/generic provenance adapters, plant catalog, plant generator, plant graph, content catalog, content graph และ active asset-pack manifest |
-| Full test suite | ผ่าน `106` test files / `418` tests ด้วย `pnpm test -- --run` |
+| Focused provenance suite | ผ่าน `3` test files / `18` tests: plant, generic content และ per-entry asset-pack provenance adapters |
+| Focused owner suite | ผ่าน `9` test files / `39` tests: plant/generic/per-entry provenance adapters, plant catalog, plant generator, plant graph, content catalog, content graph และ active asset-pack manifest |
+| Full test suite | ผ่าน `107` test files / `424` tests ด้วย `pnpm test -- --run` |
 | TypeScript | ผ่าน `pnpm check` |
 | Whitespace/error check | ผ่าน `git diff --check` |
 | Production build | ผ่าน `NODE_OPTIONS=--max-old-space-size=1536 pnpm build` ทั้ง Vite client และ esbuild server bundle |
@@ -64,8 +67,8 @@ Build มี warning ที่ตรวจพบจริงและไม่�
 
 ## Result และ blockers/limitations
 
-ผล audit ที่ยืนยันจาก active pack คือ `items.seed` และ `art.obsidian.crystal-fern` มี manifest entry แบบ `texture`, ไฟล์จริง และ SHA-256 ตรง รวมทั้งมี pack-level project provenance. ส่วน `a-survival.content.*` ทั้ง 10 logical category refs ของ generic catalog ยังไม่มี exact file-backed active-pack binding และ active pack ยังไม่มี durable registry snapshot จึงถูกคงไว้เป็น blocker ไม่ถูกนับเป็น graphical assets ที่สร้างเสร็จ. การมี plant definitions 300 รายการหรือ generic definitions 3,000 รายการจึงไม่ถูกตีความเป็น graphical assets ที่สร้างเสร็จ
+ผล audit ที่ยืนยันจาก active pack คือ manifest entries ทั้ง 39 รายการมีไฟล์จริง, SHA-256 และ runtime kind ที่อ่านได้จาก active pack; provenance ของ entries ทั้งหมดใช้ pack-level project credit เป็น fallback เพราะยังไม่มี direct per-entry credit. Durable registry ยังไม่มี snapshot จริง จึงทำให้ `verifiedAssetIds` ยังว่างและคง `durable-registry` เป็น required blocker. ส่วน `a-survival.content.*` ทั้ง 10 logical category refs ของ generic catalog ยังไม่มี exact file-backed active-pack binding จึงคงเป็น metadata-only blocker. การมี plant definitions 300 รายการหรือ generic definitions 3,000 รายการจึงไม่ถูกตีความเป็น graphical assets ที่สร้างเสร็จ
 
-ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Durable registry ถูกออกแบบเป็น injected source contract เพื่อทดสอบเท่านั้น; `readActivePlantAssetProvenanceSources()` คืนค่า `durableRegistry: null` และไม่อ้างว่ามี registry ถาวรอยู่จริง. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
+ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Durable registry และ direct per-entry credit ถูกออกแบบเป็น injected source contracts เพื่อทดสอบเท่านั้น; active source loader คืนค่า `durableRegistry: null` และ `entryCredits: {}` จึงไม่อ้างว่ามี registry หรือ direct credit ถาวรอยู่จริง. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
 
-AI-0 ควรตรวจ diff ของ commit `5be13ff` (รวมฐานเดิม `bea4623` และ `caf2fad`), ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
+AI-0 ควรตรวจ diff ของ commit `2080ce3` (รวมฐานเดิม `5be13ff`, `bea4623` และ `caf2fad`), ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
