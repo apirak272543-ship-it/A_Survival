@@ -106,6 +106,19 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews the real Obsidian world against structure blueprints without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.worldStructurePreview({ seed: "world-structure-router-seed", radius: 32, blueprintIds: ["object-frontier-lantern"] });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ mapId: "obsidian-frontier", seed: "world-structure-router-seed", blueprintCount: 1, worldGeneratorVersion: "0.1.0", structureGeneratorVersion: "1.0.0" });
+    expect(result.summary.futureMapCount).toBe(0);
+    expect(result.summary.worldBlocks).toBeGreaterThan(0);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+    expect(result.graph.nodes.some(node => node.key.startsWith("world:obsidian-frontier:"))).toBe(true);
+    expect(result.graph.nodes.some(node => node.key.startsWith("structure-placement:"))).toBe(true);
+  });
+
   it("previews composition output through the texture builder without auto-registering it", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
@@ -150,6 +163,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.preview(validDependencyGraphInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.contentCatalogPreview({ seed: "blocked-seed", samplePerCategory: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questContentCatalogPreview({ seed: "blocked-seed", mapCount: 1, sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.worldStructurePreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["object-frontier-lantern"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -162,6 +176,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.preview(validDependencyGraphInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.contentCatalogPreview({ seed: "blocked-seed", samplePerCategory: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.questContentCatalogPreview({ seed: "blocked-seed", mapCount: 1, sampleQuestCount: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.worldStructurePreview({ seed: "blocked-seed", radius: 32, blueprintIds: ["object-frontier-lantern"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
