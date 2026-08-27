@@ -25,7 +25,7 @@
 | `server/plantAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 7 รายการสำหรับ plant deterministic output, logical-vs-runtime distinction, file SHA mismatch, kind mismatch, unknown provenance, durable-registry blocker, hash change และ input bounds |
 | `server/generators/contentAssetProvenanceDependencyGraph.ts` | เพิ่ม pure generic `content.catalog` asset audit ครบทุก category, active-pack/file hash/kind/provenance/durable-registry checks และ central dependency graph output |
 | `server/contentAssetProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 5 รายการสำหรับ all-category logical metadata, wrong kind, injected registry, deterministic hash และ bounds |
-| `server/generators/assetPackProvenanceDependencyGraph.ts` | เพิ่ม bounded per-entry active-pack audit, direct-credit/pack-level provenance fallback, file SHA/kind checks และ required blockers สำหรับ reference-only/unknown provenance |
+| `server/generators/assetPackProvenanceDependencyGraph.ts` | เพิ่ม bounded per-entry active-pack audit, โหลด direct credit จาก canonical provenance owner, ใช้ pack-level provenance fallback อย่างโปร่งใส, ตรวจ file SHA/kind และสร้าง required blockers สำหรับ reference-only/unknown provenance |
 | `server/assetPackProvenanceDependencyGraph.test.ts` | เพิ่ม regression tests 6 รายการสำหรับ deterministic fallback, direct reference-only credit, unknown provenance, simultaneous hash/kind blockers, hash sensitivity และ manifest bounds |
 | `docs/AI_HANDOFF_02_CONTENT_ASSET_PROVENANCE_REPORT.md` | รายงาน completion นี้; ไม่แก้ `docs/OWNER_REQUIREMENTS_MATRIX.md` หรือ `docs/AI_COORDINATION_REGISTRY.md` เพราะ AI-0 เป็น owner ของทะเบียนกลาง |
 
@@ -44,7 +44,8 @@
 | Initial implementation commit | `caf2fadaf12b1bf255a729ba0a1afbefecd58c2c` (`caf2fad`) |
 | Previous implementation commit | `bea46236b06cae923a2dba7e0dad378f78935a6b` (`bea4623`) |
 | Earlier generic implementation commit | `5be13ff` (generic content provenance audit) |
-| Latest implementation commit | `2080ce3` (per-entry asset-pack provenance audit) |
+| Earlier per-entry implementation commit | `2080ce3` (per-entry asset-pack provenance audit) |
+| Latest implementation commit | `37cc543` (canonical entry-credit loading) |
 | Report commit | Included in the final branch history; final branch HEAD is reported with the completion evidence |
 | Remote branch | `origin/ai-2/content-ai2-content-001` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ทั้ง `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md` |
@@ -69,6 +70,6 @@ Build มี warning ที่ตรวจพบจริงและไม่�
 
 ผล audit ที่ยืนยันจาก active pack คือ manifest entries ทั้ง 39 รายการมีไฟล์จริง, SHA-256 และ runtime kind ที่อ่านได้จาก active pack; provenance ของ entries ทั้งหมดใช้ pack-level project credit เป็น fallback เพราะยังไม่มี direct per-entry credit. Durable registry ยังไม่มี snapshot จริง จึงทำให้ `verifiedAssetIds` ยังว่างและคง `durable-registry` เป็น required blocker. ส่วน `a-survival.content.*` ทั้ง 10 logical category refs ของ generic catalog ยังไม่มี exact file-backed active-pack binding จึงคงเป็น metadata-only blocker. การมี plant definitions 300 รายการหรือ generic definitions 3,000 รายการจึงไม่ถูกตีความเป็น graphical assets ที่สร้างเสร็จ
 
-ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Durable registry และ direct per-entry credit ถูกออกแบบเป็น injected source contracts เพื่อทดสอบเท่านั้น; active source loader คืนค่า `durableRegistry: null` และ `entryCredits: {}` จึงไม่อ้างว่ามี registry หรือ direct credit ถาวรอยู่จริง. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
+ยังไม่มีการเชื่อม adapter เข้ากับ Creator Workbench หรือ `creatorRouter` เพราะเป็น shared integration surface ที่ถูกสงวนไว้. ยังไม่มี authenticated creator E2E, live database/storage, durable registry write, object-storage upload, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Durable registry และ direct per-entry credit ถูกออกแบบเป็น injected source contracts เพื่อทดสอบเท่านั้น; active source loader คืนค่า `durableRegistry: null` และสร้าง entry-credit map จาก `getAssetCredit()` ของ canonical owner โดยค่าปัจจุบันเป็น `null` สำหรับ manifest entries ทั้งหมด จึงใช้ pack-level fallback และไม่อ้างว่ามี direct credit ถาวรอยู่จริง. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
 
-AI-0 ควรตรวจ diff ของ commit `2080ce3` (รวมฐานเดิม `5be13ff`, `bea4623` และ `caf2fad`), ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
+AI-0 ควรตรวจ diff ของ commit `37cc543` (รวมฐานเดิม `2080ce3`, `5be13ff`, `bea4623` และ `caf2fad`), ตรวจ completion report นี้ และเปลี่ยนสถานะ registry จาก `RESERVED` เมื่อหลักฐานครบตามเกณฑ์ของ AI-0. หากต้องเปิด logical asset blocker ในอนาคต ต้องเพิ่ม file-backed manifest/registry/provenance หลักฐานจริง ไม่ควรแก้ด้วยการเติม metadata หรือเปลี่ยนสถานะเป็น verified
