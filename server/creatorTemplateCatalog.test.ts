@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CREATOR_SKIN_LAYOUT_PARTS, CREATOR_SKIN_PARTS, CREATOR_TEMPLATE_PRESETS } from "../client/src/lib/creatorTemplateCatalog";
+import { CREATOR_SKIN_LAYOUT_PARTS, CREATOR_SKIN_PARTS, CREATOR_TEMPLATE_PRESETS, getCompositionSubjectForTemplate, isWorkbenchCompositionTemplate } from "../client/src/lib/creatorTemplateCatalog";
 
 describe("shared creator template catalog", () => {
   it("keeps stable unique template identities with bounded dimensions", () => {
@@ -12,6 +12,16 @@ describe("shared creator template catalog", () => {
   it("keeps the authoring kinds and the bounded survivor template explicit", () => {
     expect(new Set(CREATOR_TEMPLATE_PRESETS.map(template => template.kind))).toEqual(new Set(["icon", "tile", "skin", "atlas"]));
     expect(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "survivor-pixel-32")).toMatchObject({ kind: "skin", width: 32, height: 32 });
+  });
+
+  it("maps canonical kinds to composition subjects and filters the Workbench to its 32x32 display bound", () => {
+    expect(getCompositionSubjectForTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "weapon-icon")!)).toBe("weapon");
+    expect(getCompositionSubjectForTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "terrain-tile")!)).toBe("block");
+    expect(getCompositionSubjectForTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "item-icon")!)).toBe("item");
+    expect(getCompositionSubjectForTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "character-skin")!)).toBe("animation");
+    expect(CREATOR_TEMPLATE_PRESETS.filter(isWorkbenchCompositionTemplate).map(template => template.id)).toEqual(["plant-icon", "weapon-icon", "item-icon", "terrain-tile", "survivor-pixel-32"]);
+    expect(isWorkbenchCompositionTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "character-skin")!)).toBe(false);
+    expect(isWorkbenchCompositionTemplate(CREATOR_TEMPLATE_PRESETS.find(template => template.id === "atlas-sheet")!)).toBe(false);
   });
 
   it("keeps every skin part represented in the 64x64 layout without triangles or binary payloads", () => {

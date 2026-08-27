@@ -27,3 +27,7 @@ After restarting the local dev server with the layer-aware contract, the player 
 ## Shared catalog regression check
 
 After wiring the shared creator template catalog into CreatorStudio and CreatorDomainWorkbench, a fresh player landing check again rendered only the normal `Arcane Frontier` player surface. DOM-visible controls remained คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ; no template catalog, skin parts, layer selector, pixel grid, texture Builder, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator preview claim is made.
+
+## Template-driven selection regression check
+
+After adding shared-catalog template selection, kind-to-subject mapping, 32×32 Workbench filtering, and draft reset behavior, a fresh player landing check still showed only the normal player surface: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No template catalog, creator subject selector, pixel grid, layer control, texture preview, registry or review control appeared. This remains player boundary evidence only; no authenticated creator preview claim is made.

@@ -1,4 +1,6 @@
 export type CreatorTemplateKind = "icon" | "tile" | "skin" | "atlas";
+export type CreatorCompositionSubject = "block" | "structure" | "item" | "weapon" | "animation";
+export const CREATOR_WORKBENCH_MAX_CANVAS = 32;
 
 export type CreatorTemplatePreset = {
   id: string;
@@ -16,6 +18,17 @@ export type CreatorSkinPart = {
   label: string;
   detail: string;
 };
+
+export function getCompositionSubjectForTemplate(template: CreatorTemplatePreset): CreatorCompositionSubject {
+  if (template.kind === "tile") return "block";
+  if (template.kind === "skin") return "animation";
+  if (template.id === "weapon-icon") return "weapon";
+  return "item";
+}
+
+export function isWorkbenchCompositionTemplate(template: CreatorTemplatePreset): boolean {
+  return template.kind !== "atlas" && template.width <= CREATOR_WORKBENCH_MAX_CANVAS && template.height <= CREATOR_WORKBENCH_MAX_CANVAS;
+}
 
 export type CreatorSkinLayoutPart = CreatorSkinPart & {
   x: number;
