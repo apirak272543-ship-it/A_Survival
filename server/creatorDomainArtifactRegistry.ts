@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
-import { creatorDomainArtifacts, type CreatorDomainArtifact } from "../drizzle/schema";
+import { creatorDomainArtifactReviewEvents, creatorDomainArtifacts, type CreatorDomainArtifact, type CreatorDomainArtifactReviewEvent } from "../drizzle/schema";
 import { getDb } from "./db";
 import { transitionCreatorDomainArtifactReview, type CreatorArtifactReviewAction, type CreatorArtifactReviewStatus } from "./creatorDomainArtifactReview";
 export class CreatorDomainArtifactRegistryUnavailableError extends Error {
@@ -141,14 +141,26 @@ export async function registerCreatorDomainArtifact(input: { metadata: CreatorDo
 export async function reviewCreatorDomainArtifact(input: { artifactKey: string; action: CreatorArtifactReviewAction; note?: string; reviewedByUserId: number }): Promise<CreatorDomainArtifact> {
   const db = await getDb();
   if (!db) throw new CreatorDomainArtifactRegistryUnavailableError();
-  const existing = await db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
-  const current = existing[0];
-  if (!current) throw new Error("Creator domain artifact was not found");
-  const transition = transitionCreatorDomainArtifactReview({ status: current.reviewStatus as CreatorArtifactReviewStatus, action: input.action, note: input.note });
-  await db.update(creatorDomainArtifacts).set({ reviewStatus: transition.to, reviewNote: transition.note, reviewedByUserId: input.reviewedByUserId, reviewedAt: new Date() }).where(and(eq(creatorDomainArtifacts.artifactKey, input.artifactKey), eq(creatorDomainArtifacts.reviewStatus, transition.from)));
-  const saved = await db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
-  if (!saved[0]) throw new Error("Creator domain artifact was not readable after review");
-  return saved[0];
+  return db.transaction(async tx => {
+    const existing = await tx.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
+    const current = existing[0];
+    if (!current) throw new Error("Creator domain artifact was not found");
+    const transition = transitionCreatorDomainArtifactReview({ status: current.reviewStatus as CreatorArtifactReviewStatus, action: input.action, note: input.note });
+    const reviewedAt = new Date();
+    await tx.update(creatorDomainArtifacts).set({ reviewStatus: transition.to, reviewNote: transition.note, reviewedByUserId: input.reviewedByUserId, reviewedAt }).where(and(eq(creatorDomainArtifacts.artifactKey, input.artifactKey), eq(creatorDomainArtifacts.reviewStatus, transition.from)));
+    const savedRows = await tx.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
+    const saved = savedRows[0];
+    if (!saved) throw new Error("Creator domain artifact was not readable after review");
+    if (saved.reviewStatus !== transition.to || saved.reviewedByUserId !== input.reviewedByUserId) throw new Error("Creator domain artifact review was changed concurrently");
+    await tx.insert(creatorDomainArtifactReviewEvents).values({ artifactRecordId: saved.id, artifactKey: saved.artifactKey, action: transition.action, fromStatus: transition.from, toStatus: transition.to, note: transition.note, reviewerUserId: input.reviewedByUserId });
+    return saved;
+  });
+}
+
+export async function listCreatorDomainArtifactReviewEvents(input: { artifactKey: string; limit?: number }): Promise<CreatorDomainArtifactReviewEvent[]> {
+  const db = await getDb();
+  if (!db) throw new CreatorDomainArtifactRegistryUnavailableError();
+  return db.select().from(creatorDomainArtifactReviewEvents).where(eq(creatorDomainArtifactReviewEvents.artifactKey, input.artifactKey)).orderBy(desc(creatorDomainArtifactReviewEvents.createdAt)).limit(Math.max(1, Math.min(100, Math.trunc(input.limit ?? 50))));
 }
 
 export async function listCreatorDomainArtifacts(input: { limit?: number; domain?: CreatorArtifactDomain; reviewStatus?: CreatorArtifactReviewStatus } = {}): Promise<CreatorDomainArtifact[]> {

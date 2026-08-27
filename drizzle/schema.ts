@@ -151,3 +151,23 @@ export const creatorDomainArtifacts = mysqlTable("creatorDomainArtifacts", {
 ]);
 
 export type CreatorDomainArtifact = typeof creatorDomainArtifacts.$inferSelect;
+
+/** Immutable admin audit events for creator domain artifact review transitions. */
+export const creatorDomainArtifactReviewEvents = mysqlTable("creatorDomainArtifactReviewEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  artifactRecordId: int("artifactRecordId").notNull().references(() => creatorDomainArtifacts.id),
+  artifactKey: varchar("artifactKey", { length: 191 }).notNull(),
+  action: mysqlEnum("action", ["approve", "reject", "reopen"]).notNull(),
+  fromStatus: mysqlEnum("fromStatus", ["draft", "approved", "rejected"]).notNull(),
+  toStatus: mysqlEnum("toStatus", ["draft", "approved", "rejected"]).notNull(),
+  note: varchar("note", { length: 512 }),
+  reviewerUserId: int("reviewerUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  index("creatorDomainArtifactReviewEvents_artifactRecordId_idx").on(table.artifactRecordId),
+  index("creatorDomainArtifactReviewEvents_artifactKey_idx").on(table.artifactKey),
+  index("creatorDomainArtifactReviewEvents_reviewerUserId_idx").on(table.reviewerUserId),
+  index("creatorDomainArtifactReviewEvents_createdAt_idx").on(table.createdAt),
+]);
+
+export type CreatorDomainArtifactReviewEvent = typeof creatorDomainArtifactReviewEvents.$inferSelect;
