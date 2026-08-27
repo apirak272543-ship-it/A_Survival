@@ -71,3 +71,7 @@ After adding the texture artifact review/list/audit routes and Thai Workbench re
 ## Multi-part composition boundary check
 
 After adding canonical non-overlapping 32 × 32 body-part presets and the Workbench multi-part selector, a fresh player landing still displayed only the normal player controls: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No part selector, skin layout, composition, review, register, export or creator controls appeared. A fresh unauthenticated visit to `/creator-workbench` displayed only the existing `DEVELOPER ONLY` gate and `กลับหน้าผู้เล่น`; the multi-part editor was not rendered. This is boundary evidence only; no authenticated creator preview, texture export, DB/storage execution or runtime publish claim is made.
+
+## Dependency graph inspector boundary check
+
+After adding the admin-only `creator.dependencyGraph.preview` route and Thai Workbench inspector, a fresh player landing still displayed only คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No dependency graph, generator, seed, rules version, registry or creator controls appeared. A fresh unauthenticated visit to `/creator-workbench` displayed only `DEVELOPER ONLY`, the administrator-login gate and `กลับหน้าผู้เล่น`; the graph inspector was not rendered. This is browser boundary evidence only; no authenticated graph preview, registry write, DB/storage execution or player runtime import claim is made.

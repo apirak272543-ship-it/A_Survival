@@ -46,6 +46,7 @@ import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter
 import { buildCreatorCompositionTextureExport } from "./creatorCompositionTextureExport";
 import { validateCreatorCompositionTextureExport } from "./creatorCompositionTextureCompatibility";
 import { buildVerifiedCreatorCompositionTexture } from "./creatorCompositionTextureRegistration";
+import { validateGeneratorDependencyGraph, type DependencyGraphNode } from "./generators/dependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -167,6 +168,27 @@ const creatorArtifactReviewSchema = z.object({
   artifactKey: z.string().trim().min(8).max(191),
   action: z.enum(["approve", "reject", "reopen"]),
   note: z.string().trim().max(512).optional(),
+});
+
+const generatorKindSchema = z.enum(["world", "biome", "structure", "item", "plant", "mob", "animation", "texture", "quest", "dungeon", "loot", "crafting", "economy", "audio", "weather", "vegetation", "simulation", "migration", "other"]);
+const dependencyGraphNodeSchema = z.object({
+  key: z.string().trim().min(2).max(191),
+  kind: generatorKindSchema,
+  generatorId: identifierSchema,
+  generatorVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
+  schemaVersion: z.string().trim().min(1).max(128),
+  seed: z.string().trim().min(1).max(128),
+  rulesVersion: z.string().trim().min(1).max(64),
+  contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+  dependencies: z.array(z.object({
+    key: z.string().trim().min(2).max(191),
+    kind: generatorKindSchema,
+    required: z.boolean().default(true),
+    generatorId: identifierSchema.optional(),
+    compatibleVersions: z.array(z.string().regex(/^\d+\.\d+\.\d+$/)).max(16).optional(),
+    generatorVersion: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  })).max(64),
 });
 
 export const runtimeProfilerSnapshotSchema = z.object({
@@ -324,6 +346,9 @@ function buildCompositionTextureExport(input: z.infer<typeof creatorCompositionT
  * writes remain an admin-only developer capability and never enter `game`.
  */
 export const creatorRouter = router({
+  dependencyGraph: router({
+    preview: adminProcedure.input(z.object({ nodes: z.array(dependencyGraphNodeSchema).min(1).max(128) })).mutation(({ input }) => ({ previewOnly: true as const, graph: validateGeneratorDependencyGraph(input.nodes as DependencyGraphNode[]) })),
+  }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),
     build: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => {

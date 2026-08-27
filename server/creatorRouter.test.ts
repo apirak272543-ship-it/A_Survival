@@ -36,6 +36,15 @@ function validCompositionInput() {
   };
 }
 
+function validDependencyGraphInput() {
+  return {
+    nodes: [
+      { key: "world.obsidian", kind: "world" as const, generatorId: "world.generator", generatorVersion: "1.0.0", schemaVersion: "a-survival.world.v1", seed: "master-spec-seed", rulesVersion: "rules.v1", contentHash: "a".repeat(64), dependencies: [] },
+      { key: "item.obsidian-tool", kind: "item" as const, generatorId: "item.generator", generatorVersion: "1.0.0", schemaVersion: "a-survival.item.v1", seed: "master-spec-seed", rulesVersion: "rules.v1", contentHash: "b".repeat(64), dependencies: [{ key: "world.obsidian", kind: "world" as const, required: true, generatorId: "world.generator", generatorVersion: "1.0.0", contentHash: "a".repeat(64) }] },
+    ],
+  };
+}
+
 function validTextureInput(): TexturePackInput {
   return {
     id: "creator-test-pack",
@@ -64,6 +73,15 @@ describe("creator texture router", () => {
     expect(result.output.manifest.entries["fern-icon"]?.mime).toBe("image/png");
     expect(result.output.assets[0]?.pngBase64.startsWith("iVBORw0KGgo")).toBe(true);
     expect(result.output.assets[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("previews a validated dependency graph without registering or importing it", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.preview(validDependencyGraphInput());
+
+    expect(result).toMatchObject({ previewOnly: true, graph: { schemaVersion: "a-survival.dependency-graph.v1", valid: true, topologicalOrder: ["world.obsidian", "item.obsidian-tool"], runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false } } });
+    expect(result.graph.issues).toEqual([]);
+    expect(result.graph.edges).toEqual([{ from: "world.obsidian", to: "item.obsidian-tool", required: true }]);
   });
 
   it("previews composition output through the texture builder without auto-registering it", async () => {
@@ -107,6 +125,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.composition.exportPreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.byteCompatibility({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.register({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.preview(validDependencyGraphInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -116,6 +135,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.composition.register({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.texture.review({ artifactKey: "texture-pack:blocked:0.1.0:hash", action: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.texture.list({ limit: 20 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.preview(validDependencyGraphInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {

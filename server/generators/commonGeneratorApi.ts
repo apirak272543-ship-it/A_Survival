@@ -9,6 +9,7 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 
 export type GeneratorKind =
   | "world"
+  | "biome"
   | "structure"
   | "item"
   | "plant"
