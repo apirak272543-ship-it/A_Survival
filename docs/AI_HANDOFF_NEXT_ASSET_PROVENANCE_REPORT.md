@@ -21,8 +21,8 @@
 
 | ไฟล์ | การเปลี่ยนแปลง |
 |---|---|
-| `server/generators/assetProvenanceBindingDependencyGraph.ts` | เพิ่ม pure bounded adapter สำหรับ plant/item bindings, active manifest/file integrity, kind/provenance/durable-registry gates และ central dependency graph |
-| `server/assetProvenanceBindingDependencyGraph.test.ts` | เพิ่ม regression tests 7 รายการสำหรับ deterministic output, missing binding, kind mismatch, SHA mismatch, unknown provenance, durable registry, hash sensitivity และ bounds |
+| `server/generators/assetProvenanceBindingDependencyGraph.ts` | เพิ่ม pure bounded adapter สำหรับ plant/item bindings, active manifest/file integrity, kind/provenance/durable-registry gates, fallback-chain audit และ central dependency graph |
+| `server/assetProvenanceBindingDependencyGraph.test.ts` | เพิ่ม regression tests 10 รายการสำหรับ deterministic output, missing binding, kind mismatch, SHA mismatch, unknown provenance, durable registry, fallback missing/kind/cycle, hash sensitivity และ bounds |
 | `docs/AI_HANDOFF_NEXT_ASSET_PROVENANCE_REPORT.md` | รายงาน checkpoint ภาษาไทย; ไม่แก้ registry หรือ owner matrix |
 
 ไม่มีการแก้ไฟล์ที่ AI-0 หรือ AI-1 จองไว้ ได้แก่ quest reward persistence/dispatch, `ArcaneFrontier.tsx`, story persistence, event emitters, Creator Workbench, creator router, map/cache/offline state, authority/auth, database schema/migration, player UI และ runtime render loop. ไม่มีการเพิ่ม PNG/GLB, ดาวน์โหลดหรือใช้ asset จาก Minecraft/RoV, เรียก external LLM/image generation, เขียน IndexedDB/cache/database หรือทำ live migration
@@ -36,7 +36,8 @@
 | Branch/worktree | `ai-2/asset-provenance-next-asset-provenance-001` / `/home/ubuntu/A_Survival_ai2` |
 | Base SHA ที่ checkout จริง | `05b27c1a16e51f741256d7b08d57e5ee579bb9eb` (`origin/main`) |
 | Files reserved | `server/generators/assetProvenanceBindingDependencyGraph.ts`, `server/assetProvenanceBindingDependencyGraph.test.ts`, `docs/AI_HANDOFF_NEXT_ASSET_PROVENANCE_REPORT.md` |
-| Implementation commit | `44ee3e4c6b415ee148506585b4b65412f45ef0e6` (`44ee3e4`) |
+| Initial implementation commit | `44ee3e4c6b415ee148506585b4b65412f45ef0e6` (`44ee3e4`) |
+| Latest implementation commit | `c5f07b6` (fallback-chain audit extension) |
 | Remote branch | `origin/ai-2/asset-provenance-next-asset-provenance-001` ถูก push แล้ว |
 | Registry/matrix changes | ไม่แก้ `docs/AI_COORDINATION_REGISTRY.md` และ `docs/OWNER_REQUIREMENTS_MATRIX.md`; AI-0 เป็น owner ของทั้งสองไฟล์ |
 | Recovery refs/stash | ไม่แตะต้อง; ไม่มี reset, revert, force checkout, force push, recovery-ref deletion หรือ stash manipulation |
@@ -45,7 +46,7 @@
 
 | Check | ผลที่รันจริง |
 |---|---|
-| Focused task suite | ผ่าน `1` test file / `7` tests |
+| Focused task suite | ผ่าน `1` test file / `10` tests |
 | Full test suite | ผ่าน `109` test files / `435` tests ด้วย `pnpm test -- --run` |
 | TypeScript | ผ่าน `pnpm check` |
 | Whitespace/error check | ผ่าน `git diff --check` |
@@ -57,8 +58,10 @@ Build warnings ที่ตรวจพบจริงและไม่ได�
 
 Adapter ยืนยันได้ว่า active pack `arcane-frontier-voxel-pixel` มี 39 manifest entries และ file-backed hash truth ที่ตรวจซ้ำได้. Plant/item binding ที่ชี้ไปยัง entry เช่น `items.seed` และ `items.buildingCube` ถูกอ่านจาก manifest/file จริงและตรวจ kind `texture` ได้. Plant seed IDs (`seed-plant-*`) และ yield IDs ที่ไม่ได้เป็น manifest asset IDs ยังคงเป็น required blockers ไม่ถูกแก้ด้วยการลบ referenceหรือเติม metadata
 
+Fallback chain ของ active pack ถูกตรวจครบทุก manifest entry แบบ bounded. Graph พบ fallback cycle จริงในกลุ่ม `items.blade` ↔ `items.energy` และพบ fallback kind mismatch จริงเมื่อ model entry ชี้ไปยัง texture fallback เช่น `models.survivor` → `entities.survivor`; ทั้งสองกรณีถูกคงเป็น required blockers. เมื่อทดสอบ fallback target ที่หายไป adapter จะสร้าง `fallback-binding` blocker และไม่ลบ primary manifest entry
+
 Pack-level provenance ปัจจุบันเป็น `project-original` จาก canonical `ASSET_CREDITS` จึงผ่านระดับ credit แต่ยังไม่มี direct per-entry credit และ durable registry snapshot. ด้วยเหตุนี้ `verifiedAssetIds` จะยังว่างจนกว่าจะมี durable registry evidence จริง แม้บาง binding จะมีไฟล์และ hash ตรง. การมี plant catalog 300 รายการหรือ item catalog 3,910 รายการจึงไม่ถูกตีความเป็น graphical assets ที่สร้างเสร็จ
 
-ยังไม่มีการเชื่อม adapter กับ Workbench/router หรือ runtime; ไม่มี authenticated creator E2E, live database/storage, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
+ยังไม่มีการเชื่อม adapter กับ Workbench/router หรือ runtime; ไม่มี authenticated creator E2E, live database/storage, asset generation, runtime publish/import/cache acceptance, browser/device/mobile acceptance หรือ final matrix update. Fallback audit ตรวจความสัมพันธ์ใน manifest เท่านั้น ไม่ได้ประกาศว่า fallback visual ใช้งานได้จริงใน browser/device. Graph runtime policy ยังคงเป็น `{ runtimeImportAllowed: false, playerVisible: false, cacheable: false }`
 
-AI-0 ควรตรวจ diff ของ commit `44ee3e4`, ตรวจ completion report นี้ และเปลี่ยนสถานะ `NEXT-ASSET-PROVENANCE-001` ใน registry เมื่อหลักฐานครบตามเกณฑ์. หากต้องทำให้ asset เป็น verified จริง ต้องเพิ่ม durable registry และ provenance/binary evidence จาก source ที่ได้รับอนุญาต ไม่ควรปิด blocker ด้วยการเดา
+AI-0 ควรตรวจ diff ของ commits `44ee3e4` และ `c5f07b6`, ตรวจ completion report นี้ และเปลี่ยนสถานะ `NEXT-ASSET-PROVENANCE-001` ใน registry เมื่อหลักฐานครบตามเกณฑ์. หากต้องทำให้ asset เป็น verified จริง ต้องเพิ่ม durable registry และ provenance/binary evidence จาก source ที่ได้รับอนุญาต ไม่ควรปิด blocker ด้วยการเดา
