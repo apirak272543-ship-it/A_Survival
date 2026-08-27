@@ -21,3 +21,13 @@ The page also exposed only the `กลับหน้าผู้เล่น` l
 ## Not claimed
 
 This evidence does not prove an authenticated admin can use the Builder UI, because no admin browser session was available. It also does not prove a successful player-root render: the first root capture was blank and was not treated as acceptance evidence.
+
+## Workbench route observation
+
+At `http://localhost:3000/creator-workbench`, with the same unauthenticated browser state, the page settled to the same developer-only boundary:
+
+> `DEVELOPER ONLY` — `เข้า Creator Studio ไม่ได้`
+>
+> `กรุณาเข้าสู่ระบบผู้ดูแลระบบก่อนใช้งานพื้นที่สร้าง asset`
+
+The Workbench form and its world/structure/item/weapon panels were not rendered before authorization. This confirms route separation and deny behavior, but it is not an authenticated Workbench acceptance test.

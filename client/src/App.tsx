@@ -2,18 +2,22 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import type { ReactNode } from "react";
 import { useAuth } from "./_core/hooks/useAuth";
 import ArcaneFrontier from "./pages/ArcaneFrontier";
 import CreatorStudio from "./pages/CreatorStudio";
+import CreatorDomainWorkbench from "./pages/CreatorDomainWorkbench";
 
-function isCreatorStudioRoute() {
-  if (typeof window === "undefined") return false;
-  const isRequested = window.location.pathname === "/creator-studio";
+function getCreatorRoute(): "studio" | "workbench" | null {
+  if (typeof window === "undefined") return null;
   const enabled = import.meta.env.DEV || import.meta.env.VITE_CREATOR_STUDIO_ENABLED === "true";
-  return isRequested && enabled;
+  if (!enabled) return null;
+  if (window.location.pathname === "/creator-studio") return "studio";
+  if (window.location.pathname === "/creator-workbench") return "workbench";
+  return null;
 }
 
-function CreatorAccessGate() {
+function CreatorAccessGate({ children }: { children: ReactNode }) {
   const { user, loading, error } = useAuth();
 
   if (loading) {
@@ -47,11 +51,13 @@ function CreatorAccessGate() {
     );
   }
 
-  return <CreatorStudio />;
+  return <>{children}</>;
 }
 
 function App() {
-  const page = isCreatorStudioRoute() ? <CreatorAccessGate /> : <ArcaneFrontier />;
+  const creatorRoute = getCreatorRoute();
+  const creatorPage = creatorRoute === "workbench" ? <CreatorDomainWorkbench /> : <CreatorStudio />;
+  const page = creatorRoute ? <CreatorAccessGate>{creatorPage}</CreatorAccessGate> : <ArcaneFrontier />;
 
   return (
     <ErrorBoundary>
