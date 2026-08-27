@@ -2,7 +2,7 @@
 
 ## วิธีใช้ไฟล์นี้
 
-ไฟล์นี้เป็นคำสั่งงานสำหรับ AI ผู้ช่วยคนที่ 2 ให้ทำงานบน Repository `apirak272543-ship-it/A_Survival` แยกจาก AI ตัวหลัก. ให้เปิดงานบน **branch หรือ worktree ของตัวเองเท่านั้น** ห้ามแก้ working tree เดียวกับ AI ตัวหลัก. ขอบเขตนี้เน้น content catalog, plant/asset relationship และ provenance; ห้ามแตะ offline map-state, map cache, creator Workbench หรือ authority/auth ที่ถูกจองไว้.
+ไฟล์นี้เป็นคำสั่งงานสำหรับ AI ผู้ช่วยคนที่ 2 ให้ทำงานบน Repository `apirak272543-ship-it/A_Survival` แยกจาก AI ตัวหลัก. ก่อนเริ่มต้องอ่าน [`AI_COORDINATION_REGISTRY.md`](./AI_COORDINATION_REGISTRY.md) และลงทะเบียน Task ID/branch/file reservation ตามนั้น. ให้เปิดงานบน **branch หรือ worktree ของตัวเองเท่านั้น** ห้ามแก้ working tree เดียวกับ AI ตัวหลัก. ขอบเขตนี้เน้น content catalog, plant/asset relationship และ provenance; ห้ามแตะ offline map-state, map cache, creator Workbench หรือ authority/auth ที่ถูกจองไว้.
 
 > Repository/Git/test evidence เป็นความจริงสูงสุด. ห้ามเริ่มจากความจำในแชต, ห้าม `reset`, `revert`, `force checkout`, `force push`, ลบ recovery ref หรือจัดการ stash. ก่อนทำให้ตรวจ branch/status/log/diff และเมื่อเสร็จให้ส่ง commit SHA, รายการไฟล์, tests, build และข้อจำกัดกลับมา.
 
@@ -18,7 +18,7 @@ Creator tools เป็นหลังบ้านภาษาไทยสำห
 
 ## สถานะ Repository และไฟล์ที่ห้ามชน
 
-สถานะล่าสุดของ main ที่ยืนยันก่อนเริ่ม offline slice คือ `HEAD == origin/main == def5d13`. Recovery ref ต้องคงอยู่ที่ `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2`. ก่อนมอบหมาย handoff นี้ AI ตัวหลักมีไฟล์ uncommitted ของ offline map-state slice อยู่ จึงห้ามแตะไฟล์ต่อไปนี้:
+สถานะ ณ 2026-08-27 คือ `HEAD == origin/main == 2d0a2206534dba2f34f21c4a166e5883a5f8fc73`. Recovery ref ต้องคงอยู่ที่ `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2`. AI ตัวหลักกำลังจอง quest reward → inventory dependency slice แบบ **uncommitted** อยู่ จึงห้ามแตะไฟล์ต่อไปนี้และต้องประกาศ reservation ใน registry ก่อนเริ่ม:
 
 | ไฟล์ที่ถูกจองโดย AI ตัวหลัก | เหตุผล |
 |---|---|
@@ -26,7 +26,9 @@ Creator tools เป็นหลังบ้านภาษาไทยสำห
 | `client/src/game/storage/mapCache.ts` | map cache policy และ future-map denial |
 | `client/src/game/routing/directRoute.ts` | runtime map allow-list/fallback |
 | `client/src/game/data/maps.ts` | MAP_REGISTRY source-of-truth |
-| `client/src/pages/CreatorDomainWorkbench.tsx` | Thai dependency preview UI กำลังเพิ่ม source ใหม่ |
+| `client/src/pages/CreatorDomainWorkbench.tsx` | Workbench เป็น shared integration surface; ห้ามแก้ UI ชนกัน |
+| `server/generators/questRewardInventoryDependencyGraph.ts` | AI ตัวหลักกำลังทำ quest reward → inventory dry-run adapter |
+| `server/questRewardInventoryDependencyGraph.test.ts` | test ของ reservation ข้างต้น |
 | `server/creatorRouter.ts` | `storyOfflineMapStatePreview` admin-only route |
 | `server/offlineMapState.test.ts` | future-map offline write regression |
 | `server/generators/storyOfflineMapStateDependencyGraph.ts` | story → cache → offline namespace adapter |
@@ -92,4 +94,4 @@ Checkpoint ต้องมี output deterministic และ bounded พร้�
 
 ## รายงานที่ต้องส่งกลับ
 
-รายงานเป็นภาษาไทย โดยมีตาราง `Owner / สิ่งที่ตรวจ / ผล / blocker / test evidence`. ระบุไฟล์ที่แก้, branch, commit SHA, `git status`, test count, build warnings และข้อจำกัด. ระบุชัดว่า implementation ยังไม่ merge เข้า `main`; AI ตัวหลักจะตรวจ diff, ทำ final validation และบันทึก matrix SHA เอง. หากไม่พบ gap ที่ปิดได้จริง ให้ส่งผลสำรวจและ required blockers แทนการสร้างระบบสมมติ.
+รายงานเป็นภาษาไทย โดยมีตาราง `Owner / สิ่งที่ตรวจ / ผล / blocker / test evidence`. ระบุไฟล์ที่แก้, branch, commit SHA, `git status`, test count, build warnings และข้อจำกัด. ต้องอัปเดตสถานะใน [`AI_COORDINATION_REGISTRY.md`](./AI_COORDINATION_REGISTRY.md) ผ่าน branch/PR ของตัวเองหรือส่ง completion report ให้ AI-0 ตรวจ. ระบุชัดว่า implementation ยังไม่ merge เข้า `main`; AI ตัวหลักจะตรวจ diff, ทำ final validation และบันทึก matrix SHA เอง. หากไม่พบ gap ที่ปิดได้จริง ให้ส่งผลสำรวจและ required blockers แทนการสร้างระบบสมมติ.
