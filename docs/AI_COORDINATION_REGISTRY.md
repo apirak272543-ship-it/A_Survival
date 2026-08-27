@@ -21,7 +21,7 @@
 |---|---|
 | Repository | `apirak272543-ship-it/A_Survival` |
 | Branch หลัก | `main` |
-| HEAD และ `origin/main` | `2d0a2206534dba2f34f21c4a166e5883a5f8fc73` |
+| HEAD และ `origin/main` | `08b9d6de9cfc87ae5d29eb181cea39d97e2de062` |
 | Recovery ref ที่ต้องรักษา | `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2` |
 | Stash | ว่าง ณ การตรวจล่าสุด |
 | Dev/test process | ไม่พบ process ที่ต้องหยุด ณ การตรวจล่าสุด |
