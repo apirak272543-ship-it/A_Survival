@@ -145,6 +145,7 @@ const creatorCompositionInputSchema = z.object({
   layers: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), role: z.enum(["base", "outline", "shadow", "detail", "accent", "mask"]), zIndex: z.number().int().min(-128).max(128), visible: z.boolean(), opacity: z.number().finite().min(0).max(1) })).min(1).max(32),
   parts: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), slot: z.enum(["head", "body", "arm", "leg", "tool", "weapon", "surface", "accent"]), x: z.number().int().min(0).max(127), y: z.number().int().min(0).max(127), width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128), layerIds: z.array(z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/)).min(1).max(32) })).min(1).max(64),
   palette: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), hex: z.string().trim().regex(/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/), semantic: z.string().trim().min(1).max(80) })).min(1).max(64),
+  pixels: z.array(z.object({ x: z.number().int().min(0).max(127), y: z.number().int().min(0).max(127), colorId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/) })).max(16_384),
 });
 
 const creatorArtifactCompatibilitySchema = z.object({

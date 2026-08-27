@@ -13,6 +13,7 @@ function input(overrides: Partial<Parameters<typeof buildCreatorComposition>[0]>
     ],
     parts: [{ id: "body", label: "ลำตัว", slot: "body" as const, x: 8, y: 8, width: 16, height: 18, layerIds: ["base", "outline"] }],
     palette: [{ id: "leaf-green", label: "เขียวใบไม้", hex: "#3f8f5b", semantic: "ใบไม้" }],
+    pixels: [{ x: 8, y: 8, colorId: "leaf-green" }, { x: 9, y: 8, colorId: "leaf-green" }],
     ...overrides,
   };
 }
@@ -20,7 +21,7 @@ function input(overrides: Partial<Parameters<typeof buildCreatorComposition>[0]>
 describe("creator composition builder", () => {
   it("builds registry-compatible metadata without triangle mesh requirements", () => {
     const result = buildCreatorComposition(input());
-    expect(result).toMatchObject({ previewOnly: true, runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false }, summary: { layerCount: 2, partCount: 1, paletteCount: 1, pixelBudget: 1024, meshRequired: false }, registryMetadata: { domain: "animation", generatorId: "creator.composition", runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false } } });
+    expect(result).toMatchObject({ previewOnly: true, runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false }, summary: { layerCount: 2, partCount: 1, paletteCount: 1, pixelBudget: 1024, paintedPixelCount: 2, meshRequired: false }, registryMetadata: { domain: "animation", generatorId: "creator.composition", runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false } } });
     expect(result.composition.parts[0]?.layerIds).toEqual(["base", "outline"]);
     expect(result.registryMetadata.contentSha256).toMatch(/^[a-f0-9]{64}$/);
   });
@@ -32,6 +33,9 @@ describe("creator composition builder", () => {
   it("rejects invalid bounds, unknown layers, duplicate ids and unsafe payload keys", () => {
     expect(() => buildCreatorComposition(input({ parts: [{ id: "body", label: "ลำตัว", slot: "body", x: 24, y: 8, width: 16, height: 8, layerIds: ["base"] }] }))).toThrow("outside canvas");
     expect(() => buildCreatorComposition(input({ parts: [{ id: "body", label: "ลำตัว", slot: "body", x: 8, y: 8, width: 8, height: 8, layerIds: ["missing"] }] }))).toThrow("unknown layer");
+    expect(() => buildCreatorComposition(input({ pixels: [{ x: 32, y: 0, colorId: "leaf-green" }] }))).toThrow("outside canvas");
+    expect(() => buildCreatorComposition(input({ pixels: [{ x: 1, y: 1, colorId: "missing" }] }))).toThrow("unknown palette color");
+    expect(() => buildCreatorComposition(input({ pixels: [{ x: 1, y: 1, colorId: "leaf-green" }, { x: 1, y: 1, colorId: "leaf-green" }] }))).toThrow("duplicated");
     expect(() => buildCreatorComposition(input({ layers: [input().layers[0]!, input().layers[0]!] }))).toThrow("ids must be unique");
     expect(() => buildCreatorComposition(input({ summary: { pngBase64: "blocked" } } as never))).toThrow("pngBase64");
   });

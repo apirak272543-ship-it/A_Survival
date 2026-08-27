@@ -15,6 +15,7 @@ export type CreatorCompositionInput = {
   layers: Array<{ id: string; label: string; role: CreatorCompositionLayerRole; zIndex: number; visible: boolean; opacity: number }>;
   parts: Array<{ id: string; label: string; slot: CreatorCompositionPartSlot; x: number; y: number; width: number; height: number; layerIds: string[] }>;
   palette: Array<{ id: string; label: string; hex: string; semantic: string }>;
+  pixels: Array<{ x: number; y: number; colorId: string }>;
 };
 
 export type CreatorCompositionPreview = {
@@ -28,8 +29,9 @@ export type CreatorCompositionPreview = {
     layers: CreatorCompositionInput["layers"];
     parts: CreatorCompositionInput["parts"];
     palette: CreatorCompositionInput["palette"];
+    pixels: CreatorCompositionInput["pixels"];
   };
-  summary: { layerCount: number; partCount: number; paletteCount: number; pixelBudget: number; meshRequired: false };
+  summary: { layerCount: number; partCount: number; paletteCount: number; pixelBudget: number; paintedPixelCount: number; meshRequired: false };
   registryMetadata: CreatorDomainArtifactMetadata;
 };
 
@@ -59,6 +61,7 @@ export function buildCreatorComposition(input: CreatorCompositionInput): Creator
   if (input.layers.length < 1 || input.layers.length > 32) throw new Error("Composition layers must contain 1 to 32 layers");
   if (input.parts.length < 1 || input.parts.length > 64) throw new Error("Composition parts must contain 1 to 64 parts");
   if (input.palette.length < 1 || input.palette.length > 64) throw new Error("Composition palette must contain 1 to 64 colors");
+  if (input.pixels.length > input.canvasWidth * input.canvasHeight) throw new Error("Composition pixels exceed the canvas budget");
   uniqueIds(input.layers.map(layer => layer.id), "Layer");
   uniqueIds(input.parts.map(part => part.id), "Part");
   uniqueIds(input.palette.map(color => color.id), "Palette");
@@ -76,6 +79,15 @@ export function buildCreatorComposition(input: CreatorCompositionInput): Creator
   input.palette.forEach(color => {
     if (!ID_PATTERN.test(color.id) || !color.label.trim() || !color.semantic.trim() || !/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/.test(color.hex)) throw new Error(`Composition palette color ${color.id} is invalid`);
   });
+  const paletteIds = new Set(input.palette.map(color => color.id));
+  const pixelKeys = new Set<string>();
+  input.pixels.forEach(pixel => {
+    const key = `${pixel.x}:${pixel.y}`;
+    if (!Number.isInteger(pixel.x) || !Number.isInteger(pixel.y) || pixel.x < 0 || pixel.y < 0 || pixel.x >= input.canvasWidth || pixel.y >= input.canvasHeight) throw new Error(`Composition pixel ${key} is outside canvas bounds`);
+    if (pixelKeys.has(key)) throw new Error(`Composition pixel ${key} is duplicated`);
+    if (!paletteIds.has(pixel.colorId)) throw new Error(`Composition pixel ${key} references an unknown palette color`);
+    pixelKeys.add(key);
+  });
   const composition = {
     schemaVersion: CREATOR_COMPOSITION_SCHEMA_VERSION,
     templateId: input.templateId,
@@ -84,8 +96,9 @@ export function buildCreatorComposition(input: CreatorCompositionInput): Creator
     layers: input.layers.map(layer => ({ ...layer })),
     parts: input.parts.map(part => ({ ...part, layerIds: [...part.layerIds] })),
     palette: input.palette.map(color => ({ ...color })),
+    pixels: input.pixels.map(pixel => ({ ...pixel })).sort((left, right) => left.y - right.y || left.x - right.x || left.colorId.localeCompare(right.colorId)),
   } satisfies CreatorCompositionPreview["composition"];
-  const summary = { layerCount: input.layers.length, partCount: input.parts.length, paletteCount: input.palette.length, pixelBudget: input.canvasWidth * input.canvasHeight, meshRequired: false as const };
+  const summary = { layerCount: input.layers.length, partCount: input.parts.length, paletteCount: input.palette.length, pixelBudget: input.canvasWidth * input.canvasHeight, paintedPixelCount: input.pixels.length, meshRequired: false as const };
   const registryMetadata = buildCreatorDomainArtifactMetadata({
     domain: input.subject,
     artifactId: `composition.${input.templateId}`,
