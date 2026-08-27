@@ -21,17 +21,17 @@
 |---|---|
 | Repository | `apirak272543-ship-it/A_Survival` |
 | Branch หลัก | `main` |
-| HEAD และ `origin/main` | `08b9d6de9cfc87ae5d29eb181cea39d97e2de062` |
+| Latest implementation checkpoint | `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` (`origin/main` ก่อน docs correction) |
 | Recovery ref ที่ต้องรักษา | `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2` |
 | Stash | ว่าง ณ การตรวจล่าสุด |
 | Dev/test process | ไม่พบ process ที่ต้องหยุด ณ การตรวจล่าสุด |
-| สถานะล่าสุด | working tree มี reservation ของ AI-0 สองไฟล์สำหรับ quest reward → inventory checkpoint; ยังไม่ commit |
+| สถานะล่าสุด | quest reward → inventory checkpoint ถูก push แล้ว; registry และ matrix กำลังบันทึกผลรับงานใน docs correction commit |
 
 ## ทะเบียนงานและ file reservation
 
 | Task ID | Owner | สถานะ | ขอบเขตและไฟล์ที่จอง | Base/commit evidence | การกระทำถัดไป |
 |---|---|---|---|---|---|
-| `MAIN-REWARD-INVENTORY-001` | AI-0 / Main Integrator | 🔵 IN_PROGRESS | `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`; ห้าม AI-1/AI-2 แตะสองไฟล์นี้ | Base `2d0a220`; uncommitted ใน working tree ของ AI-0 | ตรวจ focused/full tests, ต่อ route/Workbench เมื่อจำเป็น, บันทึก evidence แล้ว commit/push เป็น checkpoint แยก |
+| `MAIN-REWARD-INVENTORY-001` | AI-0 / Main Integrator | 🟢 DONE | `server/generators/questRewardInventoryDependencyGraph.ts`, `server/questRewardInventoryDependencyGraph.test.ts`, `server/creatorRouter.ts`, `server/creatorRouter.test.ts`, `client/src/pages/CreatorDomainWorkbench.tsx`, reward inventory browser/docs evidence | Base `d282e8e`; implementation `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` | รอออกแบบ checkpoint ใหม่ `NEXT-QUEST-REWARD-DISPATCH-001`; ห้ามตีความ dry-run เป็นการแจก reward จริง |
 | `AI1-PERF-001` | AI-1 | 🟡 RESERVED | Performance profile → runtime visibility/telemetry/profiler; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_01_RUNTIME_PERFORMANCE.md`; ห้ามแก้ Workbench, router authorization, map/cache/offline/authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-1 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded pure checkpoint, ส่ง evidence กลับ AI-0 |
 | `AI2-CONTENT-001` | AI-2 | 🟡 RESERVED | Content generator / plant / asset provenance; ใช้เฉพาะ owner/test ใน `AI_HANDOFF_02_CONTENT_PROVENANCE.md`; ห้ามสร้าง PNG/GLB, แก้ Workbench/router, map policy, authority หรือไฟล์ใน reservation ของ AI-0 | ต้องส่ง branch/PR/SHA; ณ การตรวจล่าสุดยังไม่พบ remote branch หรือ PR ของ AI-2 | อ่าน registry และ handoff, ประกาศ branch/ไฟล์ที่จะจอง, ทำหนึ่ง bounded provenance checkpoint, ส่ง evidence กลับ AI-0 |
 | `NEXT-QUEST-REWARD-DISPATCH-001` | AI-0 | ⬜ AVAILABLE | ออกแบบ canonical quest reward dispatch หลัง inventory checkpoint ผ่านเท่านั้น; ต้องแยกจาก read-only graph และห้าม fabricate completion | ยังไม่มี reservation | ห้ามเริ่มจนกว่า `MAIN-REWARD-INVENTORY-001` จะเป็น 🟢 DONE และมี design/acceptance ที่ชัดเจน |
