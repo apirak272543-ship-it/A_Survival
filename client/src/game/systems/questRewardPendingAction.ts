@@ -16,6 +16,9 @@ export type QuestRewardPendingActionResult =
   | { ok: false; reason: string };
 
 const QUEST_ID_PATTERN = /^story-map-001-quest-(0[1-9]|1\d|20)$/;
+const QUEST_REWARD_EVENT_ID_PATTERN = /^quest-reward:story-map-001-quest-(0[1-9]|1\d|20):[1-9]\d{0,2}$/;
+const INSTANCE_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+const MAX_REWARD_ACTION_ITEMS = 8;
 
 function normalizedSequenceBase(value: number) {
   return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
@@ -24,6 +27,29 @@ function normalizedSequenceBase(value: number) {
 function questOrderFor(questId: string) {
   const match = QUEST_ID_PATTERN.exec(questId);
   return match ? Number(match[1]) : null;
+}
+
+/**
+ * Validates the new action at the client persistence boundary. Existing action
+ * types are intentionally left compatible; only quest-reward-dispatch receives
+ * the stricter contract before it can enter the offline transaction queue.
+ */
+export function isSafeQuestRewardPendingAction(action: HomeAction): boolean {
+  if (action.type !== "quest-reward-dispatch") return true;
+  if (!Number.isFinite(action.createdAt) || action.createdAt < 0) return false;
+  if (!action.payload || typeof action.payload !== "object" || Array.isArray(action.payload)) return false;
+
+  const payload = action.payload as Partial<QuestRewardPendingActionPayload>;
+  const parsedOrder = typeof payload.questId === "string" ? questOrderFor(payload.questId) : null;
+  if (payload.mapId !== STORY_PLAYABLE_MAP_ID || !parsedOrder || payload.questOrder !== parsedOrder) return false;
+  const sequenceBase = payload.sequenceBase;
+  if (typeof sequenceBase !== "number" || !Number.isInteger(sequenceBase) || sequenceBase < 0 || sequenceBase > 1_000_000) return false;
+  if (!Array.isArray(payload.rewardEventIds) || !Array.isArray(payload.rewardInstanceIds)) return false;
+  if (payload.rewardEventIds.length < 1 || payload.rewardEventIds.length > MAX_REWARD_ACTION_ITEMS || payload.rewardEventIds.length !== payload.rewardInstanceIds.length) return false;
+  if (new Set(payload.rewardEventIds).size !== payload.rewardEventIds.length || new Set(payload.rewardInstanceIds).size !== payload.rewardInstanceIds.length) return false;
+  if (!payload.rewardEventIds.every(value => typeof value === "string" && QUEST_REWARD_EVENT_ID_PATTERN.test(value))) return false;
+  if (!payload.rewardInstanceIds.every(value => typeof value === "string" && INSTANCE_ID_PATTERN.test(value))) return false;
+  return action.id === `quest-reward-dispatch:${payload.questId}:${payload.rewardEventIds.join(",")}`;
 }
 
 /**

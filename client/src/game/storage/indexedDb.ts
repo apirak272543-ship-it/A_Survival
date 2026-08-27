@@ -1,5 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { ItemInstance } from "@/game/data/catalog";
+import type { HomeAction } from "@/game/home/homeSystemV2";
+import { isSafeQuestRewardPendingAction } from "@/game/systems/questRewardPendingAction";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
@@ -154,12 +156,20 @@ export async function markTransactionsSynced(ids: string[]) {
   });
 }
 
+export function selectQueueableSessionActions(pendingActions: HomeAction[], capacity: number) {
+  const boundedCapacity = Math.max(0, Math.floor(capacity));
+  const rejectedIds = pendingActions.filter(action => !isSafeQuestRewardPendingAction(action)).map(action => action.id);
+  const actions = pendingActions.filter(isSafeQuestRewardPendingAction).slice(0, boundedCapacity);
+  return { actions, rejectedIds };
+}
+
 export async function queueSessionPendingActions(session: LocalGameSession, profile?: OfflineProfileRecord) {
   const currentProfile = profile ?? await offlineDb.profiles.get(session.playerId);
   let nextClock = currentProfile?.vectorClock ?? { [session.deviceToken]: 0 };
   const queuedIds: string[] = [];
   const existingPending = await offlineDb.transactions.where("playerId").equals(session.playerId).filter(row => row.syncedAt === null).count();
-  const actions = session.pendingActions.slice(0, Math.max(0, OFFLINE_QUEUE_LIMIT - existingPending));
+  const selection = selectQueueableSessionActions(session.pendingActions, OFFLINE_QUEUE_LIMIT - existingPending);
+  const actions = selection.actions;
 
   await offlineDb.transaction("rw", offlineDb.profiles, offlineDb.transactions, async () => {
     for (const action of actions) {
@@ -179,7 +189,7 @@ export async function queueSessionPendingActions(session: LocalGameSession, prof
     }
     if (currentProfile) await offlineDb.profiles.update(session.playerId, { vectorClock: nextClock, updatedAt: Date.now() });
   });
-  return { queuedIds, vectorClock: nextClock };
+  return { queuedIds, rejectedIds: selection.rejectedIds, vectorClock: nextClock };
 }
 
 export async function discardSyncedTransactions(before = Date.now() - 7 * 24 * 60 * 60 * 1000) {

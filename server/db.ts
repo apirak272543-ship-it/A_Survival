@@ -4,7 +4,7 @@ import { authorityAuditEvents, authorityInvitations, gameIntegrityLogs, gameItem
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
 import { canAcceptAuthorityInvitation, isAuthorityInvitationActive, normalizeAuthorityEmail, roleGrantedByMasterEmail, type AuthorityRole } from "../shared/authority";
-import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeStorageDepositPayload, isSafeStorageWithdrawPayload, isSafeUseItemPayload } from "./syncActionValidation";
+import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeQuestRewardDispatchPayload, isSafeStorageDepositPayload, isSafeStorageWithdrawPayload, isSafeUseItemPayload } from "./syncActionValidation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -388,6 +388,18 @@ export type SyncBatchTransaction = {
   vectorClock: ServerVectorClock;
 };
 
+export function isSafeSyncAction(actionType: string, payload: Record<string, unknown>) {
+  return ["place-structure", "move-structure", "rotate-structure", "recall-structure", "plant-seed", "harvest-crop", "equip-pet-item", "unequip-pet-item"].includes(actionType)
+    || (actionType === "use-item" && isSafeUseItemPayload(payload))
+    || (actionType === "block-place" && isSafeBlockPlacePayload(payload))
+    || (actionType === "block-break" && isSafeBlockBreakPayload(payload))
+    || (actionType === "plant-world-seed" && isSafePlantWorldSeedPayload(payload))
+    || (actionType === "harvest-world-crop" && isSafeHarvestWorldCropPayload(payload))
+    || (actionType === "storage-deposit" && isSafeStorageDepositPayload(payload))
+    || (actionType === "storage-withdraw" && isSafeStorageWithdrawPayload(payload))
+    || (actionType === "quest-reward-dispatch" && isSafeQuestRewardDispatchPayload(payload));
+}
+
 export async function writeGameSyncBatch(input: {
   playerId: string;
   clientClock: ServerVectorClock;
@@ -410,14 +422,7 @@ export async function writeGameSyncBatch(input: {
         duplicateTxIds.push(transaction.txId);
         continue;
       }
-      const supportedAction = ["place-structure", "move-structure", "rotate-structure", "recall-structure", "plant-seed", "harvest-crop", "equip-pet-item", "unequip-pet-item"].includes(transaction.actionType)
-        || (transaction.actionType === "use-item" && isSafeUseItemPayload(transaction.payload))
-        || (transaction.actionType === "block-place" && isSafeBlockPlacePayload(transaction.payload))
-        || (transaction.actionType === "block-break" && isSafeBlockBreakPayload(transaction.payload))
-        || (transaction.actionType === "plant-world-seed" && isSafePlantWorldSeedPayload(transaction.payload))
-        || (transaction.actionType === "harvest-world-crop" && isSafeHarvestWorldCropPayload(transaction.payload))
-        || (transaction.actionType === "storage-deposit" && isSafeStorageDepositPayload(transaction.payload))
-        || (transaction.actionType === "storage-withdraw" && isSafeStorageWithdrawPayload(transaction.payload));
+      const supportedAction = isSafeSyncAction(transaction.actionType, transaction.payload);
       if (transaction.actorId !== profile.deviceToken || !supportedAction) {
         rejectedTxIds.push(transaction.txId);
         continue;
