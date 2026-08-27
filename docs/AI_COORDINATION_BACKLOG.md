@@ -88,7 +88,7 @@
 
 ## Current next pick
 
-`NEXT-QUEST-REWARD-DISPATCH-001` เป็นงานถัดไปที่เหมาะกับ AI-0 หลัง `MAIN-REWARD-INVENTORY-001` ปิดแล้ว แต่ยัง **AVAILABLE** จนกว่าจะมี design/acceptance และ reservation ใหม่. AI-1 ควรทำ `AI1-PERF-001`; AI-2 ควรทำ `AI2-CONTENT-001`. หากทั้งสองตัวไม่มี branch/PR/SHA ให้ใช้ `WAITING_EVIDENCE` ไม่ใช่ `DONE`.
+`NEXT-QUEST-REWARD-DISPATCH-001` ถูก AI-0 จองและอยู่สถานะ **IN_PROGRESS** บน base `959d3d3`; ขอบเขตแรกจำกัดไว้ที่ pure transition/new files และยังไม่แตะ ArcaneFrontier, persistence หรือ event emitters จนกว่าจะผ่าน integration review. AI-1 ควรทำ `AI1-PERF-001`; AI-2 ควรทำ `AI2-CONTENT-001`. หากทั้งสองตัวไม่มี branch/PR/SHA ให้ใช้ `WAITING_EVIDENCE` ไม่ใช่ `DONE`.
 
 ## Claim template
 
