@@ -106,6 +106,8 @@ export function isSafeQuestRewardDispatchPayload(payload: Record<string, unknown
   const rewardInstanceIds = payload.rewardInstanceIds;
   if (payload.mapId !== OBSIDIAN_MAP_ID || typeof payload.questId !== "string" || !QUEST_REWARD_QUEST_ID_PATTERN.test(payload.questId)) return false;
   if (!Number.isInteger(payload.questOrder) || Number(payload.questOrder) < 1 || Number(payload.questOrder) > 20) return false;
+  const questIdOrder = Number(payload.questId.slice("story-map-001-quest-".length));
+  if (payload.questOrder !== questIdOrder) return false;
   if (!Number.isInteger(payload.sequenceBase) || Number(payload.sequenceBase) < 0 || Number(payload.sequenceBase) > 1_000_000) return false;
   if (!Array.isArray(rewardEventIds) || !Array.isArray(rewardInstanceIds) || rewardEventIds.length < 1 || rewardEventIds.length > 8 || rewardEventIds.length !== rewardInstanceIds.length) return false;
   if (new Set(rewardEventIds).size !== rewardEventIds.length || new Set(rewardInstanceIds).size !== rewardInstanceIds.length) return false;

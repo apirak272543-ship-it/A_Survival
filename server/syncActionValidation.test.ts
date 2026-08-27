@@ -72,6 +72,7 @@ describe("quest reward dispatch sync boundary", () => {
     expect(isSafeQuestRewardDispatchPayload({ ...base, mapId: "map-002-ashen-obsidian-plains" })).toBe(false);
     expect(isSafeQuestRewardDispatchPayload({ ...base, questId: "story-map-001-quest-20", questOrder: 20 })).toBe(true);
     expect(isSafeQuestRewardDispatchPayload({ ...base, questId: "story-map-002-quest-01" })).toBe(false);
+    expect(isSafeQuestRewardDispatchPayload({ ...base, questId: "story-map-001-quest-20", questOrder: 1 })).toBe(false);
     expect(isSafeQuestRewardDispatchPayload({ ...base, rewardEventIds: [base.rewardEventIds[0], base.rewardEventIds[0]], rewardInstanceIds: ["a", "b"] })).toBe(false);
     expect(isSafeQuestRewardDispatchPayload({ ...base, rewardEventIds: ["quest-reward:story-map-001-quest-01:0"] })).toBe(false);
     expect(isSafeQuestRewardDispatchPayload({ ...base, sequenceBase: 1_000_001 })).toBe(false);
