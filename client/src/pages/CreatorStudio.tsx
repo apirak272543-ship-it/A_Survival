@@ -31,28 +31,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import { CREATOR_SKIN_LAYOUT_PARTS, CREATOR_SKIN_PARTS, CREATOR_TEMPLATE_PRESETS, type CreatorSkinPart, type CreatorTemplateKind, type CreatorTemplatePreset } from "@/lib/creatorTemplateCatalog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 
-type CreatorKind = "icon" | "tile" | "skin" | "atlas";
+type CreatorKind = CreatorTemplateKind;
 type AssetSource = "generated" | "starter-authored" | "provided" | "reference-only";
 type ToolMode = "paint" | "erase";
 type SymmetryMode = "none" | "horizontal" | "vertical";
 type Rgba = [number, number, number, number];
-
-type TemplatePreset = {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  kind: CreatorKind;
-  width: number;
-  height: number;
-  symbol: string;
-};
-
+type TemplatePreset = CreatorTemplatePreset;
 type LayerState = {
   id: string;
   name: string;
@@ -60,12 +50,7 @@ type LayerState = {
   opacity: number;
   pixels: Rgba[];
 };
-
-type SkinPart = {
-  id: string;
-  label: string;
-  detail: string;
-};
+type SkinPart = CreatorSkinPart;
 
 const PALETTE = [
   "#0b1220",
@@ -86,88 +71,10 @@ const PALETTE = [
   "#f1faee",
 ];
 
-const TEMPLATES: TemplatePreset[] = [
-  {
-    id: "plant-icon",
-    title: "พืช / ใบไม้",
-    description: "ไอคอนพิกเซลสำหรับพืช เมล็ด และผลผลิต",
-    category: "พืช",
-    kind: "icon",
-    width: 16,
-    height: 16,
-    symbol: "✦",
-  },
-  {
-    id: "weapon-icon",
-    title: "อาวุธ",
-    description: "ช่องวาดทรงอาวุธพร้อมพื้นที่เผื่อเงา",
-    category: "อาวุธ",
-    kind: "icon",
-    width: 24,
-    height: 24,
-    symbol: "⚔",
-  },
-  {
-    id: "item-icon",
-    title: "ไอเทม",
-    description: "ไอคอนของใช้ วัตถุดิบ และของสะสม",
-    category: "ไอเทม",
-    kind: "icon",
-    width: 16,
-    height: 16,
-    symbol: "◆",
-  },
-  {
-    id: "terrain-tile",
-    title: "พื้น / บล็อก",
-    description: "พื้นผิว tile สำหรับบล็อกและภูมิประเทศ",
-    category: "สิ่งแวดล้อม",
-    kind: "tile",
-    width: 16,
-    height: 16,
-    symbol: "▦",
-  },
-  {
-    id: "character-skin",
-    title: "สกินตัวละคร",
-    description: "ผิวตัวละครแบบแยกชิ้นส่วน ไม่ต้องวาดสามเหลี่ยม",
-    category: "ตัวละคร",
-    kind: "skin",
-    width: 64,
-    height: 64,
-    symbol: "♙",
-  },
-  {
-    id: "atlas-sheet",
-    title: "Atlas / ชุดภาพ",
-    description: "รวมหน้าภาพหลายช่องสำหรับ asset ที่ใช้ร่วมกัน",
-    category: "ชุดภาพ",
-    kind: "atlas",
-    width: 64,
-    height: 64,
-    symbol: "▤",
-  },
-];
+const TEMPLATES: TemplatePreset[] = CREATOR_TEMPLATE_PRESETS;
 
-const SKIN_PARTS: SkinPart[] = [
-  { id: "head", label: "หัว", detail: "ทรงและสีผม/หมวก" },
-  { id: "face", label: "ใบหน้า", detail: "ตา ปาก และรายละเอียดหน้า" },
-  { id: "torso", label: "ลำตัว", detail: "เสื้อ เกราะ หรือชุดหลัก" },
-  { id: "left-arm", label: "แขนซ้าย", detail: "แขนและส่วนต่ออุปกรณ์" },
-  { id: "right-arm", label: "แขนขวา", detail: "แขนและส่วนต่ออุปกรณ์" },
-  { id: "left-leg", label: "ขาซ้าย", detail: "กางเกง รองเท้า และเงา" },
-  { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา" },
-];
-
-const SKIN_LAYOUT_PARTS: Record<string, SkinPart & { x: number; y: number; width: number; height: number }> = {
-  head: { id: "head", label: "หัว", detail: "ทรงและสีผม/หมวก", x: 0, y: 0, width: 32, height: 16 },
-  face: { id: "face", label: "ใบหน้า", detail: "ตา ปาก และรายละเอียดหน้า", x: 32, y: 0, width: 32, height: 16 },
-  torso: { id: "torso", label: "ลำตัว", detail: "เสื้อ เกราะ หรือชุดหลัก", x: 0, y: 16, width: 32, height: 24 },
-  "left-arm": { id: "left-arm", label: "แขนซ้าย", detail: "แขนและส่วนต่ออุปกรณ์", x: 32, y: 16, width: 16, height: 24 },
-  "right-arm": { id: "right-arm", label: "แขนขวา", detail: "แขนและส่วนต่ออุปกรณ์", x: 48, y: 16, width: 16, height: 24 },
-  "left-leg": { id: "left-leg", label: "ขาซ้าย", detail: "กางเกง รองเท้า และเงา", x: 0, y: 40, width: 16, height: 24 },
-  "right-leg": { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา", x: 16, y: 40, width: 16, height: 24 },
-};
+const SKIN_PARTS: SkinPart[] = CREATOR_SKIN_PARTS;
+const SKIN_LAYOUT_PARTS = CREATOR_SKIN_LAYOUT_PARTS;
 
 function makePixels(width: number, height: number): Rgba[] {
   return Array.from({ length: width * height }, () => [0, 0, 0, 0] as Rgba);

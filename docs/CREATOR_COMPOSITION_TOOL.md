@@ -4,7 +4,7 @@
 
 | ส่วน | สิ่งที่ระบบตรวจ |
 |---|---|
-| Template | รหัสปลอดภัยและ versioned composition schema |
+| Template | เลือกจาก shared `creatorTemplateCatalog.ts` ซึ่งเก็บ id/title/category/kind/dimensions เดียวกับ CreatorStudio และตรวจรหัสปลอดภัยของ composition schema |
 | Canvas | กว้าง/สูง 1–128 pixels และคำนวณ pixel budget |
 | Layers | id ไม่ซ้ำ, role, z-index, visible และ opacity 0–1 |
 | Parts | slot, ขนาด/พิกัดต้องอยู่ใน canvas และอ้างอิง layer ที่มีอยู่ |
@@ -16,6 +16,6 @@
 
 ผลลัพธ์ composition มี `previewOnly: true`, `meshRequired: false`, `runtimeImportAllowed: false`, `playerVisible: false` และ `cacheable: false`. `registryMetadata` ต่อเข้ากับ generic creator artifact registry ได้ภายหลัง. `creator.composition.texturePreview` ใช้ `creatorCompositionTextureAdapter.ts` ส่งข้อมูลไป existing `texture.pack` builder เพื่อสร้าง PNG preview ชั่วคราวสำหรับผู้ดูแล พร้อม SHA-256/provenance; ไม่เรียก texture registry, ไม่ upload storage, ไม่เปลี่ยน review state และไม่ publish เข้าเกมโดยอัตโนมัติ
 
-Workbench ใช้ route `/creator-workbench` หลัง `CreatorAccessGate` และการ preview ใช้ `adminProcedure`. `CreatorPixelGridEditor` แสดงผลและแก้ไขได้ไม่เกิน 32 × 32 ใน UI รอบนี้ พร้อมตัวเลือก layer; pure validator/schema ยังรับ manifest สูงสุด 128 × 128 และสูงสุด 16,384 cells. Player landing/game ไม่มี composition domain, form หรือผลลัพธ์ของ creator tool. Composition สำหรับสกิน/แอนิเมชันใน checkpoint นี้หมายถึง manifest ของส่วนประกอบ สัดส่วน และพิกัด pixel ไม่ใช่ skeleton, clip หรือ model asset ที่เสร็จสมบูรณ์
+`client/src/lib/creatorTemplateCatalog.ts` เป็น source-of-truth ของ template และ skin-part layout ที่ CreatorStudio กับ Workbench ใช้ร่วมกัน; Workbench ไม่เปิด atlas template ที่ยังไม่มี composition contract. Workbench ใช้ route `/creator-workbench` หลัง `CreatorAccessGate` และการ preview ใช้ `adminProcedure`. `CreatorPixelGridEditor` แสดงผลและแก้ไขได้ไม่เกิน 32 × 32 ใน UI รอบนี้ พร้อมตัวเลือก layer; pure validator/schema ยังรับ manifest สูงสุด 128 × 128 และสูงสุด 16,384 cells. Player landing/game ไม่มี composition domain, form หรือผลลัพธ์ของ creator tool. Composition สำหรับสกิน/แอนิเมชันใน checkpoint นี้หมายถึง manifest ของส่วนประกอบ สัดส่วน และพิกัด pixel ไม่ใช่ skeleton, clip หรือ model asset ที่เสร็จสมบูรณ์
 
 > **ข้อจำกัด:** pixel grid เป็น editor แบบ bounded click-to-paint ที่เก็บ sparse cells; texture handoff สร้าง PNG เฉพาะ transient preview และยังไม่มี texture atlas export, undo/redo, skeleton/rig, actual model assembly, object-storage upload, DB register E2E, review approval E2E, binary/model compatibility หรือ runtime import. สิ่งเหล่านี้ต้องแยก checkpoint พร้อม asset provenance และ visual evidence ต่อไป

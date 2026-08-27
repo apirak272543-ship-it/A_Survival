@@ -23,3 +23,7 @@ After adding `creator.composition.texturePreview`, the player landing was reload
 ## Layer-aware regression check
 
 After restarting the local dev server with the layer-aware contract, the player landing again rendered the normal `Arcane Frontier` surface only. The DOM exposed player controls (คู่มือ, เครดิต, ตั้งค่า, เข้าสู่พื้นที่รอยต่อ) and did not expose layer selector, pixel grid, texture Builder, composition, registry, review, or creator controls. This is a fresh player boundary check, not authenticated creator preview evidence.
+
+## Shared catalog regression check
+
+After wiring the shared creator template catalog into CreatorStudio and CreatorDomainWorkbench, a fresh player landing check again rendered only the normal `Arcane Frontier` player surface. DOM-visible controls remained คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ; no template catalog, skin parts, layer selector, pixel grid, texture Builder, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator preview claim is made.
