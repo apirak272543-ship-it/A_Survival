@@ -59,6 +59,7 @@ import { buildWorldSpawnLootDependencyGraph } from "./generators/worldSpawnLootD
 import { buildProceduralContentCatalogDependencyGraph } from "./generators/proceduralContentCatalogDependencyGraph";
 import { buildPlantContentCatalogDependencyGraph } from "./generators/plantContentCatalogDependencyGraph";
 import { buildProceduralUniversalItemDependencyGraph } from "./generators/proceduralUniversalItemDependencyGraph";
+import { buildAnimationAssetDependencyGraph } from "./generators/animationAssetDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -372,6 +373,7 @@ export const creatorRouter = router({
     proceduralContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), count: z.number().int().min(1).max(8).default(8), category: z.enum(["melee", "ranged", "magic"]).optional(), samplePerCategory: z.number().int().min(1).max(8).default(8), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildProceduralContentCatalogDependencyGraph(input) })),
     plantContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), samplePlantCount: z.number().int().min(1).max(32).default(16), samplePerCategory: z.number().int().min(1).max(8).default(8), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildPlantContentCatalogDependencyGraph(input) })),
     proceduralUniversalItemPreview: adminProcedure.input(z.object({ seed: z.number().int(), count: z.number().int().min(1).max(8).default(8), category: z.enum(["melee", "ranged", "magic"]).optional(), maxPowerBudget: z.number().int().min(1).max(100).default(100), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildProceduralUniversalItemDependencyGraph(input) })),
+    animationAssetPreview: adminProcedure.input(animationPreviewSchema.extend({ rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildAnimationAssetDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),

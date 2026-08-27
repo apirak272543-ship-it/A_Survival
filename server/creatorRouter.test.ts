@@ -197,6 +197,20 @@ describe("creator texture router", () => {
     expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
   });
 
+  it("previews animation profiles against active pack metadata and asset bindings without runtime import", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.dependencyGraph.animationAssetPreview({ id: "survivor.default", displayName: "Survivor Default Motion", assetId: "animation.survivor.default", assetSource: "starter-authored", provenanceRef: "procedural-starter-authored", fps: 12, seed: "animation-asset-router-seed" });
+
+    expect(result.previewOnly).toBe(true);
+    expect(result.artifact).toMatchObject({ generatorId: "animation.profile", generatorVersion: "1.0.0", seed: "animation-asset-router-seed", profileId: "survivor.default", assetId: "animation.survivor.default" });
+    expect(result.runtimePack).toMatchObject({ id: "arcane-frontier-voxel-pixel", version: "0.3.0" });
+    expect(result.runtimeMetadata.stateIds).toEqual(["attack", "dash", "dead", "hurt", "idle", "run", "walk"]);
+    expect(result.summary).toMatchObject({ profileId: "survivor.default", stateCount: 7, runtimeMetadataStateCount: 7, metadataMatch: true, unresolvedReferenceTypes: { "asset-binding": 1, "metadata-mismatch": 0 } });
+    expect(result.graph.valid).toBe(false);
+    expect(result.graph.issues.some(issue => issue.code === "MISSING_REQUIRED_DEPENDENCY")).toBe(true);
+    expect(result.graph.runtimePolicy).toEqual({ runtimeImportAllowed: false, playerVisible: false, cacheable: false });
+  });
+
   it("previews procedural weapon artifacts against content catalog without runtime import", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     const result = await caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "procedural-catalog-seed", count: 8, category: "melee", samplePerCategory: 8 });
@@ -311,6 +325,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "blocked-seed", count: 8, category: "melee", samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.plantContentCatalogPreview({ seed: "blocked-seed", samplePlantCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.proceduralUniversalItemPreview({ seed: 829173, count: 8, category: "melee", maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.animationAssetPreview({ id: "blocked.animation", displayName: "Blocked Animation", assetId: "animation.blocked", assetSource: "reference-only", provenanceRef: "blocked-test", fps: 12, seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
@@ -333,6 +348,7 @@ describe("creator texture router", () => {
     await expect(caller.creator.dependencyGraph.proceduralContentCatalogPreview({ seed: "blocked-seed", count: 8, category: "melee", samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.plantContentCatalogPreview({ seed: "blocked-seed", samplePlantCount: 16, samplePerCategory: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.dependencyGraph.proceduralUniversalItemPreview({ seed: 829173, count: 8, category: "melee", maxPowerBudget: 100 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.dependencyGraph.animationAssetPreview({ id: "blocked.animation", displayName: "Blocked Animation", assetId: "animation.blocked", assetSource: "reference-only", provenanceRef: "blocked-test", fps: 12, seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("reports a clear durable registry-unavailable error after admin preflight when DB is not configured", async () => {
