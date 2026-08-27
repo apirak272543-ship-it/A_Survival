@@ -88,7 +88,7 @@
 
 ## Current next pick
 
-`NEXT-QUEST-REWARD-DISPATCH-001` ถูก AI-0 จองและอยู่สถานะ **IN_PROGRESS** บน base `959d3d3`; ขอบเขตแรกจำกัดไว้ที่ pure transition/new files และยังไม่แตะ ArcaneFrontier, persistence หรือ event emitters จนกว่าจะผ่าน integration review. AI-1 ควรทำ `AI1-PERF-001`; AI-2 ควรทำ `AI2-CONTENT-001`. หากทั้งสองตัวไม่มี branch/PR/SHA ให้ใช้ `WAITING_EVIDENCE` ไม่ใช่ `DONE`.
+`NEXT-QUEST-REWARD-DISPATCH-001` อยู่สถานะ **DONE** ใน implementation `333078e3f78e3647ba6643f98b76493dc982b726`; pure item-only atomic transition และ read-only preview ผ่านแล้ว แต่ persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers และต้องเปิดเป็นงานใหม่แยก reservation. AI-1 ควรทำ `AI1-PERF-001`; AI-2 ควรทำ `AI2-CONTENT-001`. หากทั้งสองตัวไม่มี branch/PR/SHA ให้ใช้ `WAITING_EVIDENCE` ไม่ใช่ `DONE`.
 
 ## Claim template
 
