@@ -43,3 +43,11 @@ After the composition texture adapter was extended so animation subjects produce
 ## Manifest sidecar export boundary check
 
 After adding the deterministic `manifest.json` sidecar and explicit manifest download button to the creator export result, a fresh player landing check still displayed only normal player controls. No manifest, PNG download, texture, skin, composition, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator export/download execution is claimed.
+
+## ZIP texture-pack bundle boundary check
+
+After adding deterministic ZIP assembly and the manual `ดาวน์โหลด ZIP texture pack` action, a fresh player landing check still showed only the normal player surface. No ZIP, manifest, PNG download, texture, skin, composition, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator package download execution is claimed.
+
+## Final ZIP bundle boundary check
+
+After the archive size/path guards and final ZIP download UI were added, a fresh player landing check still displayed only the normal player surface. No ZIP, manifest, PNG download, texture, skin, composition, registry, review or creator controls appeared. This remains player boundary evidence only; no authenticated creator package download execution is claimed.

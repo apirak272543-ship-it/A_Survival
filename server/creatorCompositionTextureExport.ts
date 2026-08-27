@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { hashStableJson } from "./generators/commonGeneratorApi";
-import {
-  validateTexturePackOutput,
+import { validateTexturePackOutput,
   type BuiltTextureAsset,
   type TexturePackOutput,
 } from "./generators/texturePackBuilder";
+import { buildDeterministicZip } from "./creatorCompositionTextureBundle";
+
 
 export type CreatorCompositionTextureExport = {
   exportSchemaVersion: "a-survival.creator-composition-texture-export.v1";
@@ -19,6 +20,13 @@ export type CreatorCompositionTextureExport = {
     mime: "application/json";
     sha256: string;
     contentBase64: string;
+  };
+  bundleFile: {
+    fileName: string;
+    mime: "application/zip";
+    sha256: string;
+    contentBase64: string;
+    files: string[];
   };
   assets: Array<Pick<BuiltTextureAsset, "assetId" | "kind" | "width" | "height" | "relativePath" | "mime" | "sha256" | "source" | "provenanceRef" | "pngBase64"> & { downloadFileName: string }>;
   downloadable: true;
@@ -72,11 +80,23 @@ export function buildCreatorCompositionTextureExport(input: { output: TexturePac
     sha256: manifestSha256,
     contentBase64: manifestBytes.toString("base64"),
   };
+  const archive = buildDeterministicZip([
+    { path: manifestFile.fileName, bytes: manifestBytes },
+    ...assets.map(asset => ({ path: asset.relativePath, bytes: Buffer.from(asset.pngBase64, "base64") })),
+  ]);
+  const bundleFile = {
+    fileName: `creator-composition-${input.compositionHash.slice(0, 16)}.zip`,
+    mime: "application/zip" as const,
+    sha256: archive.sha256,
+    contentBase64: archive.bytes.toString("base64"),
+    files: archive.files,
+  };
   const exportIdentity = {
     exportSchemaVersion: "a-survival.creator-composition-texture-export.v1" as const,
     compositionHash: input.compositionHash,
     packSha256: input.output.manifest.packSha256,
     manifestSha256,
+    bundleSha256: bundleFile.sha256,
     assets: assets.map(asset => ({ assetId: asset.assetId, sha256: asset.sha256 })),
   };
   return {
@@ -85,6 +105,7 @@ export function buildCreatorCompositionTextureExport(input: { output: TexturePac
     previewOnly: true,
     manifest: input.output.manifest,
     manifestFile,
+    bundleFile,
     assets,
     downloadable: true,
     runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false },

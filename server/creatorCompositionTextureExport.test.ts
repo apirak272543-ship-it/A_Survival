@@ -38,6 +38,10 @@ describe("creator composition texture export", () => {
     });
     expect(firstExport.exportId).toMatch(/^[a-f0-9]{64}$/);
     expect(firstExport.manifestSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(firstExport.bundleFile).toMatchObject({ mime: "application/zip", files: ["manifest.json", "skins/survivor-pixel-32.png"] });
+    expect(firstExport.bundleFile.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(firstExport.bundleFile.contentBase64.startsWith("UEsDB")).toBe(true);
+    expect(createHash("sha256").update(Buffer.from(firstExport.bundleFile.contentBase64, "base64")).digest("hex")).toBe(firstExport.bundleFile.sha256);
     expect(firstExport.manifestFile).toMatchObject({ fileName: "manifest.json", mime: "application/json", sha256: firstExport.manifestSha256 });
     const manifestBytes = Buffer.from(firstExport.manifestFile.contentBase64, "base64");
     expect(manifestBytes.toString("utf8").endsWith("\n")).toBe(true);
