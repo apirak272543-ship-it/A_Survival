@@ -1,0 +1,5 @@
+# World spawn → loot dependency browser boundary evidence — 2026-08-27
+
+A temporary local dev server was started from the current repository for boundary smoke only. The player landing `/` loaded the Thai `ARCANE FRONTIER` surface with `คู่มือ`, `เครดิต`, `ตั้งค่า`, and `เข้าสู่พื้นที่รอยต่อ`; no world spawn→loot graph, loot sample, drop item, species, asset, generator, registry, seed, or rules controls appeared. A fresh `/creator-workbench` request rendered `DEVELOPER ONLY`, `เข้า Creator Studio ไม่ได้`, and `กรุณาเข้าสู่ระบบผู้ดูแลระบบก่อนใช้งานพื้นที่สร้าง asset`, with only `กลับหน้าผู้เล่น`; the new loot controls and result cards were not exposed without admin access.
+
+This browser smoke proves only the player/developer boundary. It does not claim authenticated admin Workbench E2E, graph mutation success in a browser, database/storage writes, binary generation, asset-manifest binding, runtime import/cache/publish, or device/mobile acceptance. The temporary dev server must be stopped before final validation and commit.
