@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
+import { authorityAuditEvents, gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
 import { roleGrantedByMasterEmail, type AuthorityRole } from "../shared/authority";
@@ -120,28 +120,70 @@ export async function listAuthorityMembers(limit = 100): Promise<{ available: bo
 }
 
 export async function setAuthorityMemberRole(input: {
+  actorUserId: number;
   targetUserId: number;
   role: Exclude<AuthorityRole, "master">;
+  reason: string;
 }): Promise<AuthorityMember | null> {
   const db = await getDb();
   if (!db) throw new Error("Authority database is not available");
 
-  const target = await db.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
-  if (!target[0]) return null;
-  if (target[0].role === "master") throw new Error("The master authority cannot be changed through this route");
+  return db.transaction(async tx => {
+    const target = await tx.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+    if (!target[0]) return null;
+    if (target[0].role === "master") throw new Error("The master authority cannot be changed through this route");
 
-  await db.update(users).set({ role: input.role }).where(eq(users.id, input.targetUserId));
+    const action = input.role === "user" ? "revoke" : "grant";
+    await tx.update(users).set({ role: input.role }).where(eq(users.id, input.targetUserId));
+    await tx.insert(authorityAuditEvents).values({
+      actorUserId: input.actorUserId,
+      targetUserId: input.targetUserId,
+      action,
+      fromRole: target[0].role,
+      toRole: input.role,
+      reason: input.reason,
+    });
+    const rows = await tx.select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+
+    return (rows[0] as AuthorityMember | undefined) ?? null;
+  });
+}
+
+export type AuthorityAuditMemberEvent = {
+  id: number;
+  actorUserId: number;
+  targetUserId: number;
+  action: "grant" | "revoke";
+  fromRole: Exclude<AuthorityRole, "master">;
+  toRole: Exclude<AuthorityRole, "master">;
+  reason: string;
+  createdAt: Date;
+};
+
+export async function listAuthorityAuditEvents(limit = 100): Promise<{ available: boolean; events: AuthorityAuditMemberEvent[] }> {
+  const db = await getDb();
+  if (!db) return { available: false, events: [] };
+
   const rows = await db.select({
-    id: users.id,
-    openId: users.openId,
-    name: users.name,
-    email: users.email,
-    role: users.role,
-    createdAt: users.createdAt,
-    lastSignedIn: users.lastSignedIn,
-  }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+    id: authorityAuditEvents.id,
+    actorUserId: authorityAuditEvents.actorUserId,
+    targetUserId: authorityAuditEvents.targetUserId,
+    action: authorityAuditEvents.action,
+    fromRole: authorityAuditEvents.fromRole,
+    toRole: authorityAuditEvents.toRole,
+    reason: authorityAuditEvents.reason,
+    createdAt: authorityAuditEvents.createdAt,
+  }).from(authorityAuditEvents).orderBy(authorityAuditEvents.createdAt).limit(limit);
 
-  return (rows[0] as AuthorityMember | undefined) ?? null;
+  return { available: true, events: rows as AuthorityAuditMemberEvent[] };
 }
 
 export type GameProfileOpenInput = {

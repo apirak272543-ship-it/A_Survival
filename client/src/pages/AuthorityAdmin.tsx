@@ -12,16 +12,18 @@ const ROLE_LABELS = {
 export default function AuthorityAdmin() {
   const { user } = useAuth();
   const membersQuery = trpc.auth.authority.list.useQuery({ limit: 100 }, { enabled: user?.role === "master" });
+  const auditQuery = trpc.auth.authority.audit.useQuery({ limit: 100 }, { enabled: user?.role === "master" });
   const utils = trpc.useUtils();
   const setRole = trpc.auth.authority.setRole.useMutation({
-    onSuccess: () => void utils.auth.authority.list.invalidate(),
+    onSuccess: () => { void utils.auth.authority.list.invalidate(); void utils.auth.authority.audit.invalidate(); },
   });
   const revoke = trpc.auth.authority.revokeCreatorAccess.useMutation({
-    onSuccess: () => void utils.auth.authority.list.invalidate(),
+    onSuccess: () => { void utils.auth.authority.list.invalidate(); void utils.auth.authority.audit.invalidate(); },
   });
 
   const members = useMemo(() => membersQuery.data?.members ?? [], [membersQuery.data]);
   const actionError = setRole.error?.message ?? revoke.error?.message ?? null;
+  const auditEvents = auditQuery.data?.events ?? [];
 
   if (membersQuery.isLoading) {
     return <main className="grid min-h-dvh place-items-center bg-[#070a10] px-6 text-slate-100"><p className="text-sm text-cyan-100">กำลังโหลดรายชื่อ authority จาก server…</p></main>;
@@ -56,6 +58,8 @@ export default function AuthorityAdmin() {
             {members.length === 0 && <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีสมาชิกที่อ่านได้จากฐานข้อมูล หรือฐานข้อมูลยังไม่พร้อม</div>}
           </div>
         </section>
+
+        <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-[#0c1422]"><div className="border-b border-white/10 p-5"><h2 className="text-lg font-bold text-white">ประวัติการเปลี่ยนสิทธิ์</h2><p className="mt-1 text-xs text-slate-500">บันทึก immutable จาก server · {auditEvents.length} เหตุการณ์</p></div>{auditQuery.data?.available === false && <div className="m-5 rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-4 text-sm text-amber-100">ฐานข้อมูลยังไม่พร้อม จึงยังไม่มี audit events ให้โหลด</div>}<div className="divide-y divide-white/8">{auditEvents.map(event => <div key={event.id} className="p-5"><p className="text-xs font-bold text-slate-200">{event.action === "grant" ? "มอบสิทธิ์" : "เพิกถอนสิทธิ์"} · {event.fromRole} → {event.toRole}</p><p className="mt-1 text-xs text-slate-500">actor {event.actorUserId} · target {event.targetUserId} · {new Date(event.createdAt).toISOString()}</p><p className="mt-2 text-xs text-slate-300">เหตุผล: {event.reason}</p></div>)}{auditEvents.length === 0 && auditQuery.data?.available !== false && <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีเหตุการณ์ที่อ่านได้</div>}</div></section>
 
         <a href="/" className="mt-5 inline-flex rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100">กลับหน้าผู้เล่น</a>
       </div>

@@ -15,7 +15,7 @@
 | `admin` | ได้ | ไม่ได้ | ไม่ได้ |
 | `master` | ได้ | ได้ | ไม่ได้ผ่าน route นี้ |
 
-บัญชี Master คนแรกกำหนดได้จาก `MASTER_ADMIN_EMAIL` ซึ่งมีค่าเริ่มต้นตามคำขอของเจ้าของเป็น `apirak272543@gmail.com` และมี `OWNER_OPEN_ID` เป็น fallback สำหรับ deployment ที่ยืนยัน OpenID ได้. ระบบจะ normalize อีเมลก่อนเปรียบเทียบและไม่ส่ง password หรือ secret เข้า repository. การมอบ GM/Admin ใช้ `auth.authority.setRole` สำหรับบัญชีที่เข้าสู่ระบบ OAuth และปรากฏใน user table แล้ว; การเพิกถอน creator ใช้การลด role กลับเป็น `user` โดยไม่ลบบัญชีถาวร.
+บัญชี Master คนแรกกำหนดได้จาก `MASTER_ADMIN_EMAIL` ซึ่งมีค่าเริ่มต้นตามคำขอของเจ้าของเป็น `apirak272543@gmail.com` และมี `OWNER_OPEN_ID` เป็น fallback สำหรับ deployment ที่ยืนยัน OpenID ได้. ระบบจะ normalize อีเมลก่อนเปรียบเทียบและไม่ส่ง password หรือ secret เข้า repository. การมอบ GM/Admin ใช้ `auth.authority.setRole` สำหรับบัญชีที่เข้าสู่ระบบ OAuth และปรากฏใน user table แล้ว; การเพิกถอน creator ใช้การลด role กลับเป็น `user` โดยไม่ลบบัญชีถาวร. ทุกการ grant/revoke ที่ผ่าน route จะ update user และ insert immutable event ใน transaction เดียวกัน; Master อ่านเหตุการณ์จำกัดจำนวนได้จาก `auth.authority.audit` พร้อม actor, target, role ก่อน/หลัง และเหตุผล.
 
 ## Routes และ enforcement
 
@@ -29,4 +29,4 @@ Provider ที่ตรวจจาก source จริงคือ Manus OAuth
 
 ## Migration และข้อจำกัด
 
-`drizzle/0008_authority_roles.sql` เป็น additive migration สำหรับขยาย enum ของ `users.role`. ยังไม่ได้รัน `db:push`, migration หรือแก้ข้อมูลจริง เพราะ local environment ไม่มีหลักฐาน `DATABASE_URL`/live database ที่พร้อมและการรันดังกล่าวอยู่นอกขอบเขตที่ได้รับอนุมัติ.
+`drizzle/0008_authority_roles.sql` เป็น additive migration สำหรับขยาย enum ของ `users.role`; `drizzle/0009_authority_audit_events.sql` เพิ่มตาราง immutable authority audit events พร้อม foreign keys และ indexes. ยังไม่ได้รัน `db:push`, migration หรือแก้ข้อมูลจริง เพราะ local environment ไม่มีหลักฐาน `DATABASE_URL`/live database ที่พร้อมและการรันดังกล่าวอยู่นอกขอบเขตที่ได้รับอนุมัติ.

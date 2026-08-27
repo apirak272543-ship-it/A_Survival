@@ -16,6 +16,24 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/** Immutable server-side audit trail for Master authority changes. */
+export const authorityAuditEvents = mysqlTable("authorityAuditEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  actorUserId: int("actorUserId").notNull().references(() => users.id),
+  targetUserId: int("targetUserId").notNull().references(() => users.id),
+  action: mysqlEnum("action", ["grant", "revoke"]).notNull(),
+  fromRole: mysqlEnum("fromRole", ["user", "gm", "admin"]).notNull(),
+  toRole: mysqlEnum("toRole", ["user", "gm", "admin"]).notNull(),
+  reason: varchar("reason", { length: 512 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  index("authorityAuditEvents_actorUserId_idx").on(table.actorUserId),
+  index("authorityAuditEvents_targetUserId_idx").on(table.targetUserId),
+  index("authorityAuditEvents_createdAt_idx").on(table.createdAt),
+]);
+
+export type AuthorityAuditEvent = typeof authorityAuditEvents.$inferSelect;
+
 /** Password-free player identity used by the game client. */
 export const gameProfiles = mysqlTable("gameProfiles", {
   id: int("id").autoincrement().primaryKey(),
