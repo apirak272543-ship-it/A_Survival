@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CREATOR_SKIN_LAYOUT_PARTS, CREATOR_SKIN_PARTS, CREATOR_TEMPLATE_PRESETS, getCompositionSubjectForTemplate, isWorkbenchCompositionTemplate } from "../client/src/lib/creatorTemplateCatalog";
+import { CREATOR_SKIN_LAYOUT_PARTS, CREATOR_SKIN_PARTS, CREATOR_TEMPLATE_PRESETS, CREATOR_WORKBENCH_COMPOSITION_PARTS, getCompositionSubjectForTemplate, isWorkbenchCompositionTemplate } from "../client/src/lib/creatorTemplateCatalog";
 
 describe("shared creator template catalog", () => {
   it("keeps stable unique template identities with bounded dimensions", () => {
@@ -28,5 +28,18 @@ describe("shared creator template catalog", () => {
     expect(CREATOR_SKIN_PARTS.map(part => part.id)).toEqual(Object.keys(CREATOR_SKIN_LAYOUT_PARTS));
     expect(Object.values(CREATOR_SKIN_LAYOUT_PARTS).every(part => part.x >= 0 && part.y >= 0 && part.x + part.width <= 64 && part.y + part.height <= 64)).toBe(true);
     expect(JSON.stringify(CREATOR_SKIN_LAYOUT_PARTS)).not.toMatch(/base64|bytes|vertices|indices|geometry/);
+  });
+
+  it("keeps bounded Workbench composition parts in a non-overlapping 32x32 layout", () => {
+    const parts = Object.values(CREATOR_WORKBENCH_COMPOSITION_PARTS);
+    expect(parts.map(part => part.id)).toEqual(CREATOR_SKIN_PARTS.map(part => part.id));
+    expect(parts.every(part => part.x >= 0 && part.y >= 0 && part.x + part.width <= 32 && part.y + part.height <= 32)).toBe(true);
+    for (const left of parts) {
+      for (const right of parts) {
+        if (left.id >= right.id) continue;
+        expect(left.x + left.width <= right.x || right.x + right.width <= left.x || left.y + left.height <= right.y || right.y + right.height <= left.y).toBe(true);
+      }
+    }
+    expect(JSON.stringify(parts)).not.toMatch(/base64|bytes|vertices|indices|geometry/);
   });
 });

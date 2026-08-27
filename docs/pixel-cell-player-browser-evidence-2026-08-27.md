@@ -67,3 +67,7 @@ A fresh visit to `/creator-workbench` without an authenticated session displayed
 ## Texture review workflow boundary check
 
 After adding the texture artifact review/list/audit routes and Thai Workbench review controls, a fresh player landing check still displayed only the normal player surface with คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No texture review, artifact registry, approve/reject/reopen, audit, composition, register, export or creator controls appeared. This is player boundary evidence only; no authenticated admin review execution, DB migration, storage operation or runtime publish claim is made.
+
+## Multi-part composition boundary check
+
+After adding canonical non-overlapping 32 × 32 body-part presets and the Workbench multi-part selector, a fresh player landing still displayed only the normal player controls: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No part selector, skin layout, composition, review, register, export or creator controls appeared. A fresh unauthenticated visit to `/creator-workbench` displayed only the existing `DEVELOPER ONLY` gate and `กลับหน้าผู้เล่น`; the multi-part editor was not rendered. This is boundary evidence only; no authenticated creator preview, texture export, DB/storage execution or runtime publish claim is made.

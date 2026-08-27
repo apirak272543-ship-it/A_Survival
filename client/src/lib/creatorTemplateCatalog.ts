@@ -130,3 +130,18 @@ export const CREATOR_SKIN_LAYOUT_PARTS: Record<string, CreatorSkinLayoutPart> = 
   "left-leg": { id: "left-leg", label: "ขาซ้าย", detail: "กางเกง รองเท้า และเงา", x: 0, y: 40, width: 16, height: 24 },
   "right-leg": { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา", x: 16, y: 40, width: 16, height: 24 },
 };
+
+export type CreatorWorkbenchCompositionPartPreset = CreatorSkinLayoutPart & {
+  slot: "head" | "body" | "arm" | "leg";
+};
+
+/** Non-overlapping 32×32 body regions for the bounded Workbench editor. */
+export const CREATOR_WORKBENCH_COMPOSITION_PARTS: Record<string, CreatorWorkbenchCompositionPartPreset> = {
+  head: { id: "head", label: "หัว", detail: "ทรงและสีผม/หมวก", slot: "head", x: 8, y: 0, width: 16, height: 8 },
+  face: { id: "face", label: "ใบหน้า", detail: "ตา ปาก และรายละเอียดหน้า", slot: "head", x: 8, y: 8, width: 16, height: 8 },
+  torso: { id: "torso", label: "ลำตัว", detail: "เสื้อ เกราะ หรือชุดหลัก", slot: "body", x: 8, y: 16, width: 16, height: 8 },
+  "left-arm": { id: "left-arm", label: "แขนซ้าย", detail: "แขนและส่วนต่ออุปกรณ์", slot: "arm", x: 4, y: 16, width: 4, height: 8 },
+  "right-arm": { id: "right-arm", label: "แขนขวา", detail: "แขนและส่วนต่ออุปกรณ์", slot: "arm", x: 24, y: 16, width: 4, height: 8 },
+  "left-leg": { id: "left-leg", label: "ขาซ้าย", detail: "กางเกง รองเท้า และเงา", slot: "leg", x: 8, y: 24, width: 8, height: 8 },
+  "right-leg": { id: "right-leg", label: "ขาขวา", detail: "กางเกง รองเท้า และเงา", slot: "leg", x: 16, y: 24, width: 8, height: 8 },
+};

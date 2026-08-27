@@ -46,4 +46,18 @@ describe("creator composition builder", () => {
     expect(result.summary.paintedPixelCount).toBe(2);
     expect(result.composition.pixels.map(pixel => pixel.layerId)).toEqual(["base", "outline"]);
   });
+
+  it("preserves multiple non-overlapping body parts in the deterministic manifest", () => {
+    const parts = [
+      { id: "head", label: "หัว", slot: "head" as const, x: 8, y: 0, width: 16, height: 8, layerIds: ["base", "outline"] },
+      { id: "torso", label: "ลำตัว", slot: "body" as const, x: 8, y: 16, width: 16, height: 8, layerIds: ["base", "outline"] },
+      { id: "left-arm", label: "แขนซ้าย", slot: "arm" as const, x: 4, y: 16, width: 4, height: 8, layerIds: ["base", "outline"] },
+    ];
+    const first = buildCreatorComposition(input({ parts }));
+    const second = buildCreatorComposition(input({ parts }));
+
+    expect(first.summary.partCount).toBe(3);
+    expect(first.composition.parts.map(part => part.id)).toEqual(["head", "torso", "left-arm"]);
+    expect(first.registryMetadata).toEqual(second.registryMetadata);
+  });
 });
