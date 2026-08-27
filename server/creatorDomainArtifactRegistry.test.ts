@@ -71,5 +71,6 @@ describe("creator domain artifact registry", () => {
     await expect(user.creator.artifact.list({ domain: "animation" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(user.creator.artifact.review({ artifactKey: preview.artifactKey, action: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(user.creator.artifact.audit({ artifactKey: preview.artifactKey })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(user.creator.artifact.compatibility({ artifactKey: preview.artifactKey, targetMapId: "obsidian-frontier" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

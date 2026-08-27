@@ -39,7 +39,8 @@ import {
 import { adminProcedure, router } from "./_core/trpc";
 import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArtifactRegistry";
 import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
-import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
+import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, getCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
+import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtifactCompatibility";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -133,6 +134,11 @@ const creatorDomainArtifactInputSchema = z.object({
 }).superRefine((input, context) => {
   if (JSON.stringify(input.manifest).length > 32_768) context.addIssue({ code: "custom", message: "Artifact manifest is too large", path: ["manifest"] });
   if (JSON.stringify(input.summary).length > 32_768) context.addIssue({ code: "custom", message: "Artifact summary is too large", path: ["summary"] });
+});
+
+const creatorArtifactCompatibilitySchema = z.object({
+  artifactKey: z.string().trim().min(8).max(191),
+  targetMapId: z.string().trim().min(1).max(128),
 });
 
 const creatorArtifactReviewSchema = z.object({
@@ -390,6 +396,7 @@ export const creatorRouter = router({
     review: adminProcedure.input(creatorArtifactReviewSchema).mutation(async ({ input, ctx }) => ({ previewOnly: true as const, runtimeImportAllowed: false as const, artifact: await reviewCreatorDomainArtifact({ ...input, reviewedByUserId: ctx.user.id }) })),
     audit: adminProcedure.input(z.object({ artifactKey: z.string().trim().min(8).max(191), limit: z.number().int().min(1).max(100).optional() })).query(({ input }) => listCreatorDomainArtifactReviewEvents(input)),
     export: adminProcedure.input(z.object({ artifactKey: z.string().trim().min(8).max(191) })).mutation(async ({ input }) => exportCreatorDomainArtifact(input)),
+    compatibility: adminProcedure.input(creatorArtifactCompatibilitySchema).mutation(async ({ input }) => validateCreatorDomainArtifactCompatibility({ artifact: await getCreatorDomainArtifact({ artifactKey: input.artifactKey }), targetMapId: input.targetMapId })),
   }),
   profiler: router({
     preview: adminProcedure.input(runtimeProfilerSnapshotSchema).mutation(({ input }) => ({
