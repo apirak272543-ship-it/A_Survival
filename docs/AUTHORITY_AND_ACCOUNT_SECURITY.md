@@ -29,10 +29,15 @@ Master สร้าง invitation ได้จาก `/authority-admin` โด�
 
 ## Verification และ password boundary
 
-Provider ที่ตรวจจาก source จริงคือ Manus OAuth. Contract ปัจจุบันมี sign-in/session และ user email แต่ไม่มี field หรือ endpoint ที่ยืนยัน email verification, เปลี่ยน password, reset password หรือส่ง recovery email. A_Survival จึงไม่รับหรือเก็บ password เอง และ `auth.securityStatus` รายงานข้อจำกัดนี้อย่างตรงไปตรงมา. `/account-security` แสดงสถานะ OAuth-managed และเปิดลิงก์ภายนอกได้ก็ต่อเมื่อ deployment ตั้ง `VITE_ACCOUNT_SECURITY_URL` หลังยืนยัน URL ของ provider แล้ว.
+Provider ที่ตรวจจาก source จริงคือ Manus OAuth. เอกสาร Manus ระบุว่า regular-email users สามารถเปลี่ยนหรือ reset password พร้อม verification code ได้ แต่ social-login users ไม่มี password ของ Manus ให้เปลี่ยน [1] [2]. Contract ใน repository A_Survival ปัจจุบันมี sign-in/session และ user email แต่ไม่มี field หรือ endpoint ที่ยืนยัน email verification, เปลี่ยน password, reset password หรือส่ง recovery email. A_Survival จึงไม่รับหรือเก็บ password เอง และ `auth.securityStatus` รายงานข้อจำกัดนี้อย่างตรงไปตรงมา. `/account-security` แสดงสถานะ OAuth-managed และเปิดลิงก์ภายนอกได้ก็ต่อเมื่อ deployment ตั้ง `VITE_ACCOUNT_SECURITY_URL` หลังยืนยัน URL ของ provider แล้ว.
 
 > ห้ามใช้หน้า account-security นี้เป็นหลักฐานว่าการเปลี่ยนรหัสผ่านหรือ verify email สำเร็จแล้ว เพราะ provider endpoint และ authenticated provider E2E ยังไม่ได้เชื่อมต่อใน repository.
 
 ## Migration และข้อจำกัด
 
 `drizzle/0008_authority_roles.sql` เป็น additive migration สำหรับขยาย enum ของ `users.role`; `drizzle/0009_authority_audit_events.sql` เพิ่มตาราง immutable authority audit events พร้อม foreign keys และ indexes. ยังไม่ได้รัน `db:push`, migration หรือแก้ข้อมูลจริง เพราะ local environment ไม่มีหลักฐาน `DATABASE_URL`/live database ที่พร้อมและการรันดังกล่าวอยู่นอกขอบเขตที่ได้รับอนุมัติ.
+
+## References
+
+[1]: https://help.manus.im/en/articles/11712810-how-can-i-change-my-password "How can I change my password? — Manus Help Center"
+[2]: https://help.manus.im/en/articles/11712029-what-can-i-do-if-i-forget-my-password "What can I do if I forget my password? — Manus Help Center"
