@@ -14,7 +14,8 @@
     "world:generate": "tsx tools/world-generator.ts",
     "content:generate": "tsx tools/content-generator.ts",
     "content:suite": "tsx tools/content-suite-generator.ts",
-    "animation:generate": "tsx tools/animation-profile-generator.ts"
+    "animation:generate": "tsx tools/animation-profile-generator.ts",
+    "story:generate": "tsx tools/quest-progression-generator.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

@@ -19,6 +19,7 @@ import {
   createAnimationProfileRegistry,
   type AnimationProfileInput,
 } from "./generators/animationProfileGenerator";
+import { createQuestProgressionRegistry, type QuestProgressionInput, type QuestProgressionOutput } from "./generators/questProgressionGenerator";
 import {
   generateUniversalItem,
   type ItemElement,
@@ -171,6 +172,11 @@ const animationPreviewSchema = z.object({
   seed: z.string().trim().min(1).max(128),
 });
 
+const questPreviewSchema = z.object({
+  mapCount: z.number().int().min(1).max(100).default(100),
+  seed: z.string().trim().min(1).max(128),
+});
+
 const structurePreviewSchema = z.object({
   mapId: z.literal(DEFAULT_GENERATOR_MAP_ID),
   blueprintId: z.string().trim().regex(/^[a-z0-9][a-z0-9.-]{2,63}$/),
@@ -278,6 +284,30 @@ export const creatorRouter = router({
         metadata: world.metadata,
         counts: { blocks: world.blocks.length, terrain: world.terrain.length, water: world.water.length, caves: world.caves.length, resources: world.resources.length, structures: world.structures.length, spawnPoints: world.spawnPoints.length },
         sampleBlockIds: Array.from(new Set(world.blocks.slice(0, 24).map(block => block.blockId))),
+      };
+    }),
+  }),
+  quest: router({
+    preview: adminProcedure.input(questPreviewSchema).mutation(({ input }) => {
+      const registry = createQuestProgressionRegistry();
+      const questInput: QuestProgressionInput = { mapCount: input.mapCount };
+      const artifact = registry.generate<QuestProgressionInput, QuestProgressionOutput>("quest.progression", questInput, { seed: input.seed, generatedAt: 0 });
+      const firstMap = artifact.output.maps[0];
+      const secondMap = artifact.output.maps[1];
+      return {
+        previewOnly: true as const,
+        contentHash: artifact.contentHash,
+        preview: registry.preview(artifact),
+        summary: {
+          mapCount: artifact.output.maps.length,
+          questsPerMap: artifact.output.constraints.questsPerMap,
+          totalQuests: artifact.output.quests.length,
+          playableMap: firstMap?.mapId ?? "obsidian-frontier",
+          futureMapRuntimeImportAllowed: artifact.output.constraints.futureMapsRuntimeImportAllowed,
+          firstChapter: firstMap?.chapterTitle ?? "",
+          nextMapGateQuestCount: secondMap?.unlockRequiresQuestIds.length ?? 0,
+          questSample: artifact.output.quests.slice(0, artifact.output.constraints.questsPerMap).map(quest => ({ id: quest.id, title: quest.title, objective: quest.objectives[0]?.description ?? "", reward: quest.rewards[0]?.itemDefinitionId ?? "" })),
+        },
       };
     }),
   }),
