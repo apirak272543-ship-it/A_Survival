@@ -9,8 +9,8 @@
 | Requirement status | จำนวน | ความหมาย |
 |---|---:|---|
 | `VERIFIED` | 4 | ปิดตามหลักฐานปัจจุบันแล้ว; ห้ามเปิดทำซ้ำ เว้นแต่มี acceptance ใหม่หรือ regression |
-| `PARTIAL` | 41 | มี implementation หรือหลักฐานบางส่วน แต่ยังมี acceptance gap |
-| `PENDING` | 7 | ยังไม่มี implementation/evidence ที่ปิดได้ใน main |
+| `PARTIAL` | 44 | มี implementation หรือหลักฐานบางส่วน แต่ยังมี acceptance gap |
+| `PENDING` | 4 | ยังไม่มี implementation/evidence ที่ปิดได้ใน main |
 | **รวม** | **52** | ห้ามประกาศ global/master-spec complete ขณะยังมี PARTIAL/PENDING |
 
 | Claim state ที่สงวนอยู่ | Owner | Task ID | ขอบเขต |
@@ -75,14 +75,14 @@
 | `F-04` | capped fictional healing/buff/repel/damage; cactus thorn | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | plant effect/hazard owner and disclosure tests; no medical claim | F-02,F-03 | universal effect/cactus hazard proof |
 | `F-05` | non-lethal repel radius/stacking/duration | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | farm repel owner/tests/browser evidence; no auto-kill | F-04 | enemy-near-farm behavior and stacking/duration |
 | `F-06` | seed/plant collected from world can replant | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | harvest reward/planting chain owner/tests; preserve atomic consume | F-02,F-03 | end-to-end seed return/replant chain |
-| `F-07` | universal plant/tree/ecology/farm engine | `PENDING` | `AVAILABLE` | AI-0 | deferred engine design/generator; new files must be reserved first | F-01–F-06,G-01 | environment/nutrients/pests/seasons/lifecycle contract |
+| `F-07` | universal plant/tree/ecology/farm engine | `PARTIAL` | `AVAILABLE` | AI-0 | deferred engine design/generator; new files must be reserved first | F-01–F-06,G-01 | environment/nutrients/pests/seasons/lifecycle contract |
 | `S-01` | first-person/overhead/side camera choice in-map | `PARTIAL` | `AVAILABLE` | AI-0 | `cameraModes.ts`, in-map settings, camera bridge; no player map policy change | M-01 | touch/collision/device-size acceptance |
 | `S-02` | separate global vs in-map settings | `PARTIAL` | `AVAILABLE` | AI-0 | global/in-map settings UI and persistence; no creator controls | S-01,M-01 | all entry routes and pause/focus behavior |
 | `S-03` | view distance 5–50 step 5 and target FPS 5..60+120 disclaimer | `PARTIAL` | `AVAILABLE` | AI-1 | camera/performance profile owner; no benchmark claim | S-01,T-01 | all values persist and streaming policy is explicit |
 | `S-04` | adaptive performance tiers/WebGL/LOD/culling/pooling/hysteresis/sleep-wake | `PARTIAL` | `AVAILABLE` | AI-1/AI-2/AI-0 | performance profile/visibility/telemetry/profiler owner; no Workbench/shared route edits | S-03,T-01 | capability detection/controller/real-device benchmark |
-| `C-01` | discovered-only Codex with categories/detail | `PENDING` | `AVAILABLE` | AI-0 | Vault/Codex UI and discovery persistence; player UI allowed, no creator tools | B-06,B-07 | discovered-only/empty/duplicate tests |
+| `C-01` | discovered-only Codex with categories/detail | `PARTIAL` | `AVAILABLE` | AI-0 | Vault/Codex UI and discovery persistence; player UI allowed, no creator tools | B-06,B-07 | discovered-only/empty/duplicate tests |
 | `C-02` | category-specific item detail damage/plant/stack/usage | `PARTIAL` | `AVAILABLE` | AI-0 | Vault/item detail owner; no claim beyond real catalog | C-01,B-06 | category detail and long-press boundary |
-| `C-03` | hidden Credits/Supporters with runtime/reference-only split | `PENDING` | `AVAILABLE` | AI-2/AI-1/AI-0 | `assetProvenance.ts`, Credits UI/provenance docs; no unknown-license runtime | V-04,G-05 | credits navigation and provenance display |
+| `C-03` | hidden Credits/Supporters with runtime/reference-only split | `PARTIAL` | `AVAILABLE` | AI-2/AI-1/AI-0 | `assetProvenance.ts`, Credits UI/provenance docs; no unknown-license runtime | V-04,G-05 | credits navigation and provenance display |
 | `L-01` | Thai default colloquial copy, no over-formal wording | `PARTIAL` | `AVAILABLE` | AI-0 | copy/content files and UI review; Creator tools remain Thai | all UI owners | screen-by-screen language audit |
 | `L-02` | adult rating/policy, colloquial dialogue/voice with safety copy | `PENDING` | `AVAILABLE` | AI-0 | rating/policy/voice provenance docs; no voice generation without scope | L-01,Q-01 | policy labels and reviewed provenance |
 | `T-01` | performance tool generate-once/cache/chunk/culling/LOD/pooling | `PARTIAL` | `AVAILABLE` | AI-1/AI-2/AI-0 | performance profile/telemetry/profiler owner; no player profiler UI | S-04,M-02 | controlled capture/export and registry/cache contract |
