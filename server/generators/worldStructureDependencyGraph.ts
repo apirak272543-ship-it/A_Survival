@@ -13,6 +13,13 @@ export type WorldStructureDependencyGraphInput = {
   rulesVersion?: string;
 };
 
+export type WorldStructureGraphSource = {
+  world: GeneratedWorld;
+  blueprints: StructureBlueprint[];
+  structureArtifact: { contentHash: string; generatorId: string; generatorVersion: string; seed: string; output: StructureGenerationOutput };
+  numericSeed: number;
+};
+
 export type WorldStructureDependencyGraphOutput = {
   artifact: {
     mapId: string;
@@ -121,7 +128,7 @@ function buildWorldNode(world: GeneratedWorld, seed: string, rulesVersion: strin
   } satisfies DependencyGraphNode;
 }
 
-function buildStructureNodes(world: GeneratedWorld, structureArtifact: { contentHash: string; generatorId: string; generatorVersion: string; seed: string; output: StructureGenerationOutput }, blueprints: StructureBlueprint[], seed: string, rulesVersion: string) {
+export function buildWorldStructureGraphNodes(world: GeneratedWorld, structureArtifact: { contentHash: string; generatorId: string; generatorVersion: string; seed: string; output: StructureGenerationOutput }, blueprints: StructureBlueprint[], seed: string, rulesVersion: string) {
   const worldNode = buildWorldNode(world, seed, rulesVersion);
   const blueprintNodes = blueprints.map(blueprint => ({
     key: `structure-blueprint:${blueprint.id}`,
@@ -163,9 +170,7 @@ function buildStructureNodes(world: GeneratedWorld, structureArtifact: { content
   return [worldNode, ...blueprintNodes, structureRun, ...placementNodes];
 }
 
-export function buildWorldStructureDependencyGraph(input: WorldStructureDependencyGraphInput): WorldStructureDependencyGraphOutput {
-  const rulesVersion = input.rulesVersion ?? WORLD_STRUCTURE_GRAPH_RULES_VERSION;
-  if (rulesVersion !== WORLD_STRUCTURE_GRAPH_RULES_VERSION) throw new Error(`Unsupported world structure graph rules version: ${rulesVersion}`);
+export function generateWorldStructureGraphSource(input: WorldStructureDependencyGraphInput): WorldStructureGraphSource {
   const radius = boundedRadius(input.radius);
   const blueprintIds = normalizeBlueprintIds(input.blueprintIds);
   const numericSeed = numericSeedFromLabel(input.seed);
@@ -174,7 +179,15 @@ export function buildWorldStructureDependencyGraph(input: WorldStructureDependen
   const structureInput: StructureGenerationInput = { mapId: WORLD_STRUCTURE_GRAPH_MAP_ID, blueprints, candidates: createStructureCandidates(world), minPlacementScore: 70, maxPlacements: blueprints.length };
   const structureRegistry = createStructureGeneratorRegistry();
   const structureArtifact = structureRegistry.generate<StructureGenerationInput, StructureGenerationOutput>("structure.placement", structureInput, { seed: input.seed, generatedAt: 0 });
-  const nodes = buildStructureNodes(world, structureArtifact, blueprints, input.seed, rulesVersion);
+  return { world, blueprints, structureArtifact, numericSeed };
+}
+
+export function buildWorldStructureDependencyGraph(input: WorldStructureDependencyGraphInput): WorldStructureDependencyGraphOutput {
+  const rulesVersion = input.rulesVersion ?? WORLD_STRUCTURE_GRAPH_RULES_VERSION;
+  if (rulesVersion !== WORLD_STRUCTURE_GRAPH_RULES_VERSION) throw new Error(`Unsupported world structure graph rules version: ${rulesVersion}`);
+  const source = generateWorldStructureGraphSource(input);
+  const { world, blueprints, structureArtifact, numericSeed } = source;
+  const nodes = buildWorldStructureGraphNodes(world, structureArtifact, blueprints, input.seed, rulesVersion);
   const structureOutput = structureArtifact.output;
   return {
     artifact: {
@@ -189,7 +202,7 @@ export function buildWorldStructureDependencyGraph(input: WorldStructureDependen
       placementCount: structureOutput.placements.length,
       rejectedCount: structureOutput.rejected.length,
     },
-    summary: { worldBlocks: world.blocks.length, terrainCells: world.terrain.length, structurePlacements: structureOutput.placements.length, rejectedPlacements: structureOutput.rejected.length, blueprintIds, futureMapCount: 0 },
+    summary: { worldBlocks: world.blocks.length, terrainCells: world.terrain.length, structurePlacements: structureOutput.placements.length, rejectedPlacements: structureOutput.rejected.length, blueprintIds: blueprints.map(blueprint => blueprint.id).sort(), futureMapCount: 0 },
     nodes,
     graph: validateGeneratorDependencyGraph(nodes),
   };
