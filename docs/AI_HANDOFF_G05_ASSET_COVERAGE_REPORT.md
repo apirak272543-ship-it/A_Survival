@@ -55,5 +55,5 @@ Implementation branch ยังไม่ merge เข้า `main`; AI-0 ต้�
 - Task ID: `G-05`
 - Branch: `ai-6/g05-asset-coverage`
 - Base SHA: `4a41ab74e120a7a41b59dbb3faeb1f9366590d8d`
-- Commit SHA: `6eed6200cc289adb66837e3a45f635565484f070`
+- Implementation commit SHA: `ab0bc6dcb50fd41140bb2ebb037dad4567da1800`
 - Status requested: `WAITING_EVIDENCE` จนกว่า AI-0 จะตรวจ diff และหลักฐานซ้ำ
