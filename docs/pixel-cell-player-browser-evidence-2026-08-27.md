@@ -35,3 +35,7 @@ After adding shared-catalog template selection, kind-to-subject mapping, 32×32 
 ## Texture export preview boundary check
 
 After adding `creator.composition.exportPreview` and the explicit `ดาวน์โหลด PNG preview` action, a fresh player landing check still rendered only the normal player surface: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No texture export, PNG download, template, pixel, registry, review or creator control appeared. This is player boundary evidence only; the sandbox has no authenticated creator session, so no admin export execution or download claim is made.
+
+## Animation-to-skin texture boundary check
+
+After the composition texture adapter was extended so animation subjects produce a validated `skin` texture and parts-derived `skinLayout`, a fresh player landing check still showed only the normal player surface. No skin layout, texture export, PNG download, composition, registry, review or creator controls appeared. This remains a player boundary check; no authenticated creator preview, skin export execution or device acceptance is claimed.

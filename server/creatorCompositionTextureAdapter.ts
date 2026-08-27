@@ -18,8 +18,19 @@ function hexToRgba(hex: string): [number, number, number, number] {
   ];
 }
 
-function textureKind(subject: CreatorCompositionPreview["composition"]["subject"]): "icon" | "tile" {
-  return subject === "block" || subject === "structure" ? "tile" : "icon";
+function textureKind(subject: CreatorCompositionPreview["composition"]["subject"]): "icon" | "tile" | "skin" {
+  if (subject === "block" || subject === "structure") return "tile";
+  if (subject === "animation") return "skin";
+  return "icon";
+}
+
+function compositionSkinLayout(preview: CreatorCompositionPreview) {
+  if (preview.composition.subject !== "animation") return undefined;
+  return {
+    id: "composition-parts-v1",
+    allowPartOverlap: false,
+    parts: preview.composition.parts.map(part => ({ id: part.id, x: part.x, y: part.y, width: part.width, height: part.height })),
+  };
 }
 
 function compositePixel(base: [number, number, number, number], overlay: [number, number, number, number], opacity: number): [number, number, number, number] {
@@ -69,6 +80,7 @@ export function buildCompositionTextureInput(preview: CreatorCompositionPreview,
       layers: [{ id: "composition-pixels", x: 0, y: 0, width, height, rgba }],
       source: options.source,
       provenanceRef,
+      skinLayout: compositionSkinLayout(preview),
     }],
   };
 }

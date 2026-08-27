@@ -52,6 +52,15 @@ describe("creator composition texture adapter", () => {
     expect(rgba.slice((1 * 4 + 2) * 4, (1 * 4 + 2) * 4 + 4)).toEqual([159, 72, 46, 255]);
   });
 
+  it("maps animation compositions to validated skin textures with a parts-derived layout", () => {
+    const composition = buildCreatorComposition(compositionInput({ subject: "animation", templateId: "survivor-pixel-32" }));
+    const texture = buildCompositionTextureInput(composition, { source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
+    expect(texture.assets[0]).toMatchObject({ kind: "skin", skinLayout: { id: "composition-parts-v1", allowPartOverlap: false, parts: [{ id: "body", x: 0, y: 0, width: 4, height: 4 }] } });
+    const output = buildTexturePack(texture);
+    expect(output.manifest.entries["survivor-pixel-32"]?.path).toBe("skins/survivor-pixel-32.png");
+    expect(validateTexturePackOutput(output, texture)).toEqual({ valid: true, issues: [] });
+  });
+
   it("maps block and structure compositions to tile textures without enabling runtime import", () => {
     const composition = buildCreatorComposition(compositionInput({ subject: "block", templateId: "obsidian-tile" }));
     const texture = buildCompositionTextureInput(composition, { source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
