@@ -63,9 +63,24 @@ describe("Arcane asset pack manifest", () => {
     expect(manifest.packSha256).toBe(expected);
   });
 
+  it("requires versioned metadata and integrity references before runtime use", () => {
+    expect(isAssetPackManifest(manifest)).toBe(true);
+    expect(isAssetPackManifest({ ...manifest, schemaVersion: 2 })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, packSha256: undefined })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, displayName: "" })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, dependencies: [""] })).toBe(false);
+
+    const missingDigest = { ...manifest.entries["models.survivor"]!, sha256: undefined };
+    expect(isAssetPackManifest({ ...manifest, entries: { ...manifest.entries, "models.survivor": missingDigest } })).toBe(false);
+
+    const missingFallback = { ...manifest.entries["models.survivor"]!, fallback: "missing.asset" };
+    expect(isAssetPackManifest({ ...manifest, entries: { ...manifest.entries, "models.survivor": missingFallback } })).toBe(false);
+  });
+
   it("rejects unsafe paths and resolves a custom pack base without leaving it", () => {
-    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "data", path: "../secret.json" } } })).toBe(false);
-    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "script", path: "safe.json" } } })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "data", path: "../secret.json", sha256: "a".repeat(64) } } })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, entries: { bad: { kind: "script", path: "safe.json", sha256: "a".repeat(64) } } })).toBe(false);
+    expect(isAssetPackManifest({ ...manifest, basePath: "/assets/packs/../custom-pack" })).toBe(false);
     const custom = { ...manifest, basePath: "/assets/packs/custom-pack" };
     expect(resolveAssetUrl(custom, "models.survivor")).toBe("http://localhost/assets/packs/custom-pack/models/survivor.glb");
   });

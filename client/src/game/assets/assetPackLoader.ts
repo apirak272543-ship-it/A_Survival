@@ -43,30 +43,48 @@ export const DEFAULT_ASSET_PACK_MANIFEST = "/assets/packs/arcane-frontier-voxel-
 export const ASSET_PACK_CACHE = "arcane-frontier-assets-v2";
 
 const ASSET_ENTRY_KINDS = new Set<AssetPackEntry["kind"]>(["texture", "model", "animation", "audio", "data"]);
+const ASSET_PACK_SCHEMA_VERSION = 1;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
 function isSafeRelativeAssetPath(path: string) {
   return path.length > 0 && !path.startsWith("/") && !path.includes("\\") && !path.split("/").some(segment => segment === ".." || segment === "");
 }
 
+function isSafeAbsoluteBasePath(path: string) {
+  return path.length > 1 && path.startsWith("/") && !path.includes("\\") && !path.split("/").slice(1).some(segment => segment === "" || segment === "..");
+}
+
 export function isAssetPackManifest(value: unknown): value is AssetPackManifest {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<AssetPackManifest>;
-  if (typeof candidate.id !== "string" || typeof candidate.version !== "string" || typeof candidate.namespace !== "string") return false;
+  if (candidate.schemaVersion !== ASSET_PACK_SCHEMA_VERSION) return false;
+  if (!isNonEmptyString(candidate.id) || !isNonEmptyString(candidate.version) || !isNonEmptyString(candidate.namespace)) return false;
+  if (!isNonEmptyString(candidate.displayName) || !isNonEmptyString(candidate.designSource)) return false;
   if (typeof candidate.entries !== "object" || candidate.entries === null || Array.isArray(candidate.entries)) return false;
-  if (typeof candidate.logicalResolution?.width !== "number" || typeof candidate.logicalResolution?.height !== "number") return false;
-  if (typeof candidate.tileSize !== "number" || !["nearest", "linear"].includes(candidate.textureSampling ?? "")) return false;
-  if (candidate.basePath !== undefined && (typeof candidate.basePath !== "string" || !candidate.basePath.startsWith("/"))) return false;
-  if (candidate.packSha256 !== undefined && !SHA256_PATTERN.test(candidate.packSha256)) return false;
-  return Object.values(candidate.entries).every(entry => {
-    if (!entry || typeof entry !== "object") return false;
+  if (!Number.isInteger(candidate.logicalResolution?.width) || (candidate.logicalResolution?.width ?? 0) <= 0) return false;
+  if (!Number.isInteger(candidate.logicalResolution?.height) || (candidate.logicalResolution?.height ?? 0) <= 0) return false;
+  const tileSize = candidate.tileSize;
+  if (typeof tileSize !== "number" || !Number.isInteger(tileSize) || tileSize <= 0) return false;
+  if (!["nearest", "linear"].includes(candidate.textureSampling ?? "")) return false;
+  if (!Array.isArray(candidate.dependencies) || !candidate.dependencies.every(isNonEmptyString)) return false;
+  if (candidate.basePath !== undefined && (typeof candidate.basePath !== "string" || !isSafeAbsoluteBasePath(candidate.basePath))) return false;
+  if (typeof candidate.packSha256 !== "string" || !SHA256_PATTERN.test(candidate.packSha256)) return false;
+  const entryIds = new Set(Object.keys(candidate.entries));
+  if (entryIds.size === 0) return false;
+  return Object.entries(candidate.entries).every(([assetId, entry]) => {
+    if (!isNonEmptyString(assetId) || !entry || typeof entry !== "object") return false;
     const item = entry as Partial<AssetPackEntry>;
-    return typeof item.path === "string"
+    return isNonEmptyString(item.path)
       && isSafeRelativeAssetPath(item.path)
       && typeof item.kind === "string"
       && ASSET_ENTRY_KINDS.has(item.kind as AssetPackEntry["kind"])
-      && (item.sha256 === undefined || SHA256_PATTERN.test(item.sha256))
-      && (item.fallback === undefined || typeof item.fallback === "string");
+      && typeof item.sha256 === "string"
+      && SHA256_PATTERN.test(item.sha256)
+      && (item.fallback === undefined || (isNonEmptyString(item.fallback) && entryIds.has(item.fallback)));
   });
 }
 
