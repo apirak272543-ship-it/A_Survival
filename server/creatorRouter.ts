@@ -48,6 +48,7 @@ import { validateCreatorCompositionTextureExport } from "./creatorCompositionTex
 import { buildVerifiedCreatorCompositionTexture } from "./creatorCompositionTextureRegistration";
 import { validateGeneratorDependencyGraph, type DependencyGraphNode } from "./generators/dependencyGraph";
 import { buildContentCatalogDependencyGraph } from "./generators/contentCatalogDependencyGraph";
+import { buildQuestContentCatalogDependencyGraph } from "./generators/questContentCatalogDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -350,6 +351,7 @@ export const creatorRouter = router({
   dependencyGraph: router({
     preview: adminProcedure.input(z.object({ nodes: z.array(dependencyGraphNodeSchema).min(1).max(128) })).mutation(({ input }) => ({ previewOnly: true as const, graph: validateGeneratorDependencyGraph(input.nodes as DependencyGraphNode[]) })),
     contentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), samplePerCategory: z.number().int().min(1).max(8).default(1), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildContentCatalogDependencyGraph(input) })),
+    questContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), mapCount: z.number().int().min(1).max(100).default(1), sampleQuestCount: z.number().int().min(1).max(20).default(4), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildQuestContentCatalogDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),

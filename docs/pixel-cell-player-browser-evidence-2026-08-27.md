@@ -89,3 +89,9 @@ A fresh visit to `/creator-workbench` without an authenticated session remains g
 Checked during the current local dev smoke on 2026-08-27. The temporary server was stopped after the smoke; no persistent creator/player server process is part of this evidence.
 
 The follow-up direct navigation to `/creator-workbench` after the actual catalog wiring again showed only the administrator gate and `กลับหน้าผู้เล่น`; no catalog graph preview controls were rendered.
+
+## Quest-to-content dependency graph player boundary check
+
+After adding the admin-only `creator.dependencyGraph.questContentCatalogPreview` route and Workbench source selector, a fresh player landing loaded the normal player surface with คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ only. It did not expose quest graph, content catalog, generator, map-count, seed/rules, registry or creator controls. The first navigation briefly showed a blank loading frame; a follow-up view loaded the normal player surface, so this is not treated as a runtime failure. No authenticated graph preview, database/storage write, future-map runtime import, or player publish/cache claim is made.
+
+A fresh direct visit to `/creator-workbench` after the quest integration showed only `DEVELOPER ONLY`, the administrator-login gate and `กลับหน้าผู้เล่น`; quest graph source, map-count, sample-quest and rules controls were not rendered. This is unauthenticated boundary evidence only and does not claim creator preview execution.
