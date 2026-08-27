@@ -31,3 +31,7 @@ After wiring the shared creator template catalog into CreatorStudio and CreatorD
 ## Template-driven selection regression check
 
 After adding shared-catalog template selection, kind-to-subject mapping, 32×32 Workbench filtering, and draft reset behavior, a fresh player landing check still showed only the normal player surface: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No template catalog, creator subject selector, pixel grid, layer control, texture preview, registry or review control appeared. This remains player boundary evidence only; no authenticated creator preview claim is made.
+
+## Texture export preview boundary check
+
+After adding `creator.composition.exportPreview` and the explicit `ดาวน์โหลด PNG preview` action, a fresh player landing check still rendered only the normal player surface: คู่มือ, เครดิต, ตั้งค่า and เข้าสู่พื้นที่รอยต่อ. No texture export, PNG download, template, pixel, registry, review or creator control appeared. This is player boundary evidence only; the sandbox has no authenticated creator session, so no admin export execution or download claim is made.

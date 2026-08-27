@@ -43,6 +43,7 @@ import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, getCre
 import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtifactCompatibility";
 import { buildCreatorComposition } from "./creatorCompositionBuilder";
 import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter";
+import { buildCreatorCompositionTextureExport } from "./creatorCompositionTextureExport";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -419,6 +420,12 @@ export const creatorRouter = router({
         registerRequiresSeparateAction: true as const,
         reviewRequired: true as const,
       };
+    }),
+    exportPreview: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => {
+      const composition = buildCreatorComposition(input);
+      const textureInput = buildCompositionTextureInput(composition, { source: input.source, provenanceRef: input.provenanceRef, textureSampling: input.textureSampling });
+      const output = buildTexturePack(textureInput);
+      return buildCreatorCompositionTextureExport({ output, compositionHash: composition.registryMetadata.contentSha256 });
     }),
   }),
   artifact: router({

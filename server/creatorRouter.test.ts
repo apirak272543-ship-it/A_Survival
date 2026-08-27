@@ -76,12 +76,25 @@ describe("creator texture router", () => {
     expect(result.output.assets[0]?.provenanceRef).toContain("composition-sha256=");
   });
 
+  it("exports a validated composition PNG bundle only through a separate admin action", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const result = await caller.creator.composition.exportPreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "procedural-starter-authored", textureSampling: "nearest" });
+
+    expect(result).toMatchObject({ exportSchemaVersion: "a-survival.creator-composition-texture-export.v1", previewOnly: true, downloadable: true, registerRequiresSeparateAction: true, reviewRequired: true, runtimePolicy: { runtimeImportAllowed: false, playerVisible: false, cacheable: false } });
+    expect(result.exportId).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.packSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.assets[0]?.pngBase64.startsWith("iVBORw0KGgo")).toBe(true);
+    expect(result.assets[0]?.downloadFileName).toBe("fern-icon.png");
+    expect(result.assets[0]?.provenanceRef).toContain("composition-sha256=");
+  });
+
   it("keeps generator writes out of regular player users", async () => {
     const caller = appRouter.createCaller(createContext("user"));
 
     await expect(caller.creator.texture.build(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.texture.register(validTextureInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.creator.composition.texturePreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.composition.exportPreview({ ...validCompositionInput(), source: "starter-authored", provenanceRef: "blocked", textureSampling: "nearest" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps unauthenticated creator writes blocked", async () => {
