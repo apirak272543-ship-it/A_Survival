@@ -51,5 +51,5 @@ Implementation branch ยังไม่ merge เข้า `main`; AI-0 ต้�
 - Task ID: `T-05` bounded metadata-validation sub-checkpoint
 - Branch: `ai-6/t05-package-validation`
 - Base SHA: `4a41ab74e120a7a41b59dbb3faeb1f9366590d8d`
-- Implementation commit SHA: จะเติมหลัง commit checkpoint
+- Implementation commit SHA: `d8e4bf9d98a0c6414bb07cd6d854f397d63468ec`
 - Status requested: `WAITING_EVIDENCE` จนกว่า AI-0 จะตรวจ diff และหลักฐานซ้ำ
