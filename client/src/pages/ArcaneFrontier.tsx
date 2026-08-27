@@ -67,7 +67,8 @@ import { DEFAULT_IN_MAP_SETTINGS, normalizeInMapSettings, VIEW_DISTANCE_BLOCKS, 
 import { DEFAULT_ASSET_PACK_MANIFEST, loadAssetPackManifest, resolveAssetUrl, type AssetPackManifest } from "@/game/assets/assetPackLoader";
 import { ASSET_CREDITS, type AssetCreditStatus } from "@/game/data/assetProvenance";
 import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
-import { CODEX_CATEGORIES, getDiscoveredCodexEntries, type CodexCategoryId, type CodexEntry } from "@/game/systems/codexSystem";
+import { CODEX_CATEGORIES, type CodexCategoryId, type CodexEntry } from "@/game/systems/codexSystem";
+import { createCodexDiscoverySnapshot } from "@/game/systems/codexDiscoveryContract";
 import { CAMERA_MODE_OPTIONS, type CameraMode } from "@/game/systems/cameraModes";
 import { TARGET_FPS_OPTIONS } from "@/game/systems/renderDistance";
 import { getItemLongDetail, ITEM_DETAIL_HOLD_MS } from "@/game/systems/itemDetailSystem";
@@ -359,7 +360,8 @@ function WorldStorageSheet({ storage, session, quarantinedInstanceIds, close, on
 }
 
 function CodexSheet({ discoveredIds, close, getAssetUrl }: { discoveredIds: string[]; close: () => void; getAssetUrl: (assetId?: string) => string | undefined }) {
-  const entries = getDiscoveredCodexEntries(discoveredIds);
+  const discoverySnapshot = createCodexDiscoverySnapshot(discoveredIds);
+  const entries = discoverySnapshot.valid ? discoverySnapshot.entries : [];
   const [category, setCategory] = useState<CodexCategoryId>("weapons");
   const categoryEntries = entries.filter(entry => entry.category === category);
   const subcategories = Array.from(new Set(categoryEntries.map(entry => entry.subcategory)));
@@ -372,7 +374,7 @@ function CodexSheet({ discoveredIds, close, getAssetUrl }: { discoveredIds: stri
   return <div className="settings-scrim codex-scrim" onPointerDown={close}><section className="codex-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Codex คู่มือค้นพบไอเทม">
     <header><div><p className="eyebrow">Frontier Codex · {entries.length} discovered</p><h3>คู่มือสิ่งที่ค้นพบ</h3></div><button className="icon-button" onClick={close} aria-label="ปิดคู่มือ"><X size={18} /></button></header>
     <div className="codex-layout">
-      <aside className="codex-categories"><p className="codex-label">หมวดหลัก</p>{CODEX_CATEGORIES.map(item => { const count = entries.filter(entry => entry.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} disabled={!count} onClick={() => { setCategory(item.id); setSubcategory(""); setSelectedId(""); }}><BookOpen size={14} /><span>{item.label}</span><small>{count || "—"}</small></button>; })}<p className="codex-discovery-note">รายการที่ยังไม่เคยเก็บจะยังไม่แสดง เพื่อรักษาความลับของโลกและแรงจูงใจในการสำรวจ</p></aside>
+      <aside className="codex-categories"><p className="codex-label">หมวดหลัก</p>{CODEX_CATEGORIES.map(item => { const count = discoverySnapshot.valid ? discoverySnapshot.categoryCounts[item.id] : 0; return <button key={item.id} className={category === item.id ? "active" : ""} disabled={!count} onClick={() => { setCategory(item.id); setSubcategory(""); setSelectedId(""); }}><BookOpen size={14} /><span>{item.label}</span><small>{count || "—"}</small></button>; })}<p className="codex-discovery-note">รายการที่ยังไม่เคยเก็บจะยังไม่แสดง เพื่อรักษาความลับของโลกและแรงจูงใจในการสำรวจ</p></aside>
       <section className="codex-browser"><div className="codex-panel-title"><span>{categoryLabel(category)}</span><b>{visibleEntries.length}</b></div><div className="codex-subcategories">{subcategories.map(item => <button key={item} className={item === activeSubcategory ? "active" : ""} onClick={() => { setSubcategory(item); setSelectedId(""); }}>{item}</button>)}</div><div className="codex-entry-list">{visibleEntries.length === 0 ? <p className="codex-empty">หมวดนี้ยังไม่มีรายการที่ค้นพบ</p> : visibleEntries.map(entry => <button key={entry.id} className={entry.id === selected?.id ? "selected" : ""} onClick={() => setSelectedId(entry.id)}><span>{getAssetUrl(entry.iconAssetId) ? <img src={getAssetUrl(entry.iconAssetId)} alt="" /> : <Box size={16} />}</span><b>{entry.title}</b><small>×{entry.stackLimit}</small></button>)}</div></section>
       <section className="codex-detail">{selected ? <><div className="codex-detail-icon">{getAssetUrl(selected.iconAssetId) ? <img src={getAssetUrl(selected.iconAssetId)} alt="" /> : <Box size={42} />}</div><p className="eyebrow">{categoryLabel(selected.category)} · {selected.subcategory} · ค้นพบแล้ว</p><h4>{selected.title}</h4><p>{selected.description}</p><div className="codex-stat-grid"><div><small>STACK LIMIT</small><b>{selected.stackLimit}</b></div><div><small>ITEM ID</small><b>{selected.id}</b></div><div><small>TAGS</small><b>{selected.tags.join(" · ") || "ทั่วไป"}</b></div></div><div className="codex-effect"><BookOpen size={16} /><span>{selected.effect}</span></div>{selected.blockId && <p className="codex-detail-note">วางในโลกได้ผ่าน block: {selected.blockId}</p>}</> : <div className="codex-empty-detail"><BookOpen size={34} /><p>เก็บ item ชิ้นแรกของหมวดนี้เพื่อปลดล็อกข้อมูล</p></div>}</section>
     </div>
