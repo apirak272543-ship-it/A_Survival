@@ -501,13 +501,14 @@ export function generateWorld(configInput: Partial<WorldGeneratorConfig> = {}): 
   if (safeZone && shop) shop.linkedStructureId = safeZone.id;
   const blocks = Array.from(blocksByKey.values()).sort((a, b) => a.key.localeCompare(b.key));
   const spawnPoints = createSpawnPoints(config, terrain, structures, water);
-  const payload: GeneratedWorld = { generatorVersion: WORLD_GENERATOR_VERSION, mapId: config.mapId, profileId: config.profileId, biome: config.biome, difficulty: config.difficulty, seed: config.seed, requestedRadius: config.radius, chunkSize: config.chunkSize, blocks, terrain, water, caves, resources, structures, spawnPoints, metadata: { blockFirst: true as const, deterministic: true as const, source: "a-survival-procedural-world-generator" as const, hybridGeneration: true as const, playerFacingWorldGenerationUi: false as const, difficulty: config.difficulty, systems: ["seed", "world-bounds", "height-layers", "terrain", "water", "biome", "vegetation", "resources", "caves", "structures", "spawns", "events", "spatial-validation", "map-export"], spatialRulesVersion: OBSIDIAN_SPATIAL_RULES_VERSION, caveRules: "reserved-for-next-obisidian-pass" as const, waterRules: "surface-cell-flow-preview" as const } };
+  const payload: GeneratedWorld = { generatorVersion: WORLD_GENERATOR_VERSION, mapId: config.mapId, profileId: config.profileId, biome: config.biome, difficulty: config.difficulty, seed: config.seed, requestedRadius: config.radius, chunkSize: config.chunkSize, blocks, terrain, water, caves, resources, structures, spawnPoints, worldHash: "", metadata: { blockFirst: true as const, deterministic: true as const, source: "a-survival-procedural-world-generator" as const, hybridGeneration: true as const, playerFacingWorldGenerationUi: false as const, difficulty: config.difficulty, systems: ["seed", "world-bounds", "height-layers", "terrain", "water", "biome", "vegetation", "resources", "caves", "structures", "spawns", "events", "spatial-validation", "map-export"], spatialRulesVersion: OBSIDIAN_SPATIAL_RULES_VERSION, caveRules: "reserved-for-next-obisidian-pass" as const, waterRules: "surface-cell-flow-preview" as const } };
   const repaired = repairGeneratedWorld(payload, config);
   if (!repaired.report.valid) {
     const issues = repaired.report.issues.slice(0, 5).map(issue => `${issue.code}:${issue.subjectId ?? "world"}`).join(", ");
     throw new Error(`Spatial validation failed after repair (${repaired.report.repairedCount} repaired): ${issues}`);
   }
-  const worldHash = createHash("sha256").update(JSON.stringify(repaired.world)).digest("hex");
+  const { worldHash: _pendingWorldHash, ...hashableWorld } = repaired.world;
+  const worldHash = createHash("sha256").update(JSON.stringify(hashableWorld)).digest("hex");
   return { ...repaired.world, worldHash };
 }
 
@@ -571,8 +572,8 @@ async function main() {
     biome: readArg("biome", "Fantasy Frontier"),
     seed: readSeed(),
     radius: readNumber("radius", DEFAULT_GENERATOR_RADIUS, 1, 500),
-    terrain: { mountainDensity: readNumber("mountain-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.terrain.mountainDensity, 0, 1) },
-    water: { density: readNumber("water-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.water.density, 0, 1) },
+    terrain: { ...DEFAULT_OBSIDIAN_GENERATOR_CONFIG.terrain, mountainDensity: readNumber("mountain-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.terrain.mountainDensity, 0, 1) },
+    water: { ...DEFAULT_OBSIDIAN_GENERATOR_CONFIG.water, density: readNumber("water-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.water.density, 0, 1) },
     vegetation: {
       forestDensity: readNumber("forest-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.vegetation.forestDensity, 0, 1),
       treeDensity: readNumber("tree-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.vegetation.treeDensity, 0, 1),
@@ -581,15 +582,16 @@ async function main() {
       cactusDensity: readNumber("cactus-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.vegetation.cactusDensity, 0, 1),
     },
     resources: { oreDensity: readNumber("resource-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.resources.oreDensity, 0, 1) },
-    caves: { density: readNumber("cave-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.caves.density, 0, 1) },
+    caves: { ...DEFAULT_OBSIDIAN_GENERATOR_CONFIG.caves, density: readNumber("cave-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.caves.density, 0, 1) },
     spawns: {
+      ...DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns,
       regularCount: readNumber("monster-count", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns.regularCount, 0, 100),
       animalCount: readNumber("animal-count", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns.animalCount, 0, 100),
       npcCount: readNumber("npc-count", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns.npcCount, 0, 20),
       bossCount: readNumber("boss-count", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns.bossCount, 0, 10),
       monsterDensity: readNumber("monster-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.spawns.monsterDensity, 0, 2),
     },
-    structures: { density: readNumber("structure-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.structures.density, 0, 1) },
+    structures: { ...DEFAULT_OBSIDIAN_GENERATOR_CONFIG.structures, density: readNumber("structure-density", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.structures.density, 0, 1) },
     difficulty: readArg("difficulty", DEFAULT_OBSIDIAN_GENERATOR_CONFIG.difficulty) as WorldGeneratorConfig["difficulty"],
   } satisfies Partial<WorldGeneratorConfig>;
   const output = resolve(process.cwd(), readArg("out", "artifacts/obsidian-frontier-world.json"));

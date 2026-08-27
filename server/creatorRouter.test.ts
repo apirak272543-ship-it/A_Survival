@@ -76,4 +76,56 @@ describe("creator texture router", () => {
     expect(second.artifact.output).toEqual(first.artifact.output);
     expect(first.preview).toMatchObject({ generatorId: "texture.pack", kind: "texture", recordCount: 1 });
   });
+
+  it("exposes deterministic no-code previews without importing them into the player runtime", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    const world = await caller.creator.world.preview({ seed: 9107, radius: 8, difficulty: "normal" });
+    const structure = await caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "creator-structure", minPlacementScore: 0 });
+    const item = await caller.creator.item.preview({
+      id: "obsidian-field-tool",
+      name: "เครื่องมือภาคสนามออบซิเดียน",
+      family: "tool",
+      role: "farmer",
+      progression: "early",
+      element: "neutral",
+      materialTag: "obsidian",
+      environmentTag: "obsidian-frontier",
+      purpose: "ใช้เตรียมพื้นที่และดูแลแปลงปลูก",
+      identity: "เครื่องมือที่อ่านสภาพดินได้ง่าย",
+      weakness: "ไม่เหมาะกับการต่อสู้ระยะประชิดหนัก ๆ",
+    });
+    const weapon = await caller.creator.weapon.preview({ seed: 829173, count: 2, category: "melee", rarity: "common" });
+
+    expect(world).toMatchObject({ previewOnly: true, mapId: "obsidian-frontier", metadata: { playerFacingWorldGenerationUi: false } });
+    expect(world.counts.blocks).toBeGreaterThan(0);
+    expect(structure.previewOnly).toBe(true);
+    expect(structure.output.schemaVersion).toBe("a-survival.structure-generation.v1");
+    expect(item.previewOnly).toBe(true);
+    expect(item.output.definition.id).toBe("obsidian-field-tool");
+    expect(item.validation).toEqual({ valid: true, issues: [] });
+    expect(weapon.previewOnly).toBe(true);
+    expect(weapon.records).toHaveLength(2);
+    expect(weapon.records[0]!.kind).toBe("weapon");
+  });
+
+  it("keeps every new no-code preview endpoint admin-only", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+
+    await expect(caller.creator.world.preview({ seed: 1, radius: 8 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.structure.preview({ mapId: "obsidian-frontier", blueprintId: "object-frontier-lantern", seed: "blocked" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.item.preview({
+      id: "blocked-tool",
+      name: "Blocked Tool",
+      family: "tool",
+      role: "farmer",
+      progression: "early",
+      element: "neutral",
+      materialTag: "stone",
+      environmentTag: "obsidian-frontier",
+      purpose: "A blocked preview",
+      identity: "A blocked preview",
+      weakness: "A blocked preview",
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.creator.weapon.preview({ seed: 1, count: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

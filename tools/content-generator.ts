@@ -265,7 +265,9 @@ export function generateLootDrop(input: { seed: number; monsterId: string; biome
   const isBoss = Boolean(input.isBoss);
   const count = Math.max(1, Math.min(8, Math.trunc(input.count ?? (isBoss ? 2 : 1))));
   const drops = Array.from({ length: count }, (_, index) => {
-    const forcedRarity: RarityId = isBoss ? ["epic", "legendary", "mythic"][Math.floor(unit(input.seed, 701 + index) * 3)]! : ["common", "uncommon", "rare", "epic"][Math.floor(unit(input.seed, 701 + index) * 4)]!;
+    const forcedRarity: RarityId = isBoss
+      ? (["epic", "legendary", "mythic"] as RarityId[])[Math.floor(unit(input.seed, 701 + index) * 3)]!
+      : (["common", "uncommon", "rare", "epic"] as RarityId[])[Math.floor(unit(input.seed, 701 + index) * 4)]!;
     const item = generateProceduralWeapon({ seed: input.seed + index * 101, category: input.category, index, rarity: forcedRarity, assetManifest: input.assetManifest });
     return { ...item, name: `${item.name.split(" ").slice(0, 1).join(" ")} ${forcedRarity[0]!.toUpperCase()}${forcedRarity.slice(1)} ${item.name.split(" ").slice(2).join(" ")}` };
   });

@@ -1,5 +1,29 @@
 import { z } from "zod";
 import {
+  generateProceduralWeapons,
+  type MaterialId,
+  type RarityId,
+  type WeaponCategory,
+} from "../tools/content-generator";
+import {
+  DEFAULT_GENERATOR_MAP_ID,
+  generateWorld,
+} from "../tools/world-generator";
+import {
+  generateStructurePlacements,
+  STRUCTURE_BLUEPRINT_LIBRARY,
+  validateStructureGenerationOutput,
+} from "./generators/structureGenerator";
+import {
+  generateUniversalItem,
+  type ItemElement,
+  type ItemFamily,
+  type ItemRole,
+  type ItemProgression,
+  type DamageType,
+  type ItemStats,
+} from "./generators/universalItemEngine";
+import {
   buildTexturePack,
   createTexturePackBuilderRegistry,
   validateTexturePackInput,
@@ -57,6 +81,142 @@ const textureGenerationSchema = z.object({
 
 type TexturePackRequest = z.infer<typeof texturePackInputSchema>;
 
+const itemStatsSchema = z.object({
+  damage: z.number().min(0).max(100).optional(),
+  range: z.number().min(0).max(100).optional(),
+  attackSpeed: z.number().min(0).max(100).optional(),
+  area: z.number().min(0).max(100).optional(),
+  critical: z.number().min(0).max(100).optional(),
+  mobility: z.number().min(0).max(100).optional(),
+  defense: z.number().min(0).max(100).optional(),
+  healing: z.number().min(0).max(100).optional(),
+  utility: z.number().min(0).max(100).optional(),
+});
+
+const itemPreviewSchema = z.object({
+  id: z.string().trim().regex(/^[a-z0-9][a-z0-9.-]{2,63}$/),
+  name: z.string().trim().min(3).max(96),
+  family: z.enum(["melee", "ranged", "magic", "technology", "modern", "hybrid", "armor", "tool", "consumable", "material", "artifact", "clothing", "accessory"]),
+  role: z.enum(["dps", "tank", "assassin", "ranger", "mage", "support", "farmer", "explorer", "crafter", "technician", "hybrid"]),
+  progression: z.enum(["early", "mid", "late", "end", "special"]),
+  element: z.enum(["fire", "water", "ice", "earth", "wind", "lightning", "light", "dark", "poison", "nature", "arcane", "neutral"]),
+  damageType: z.enum(["physical", "magic", "elemental", "energy", "projectile", "explosive", "poison", "environmental"]).optional(),
+  materialTag: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{1,48}$/),
+  environmentTag: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{1,48}$/),
+  purpose: z.string().trim().min(3).max(240),
+  identity: z.string().trim().min(3).max(240),
+  weakness: z.string().trim().min(3).max(240),
+  stats: itemStatsSchema.optional(),
+  maxPowerBudget: z.number().int().min(1).max(100).default(75),
+});
+
+type ItemPreviewRequest = z.infer<typeof itemPreviewSchema>;
+
+function buildNoCodeItemInput(input: ItemPreviewRequest) {
+  const stats: ItemStats = {
+    damage: 25,
+    range: 20,
+    attackSpeed: 20,
+    area: 0,
+    critical: 5,
+    mobility: 10,
+    defense: 10,
+    healing: 0,
+    utility: 20,
+    ...input.stats,
+  };
+  const element = input.element as ItemElement;
+  return {
+    id: input.id,
+    name: input.name,
+    family: input.family as ItemFamily,
+    category: input.family,
+    role: input.role as ItemRole,
+    materialTags: [input.materialTag],
+    environmentTags: [input.environmentTag],
+    progression: input.progression as ItemProgression,
+    element,
+    damageType: input.damageType as DamageType | undefined,
+    purpose: input.purpose,
+    identity: input.identity,
+    weakness: input.weakness,
+    counters: [`counter.${element}`],
+    stats,
+    tradeOffs: [{ stat: "defense" as const, amount: 10, reason: "รักษาความแรงไว้แลกกับการป้องกันที่ไม่สูงเกินไป" }],
+    effects: element === "neutral" ? [] : [{ id: `effect.${input.id}`, element, damageType: input.damageType as DamageType | undefined, strength: 8, durationSeconds: 4, stackLimit: 1, cooldownSeconds: 2, counterTags: [`resist.${element}`] }],
+    durability: { maximum: 100, current: 100 },
+    repair: { method: "material" as const, resources: [{ source: "mining" as const, resourceId: input.materialTag, quantity: 1 }], baseCost: 5 },
+    compatibility: [
+      { target: "material" as const, tag: input.materialTag, result: "allowed" as const, reason: "วัสดุนี้เป็นส่วนประกอบที่ระบบกำหนดไว้" },
+      { target: "build" as const, tag: input.environmentTag, result: "special" as const, reason: "สภาพแวดล้อมนี้เป็น build ที่แนะนำ" },
+    ],
+    resources: [{ source: "mining" as const, resourceId: input.materialTag, quantity: 1 }],
+    recommendedBuilds: [input.role as ItemRole],
+    performanceCost: 10,
+  };
+}
+
+const structurePreviewSchema = z.object({
+  mapId: z.literal(DEFAULT_GENERATOR_MAP_ID),
+  blueprintId: z.string().trim().regex(/^[a-z0-9][a-z0-9.-]{2,63}$/),
+  seed: z.string().trim().min(1).max(128),
+  x: z.number().int().min(-500).max(500).default(0),
+  z: z.number().int().min(-500).max(500).default(0),
+  biome: z.string().trim().min(1).max(80).default("Obsidian Alien Frontier"),
+  terrain: z.enum(["flat", "rolling", "slope", "mountain", "cave"]).default("flat"),
+  climate: z.enum(["temperate", "cold", "hot", "arid", "void"]).default("temperate"),
+  slopeDegrees: z.number().min(0).max(90).default(0),
+  waterDepth: z.number().min(0).max(512).default(0),
+  groundY: z.number().int().min(0).max(256).default(0),
+  freeSpaceWidth: z.number().int().min(1).max(512).default(256),
+  freeSpaceLength: z.number().int().min(1).max(512).default(256),
+  roadDistance: z.number().min(0).max(4096).default(0),
+  settlementDistance: z.number().min(0).max(4096).default(0),
+  population: z.number().int().min(0).max(1_000_000).default(100),
+  supportRatio: z.number().min(0).max(1).default(1),
+  accessibleEntry: z.boolean().default(true),
+  minPlacementScore: z.number().int().min(0).max(100).default(0),
+  occupiedFootprints: z.array(z.object({ x: z.number().int(), z: z.number().int(), width: z.number().int().positive(), length: z.number().int().positive() })).max(64).default([]),
+});
+
+type StructurePreviewRequest = z.infer<typeof structurePreviewSchema>;
+
+function buildStructurePreview(input: StructurePreviewRequest) {
+  const blueprint = STRUCTURE_BLUEPRINT_LIBRARY.find(candidate => candidate.id === input.blueprintId);
+  if (!blueprint) throw new Error(`Unknown structure blueprint: ${input.blueprintId}`);
+  const generationInput = {
+    mapId: input.mapId,
+    blueprints: [blueprint],
+    candidates: [{
+      x: input.x,
+      y: input.groundY,
+      z: input.z,
+      context: {
+        mapId: input.mapId,
+        biome: input.biome,
+        terrain: input.terrain,
+        climate: input.climate,
+        slopeDegrees: input.slopeDegrees,
+        waterDepth: input.waterDepth,
+        groundY: input.groundY,
+        freeSpaceWidth: input.freeSpaceWidth,
+        freeSpaceLength: input.freeSpaceLength,
+        roadDistance: input.roadDistance,
+        settlementDistance: input.settlementDistance,
+        population: input.population,
+        supportRatio: input.supportRatio,
+        accessibleEntry: input.accessibleEntry,
+        worldBounds: { minX: -500, maxX: 500, minZ: -500, maxZ: 500 },
+        occupiedFootprints: input.occupiedFootprints,
+      },
+    }],
+    minPlacementScore: input.minPlacementScore,
+    maxPlacements: 1,
+  };
+  const output = generateStructurePlacements(generationInput, input.seed);
+  return { output, validation: validateStructureGenerationOutput(output, generationInput) };
+}
+
 function buildGeneratedTextureResponse(input: TexturePackRequest, seed: string) {
   const registry = createTexturePackBuilderRegistry();
   const artifact = registry.generate("texture.pack", input as TexturePackInput, { seed, generatedAt: 0 });
@@ -85,5 +245,46 @@ export const creatorRouter = router({
       return { artifact, validation };
     }),
     list: adminProcedure.input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional()).query(({ input }) => listCreatorArtifacts(input?.limit)),
+  }),
+  world: router({
+    preview: adminProcedure.input(z.object({
+      seed: z.number().int(),
+      radius: z.number().int().min(8).max(64).default(32),
+      difficulty: z.enum(["peaceful", "normal", "hard"]).default("normal"),
+    })).mutation(({ input }) => {
+      const world = generateWorld({ mapId: DEFAULT_GENERATOR_MAP_ID, profileId: "creator-preview", seed: input.seed, radius: input.radius, difficulty: input.difficulty });
+      return {
+        previewOnly: true as const,
+        mapId: world.mapId,
+        seed: world.seed,
+        requestedRadius: world.requestedRadius,
+        chunkSize: world.chunkSize,
+        worldHash: world.worldHash,
+        metadata: world.metadata,
+        counts: { blocks: world.blocks.length, terrain: world.terrain.length, water: world.water.length, caves: world.caves.length, resources: world.resources.length, structures: world.structures.length, spawnPoints: world.spawnPoints.length },
+        sampleBlockIds: Array.from(new Set(world.blocks.slice(0, 24).map(block => block.blockId))),
+      };
+    }),
+  }),
+  structure: router({
+    preview: adminProcedure.input(structurePreviewSchema).mutation(({ input }) => ({ previewOnly: true as const, ...buildStructurePreview(input) })),
+  }),
+  item: router({
+    preview: adminProcedure.input(itemPreviewSchema).mutation(({ input }) => {
+      const generated = generateUniversalItem({ item: buildNoCodeItemInput(input), maxPowerBudget: input.maxPowerBudget });
+      return { previewOnly: true as const, output: generated, validation: { valid: true as const, issues: [] as string[] } };
+    }),
+  }),
+  weapon: router({
+    preview: adminProcedure.input(z.object({
+      seed: z.number().int(),
+      count: z.number().int().min(1).max(32).default(1),
+      category: z.enum(["melee", "ranged", "magic"]).optional(),
+      rarity: z.enum(["common", "uncommon", "rare", "epic", "legendary", "mythic"]).optional(),
+    })).mutation(({ input }) => ({
+      previewOnly: true as const,
+      generatorVersion: "0.1.0",
+      records: generateProceduralWeapons(input as { seed: number; count: number; category?: WeaponCategory; rarity?: RarityId }),
+    })),
   }),
 });

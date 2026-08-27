@@ -157,7 +157,7 @@ function validateTerrainAndGroundContact(world: GeneratedWorld, config: WorldGen
     if (seenTerrain.has(key)) push(issues, "DUPLICATE_TERRAIN_CELL", `Terrain coordinate ${key} is generated more than once.`, key, "error");
     seenTerrain.add(key);
   }
-  const blocksByKey = new Map(world.blocks.map(block => [block.key, block]));
+  const blocksByKey = new Map<string, WorldBlock>(world.blocks.map(block => [block.key, block] as const));
   const blocksByGroup = new Map<string, WorldBlock[]>();
   for (const block of world.blocks) {
     validateBlockBounds(block, config, issues);
@@ -175,11 +175,11 @@ function validateTerrainAndGroundContact(world: GeneratedWorld, config: WorldGen
     if (subject !== "terrain" && subject !== "water" && !groupedObject && block.y > surfaceLayer + rule.maxHeight) push(issues, "OBJECT_HEIGHT_EXCEEDED", `${subject} block ${block.key} exceeds surface ${surfaceLayer} + max height ${rule.maxHeight}.`, block.key);
     if (block.groupId) blocksByGroup.set(block.groupId, [...(blocksByGroup.get(block.groupId) ?? []), block]);
   }
-  for (const [key, block] of blocksByKey) {
+  for (const [key, block] of Array.from(blocksByKey.entries())) {
     const definition = getBlockDefinition(block.blockId);
     if (definition?.requiresSupport && definition.gravityAffected && block.y > 0 && !blocksByKey.has(blockKey(block.x, block.y - 1, block.z))) push(issues, "UNSUPPORTED_GRAVITY_BLOCK", `Gravity block ${key} requires support at ${block.x}:${block.y - 1}:${block.z}.`, key);
   }
-  for (const [groupId, blocks] of blocksByGroup) {
+  for (const [groupId, blocks] of Array.from(blocksByGroup.entries())) {
     const subject = subjectForBlock(blocks[0]!);
     if (subject === "tree" || subject === "rock" || subject === "cactus" || subject === "structure") {
       const minimumY = Math.min(...blocks.map(block => block.y));
