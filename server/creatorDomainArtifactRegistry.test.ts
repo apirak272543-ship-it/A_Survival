@@ -69,5 +69,6 @@ describe("creator domain artifact registry", () => {
     await expect(user.creator.artifact.preview(buildInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(user.creator.artifact.register(buildInput())).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(user.creator.artifact.list({ domain: "animation" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(user.creator.artifact.review({ artifactKey: preview.artifactKey, action: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

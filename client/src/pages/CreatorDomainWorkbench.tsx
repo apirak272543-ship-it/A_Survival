@@ -142,6 +142,7 @@ export default function CreatorDomainWorkbench() {
   const [registryGeneratorVersion, setRegistryGeneratorVersion] = useState("1.0.0");
   const [registrySource, setRegistrySource] = useState("starter-authored");
   const [registryProvenanceRef, setRegistryProvenanceRef] = useState("procedural-starter-authored");
+  const [registryReviewNote, setRegistryReviewNote] = useState("");
 
   const worldPreview = trpc.creator.world.preview.useMutation();
   const blockPreview = trpc.creator.block.preview.useMutation();
@@ -153,10 +154,11 @@ export default function CreatorDomainWorkbench() {
   const profilerPreview = trpc.creator.profiler.preview.useMutation();
   const artifactPreview = trpc.creator.artifact.preview.useMutation();
   const artifactRegister = trpc.creator.artifact.register.useMutation();
+  const artifactReview = trpc.creator.artifact.review.useMutation();
   const artifactList = trpc.creator.artifact.list.useQuery({ limit: 20 }, { enabled: domain === "registry" });
 
-  const busy = worldPreview.isPending || blockPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending || animationPreview.isPending || questPreview.isPending || profilerPreview.isPending || artifactPreview.isPending || artifactRegister.isPending;
-  const lastError = worldPreview.error ?? blockPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error ?? animationPreview.error ?? questPreview.error ?? profilerPreview.error ?? artifactPreview.error ?? artifactRegister.error ?? artifactList.error;
+  const busy = worldPreview.isPending || blockPreview.isPending || structurePreview.isPending || itemPreview.isPending || weaponPreview.isPending || animationPreview.isPending || questPreview.isPending || profilerPreview.isPending || artifactPreview.isPending || artifactRegister.isPending || artifactReview.isPending;
+  const lastError = worldPreview.error ?? blockPreview.error ?? structurePreview.error ?? itemPreview.error ?? weaponPreview.error ?? animationPreview.error ?? questPreview.error ?? profilerPreview.error ?? artifactPreview.error ?? artifactRegister.error ?? artifactReview.error ?? artifactList.error;
   const buildRegistryInput = () => ({
     domain: registryDomain as "world" | "block" | "structure" | "item" | "weapon" | "animation" | "quest" | "profiler",
     artifactId: registryArtifactId,
@@ -254,7 +256,12 @@ export default function CreatorDomainWorkbench() {
     }
     if (domain === "registry" && artifactPreview.data) {
       const result = artifactPreview.data;
-      return <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><ResultPill label="domain" value={result.domain} /><ResultPill label="artifact key" value={`${result.artifactKey.slice(0, 22)}…`} /><ResultPill label="content sha256" value={`${result.contentSha256.slice(0, 16)}…`} /><ResultPill label="generator" value={`${result.generatorId}@${result.generatorVersion}`} /><ResultPill label="player visible" value={result.runtimePolicy.playerVisible ? "เปิด" : "ปิด"} /><ResultPill label="runtime import" value={result.runtimePolicy.runtimeImportAllowed ? "เปิด" : "ปิด"} /></div><div className="flex flex-wrap items-center gap-3"><Button onClick={() => artifactRegister.mutate(buildRegistryInput(), { onSuccess: saved => setStatus(`บันทึก metadata แล้ว · id ${saved.artifact.id}`) })} disabled={busy} className="gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200"><CheckCircle2 size={15} /> บันทึก metadata เข้า registry</Button><span className="text-[11px] text-slate-500">DB ต้องพร้อม · ไม่อัปโหลด bytes · ไม่ publish เข้าเกม</span></div>{artifactList.data && <div className="space-y-2"><p className="text-xs font-bold text-slate-200">รายการล่าสุด ({artifactList.data.length})</p>{artifactList.data.map(item => <div key={item.artifactKey} className="rounded-lg border border-white/8 bg-black/15 px-3 py-2"><p className="text-xs text-slate-200">{item.domain} · {item.artifactId}@{item.artifactVersion}</p><p className="mt-1 text-[10px] text-slate-500">{item.artifactKey.slice(0, 32)}… · runtime import ปิด</p></div>)}</div>}</div>;
+      const reviewedArtifact = artifactReview.data?.artifact;
+      const reviewStatus = reviewedArtifact?.reviewStatus ?? "draft";
+      const artifactKey = reviewedArtifact?.artifactKey ?? result.artifactKey;
+      const review = (action: "approve" | "reject" | "reopen") => artifactReview.mutate({ artifactKey, action, note: registryReviewNote }, { onSuccess: saved => { setStatus(`review เปลี่ยนเป็น ${saved.artifact.reviewStatus}`); void artifactList.refetch(); } });
+      return <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><ResultPill label="domain" value={result.domain} /><ResultPill label="artifact key" value={`${result.artifactKey.slice(0, 22)}…`} /><ResultPill label="content sha256" value={`${result.contentSha256.slice(0, 16)}…`} /><ResultPill label="generator" value={`${result.generatorId}@${result.generatorVersion}`} /><ResultPill label="review" value={reviewStatus} /><ResultPill label="runtime import" value={result.runtimePolicy.runtimeImportAllowed ? "เปิด" : "ปิด"}
+ /></div><div className="flex flex-wrap items-end gap-3"><Button onClick={() => artifactRegister.mutate(buildRegistryInput(), { onSuccess: saved => { setStatus(`บันทึก metadata แล้ว · id ${saved.artifact.id}`); void artifactList.refetch(); } })} disabled={busy} className="gap-2 bg-emerald-300 text-[#061810] hover:bg-emerald-200"><CheckCircle2 size={15} /> บันทึก metadata เข้า registry</Button><Field label="หมายเหตุ review" htmlFor="registry-review-note"><Input id="registry-review-note" value={registryReviewNote} onChange={event => setRegistryReviewNote(event.target.value)} placeholder="จำเป็นเมื่อปฏิเสธหรือเปิดกลับมาตรวจใหม่" className="min-w-64 border-white/10 bg-white/[0.04]" /></Field><div className="flex flex-wrap gap-2">{reviewStatus === "draft" && <><Button onClick={() => review("approve")} disabled={busy} variant="outline" className="border-emerald-300/30 text-emerald-200">อนุมัติ</Button><Button onClick={() => review("reject")} disabled={busy} variant="outline" className="border-rose-300/30 text-rose-200">ปฏิเสธ</Button></>}{reviewStatus === "rejected" && <Button onClick={() => review("reopen")} disabled={busy} variant="outline" className="border-amber-300/30 text-amber-200">เปิดกลับมาตรวจ</Button>}</div><span className="text-[11px] text-slate-500">DB ต้องพร้อม · ไม่มี bytes · approved ไม่ได้ publish เข้าเกม</span></div>{artifactList.data && <div className="space-y-2"><p className="text-xs font-bold text-slate-200">รายการล่าสุด ({artifactList.data.length})</p>{artifactList.data.map(item => <div key={item.artifactKey} className="rounded-lg border border-white/8 bg-black/15 px-3 py-2"><p className="text-xs text-slate-200">{item.domain} · {item.artifactId}@{item.artifactVersion} · review {item.reviewStatus}</p><p className="mt-1 text-[10px] text-slate-500">{item.artifactKey.slice(0, 32)}… · runtime import ปิด</p></div>)}</div>}</div>;
     }
     return <p className="text-sm text-slate-500">กด “ทดลอง preview” เพื่อให้ระบบแสดงผลลัพธ์ที่ตรวจแล้ว</p>;
   };

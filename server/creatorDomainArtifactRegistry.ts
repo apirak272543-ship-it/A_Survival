@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { creatorDomainArtifacts, type CreatorDomainArtifact } from "../drizzle/schema";
 import { getDb } from "./db";
+import { transitionCreatorDomainArtifactReview, type CreatorArtifactReviewAction, type CreatorArtifactReviewStatus } from "./creatorDomainArtifactReview";
 export class CreatorDomainArtifactRegistryUnavailableError extends Error {
   constructor() {
     super("Creator domain artifact registry requires DATABASE_URL");
@@ -137,10 +138,25 @@ export async function registerCreatorDomainArtifact(input: { metadata: CreatorDo
   return saved[0];
 }
 
-export async function listCreatorDomainArtifacts(input: { limit?: number; domain?: CreatorArtifactDomain } = {}): Promise<CreatorDomainArtifact[]> {
+export async function reviewCreatorDomainArtifact(input: { artifactKey: string; action: CreatorArtifactReviewAction; note?: string; reviewedByUserId: number }): Promise<CreatorDomainArtifact> {
+  const db = await getDb();
+  if (!db) throw new CreatorDomainArtifactRegistryUnavailableError();
+  const existing = await db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
+  const current = existing[0];
+  if (!current) throw new Error("Creator domain artifact was not found");
+  const transition = transitionCreatorDomainArtifactReview({ status: current.reviewStatus as CreatorArtifactReviewStatus, action: input.action, note: input.note });
+  await db.update(creatorDomainArtifacts).set({ reviewStatus: transition.to, reviewNote: transition.note, reviewedByUserId: input.reviewedByUserId, reviewedAt: new Date() }).where(and(eq(creatorDomainArtifacts.artifactKey, input.artifactKey), eq(creatorDomainArtifacts.reviewStatus, transition.from)));
+  const saved = await db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.artifactKey, input.artifactKey)).limit(1);
+  if (!saved[0]) throw new Error("Creator domain artifact was not readable after review");
+  return saved[0];
+}
+
+export async function listCreatorDomainArtifacts(input: { limit?: number; domain?: CreatorArtifactDomain; reviewStatus?: CreatorArtifactReviewStatus } = {}): Promise<CreatorDomainArtifact[]> {
   const db = await getDb();
   if (!db) throw new CreatorDomainArtifactRegistryUnavailableError();
   const limit = Math.max(1, Math.min(100, Math.trunc(input.limit ?? 50)));
-  if (input.domain) return db.select().from(creatorDomainArtifacts).where(eq(creatorDomainArtifacts.domain, input.domain)).orderBy(desc(creatorDomainArtifacts.createdAt)).limit(limit);
+  const filters = [input.domain ? eq(creatorDomainArtifacts.domain, input.domain) : undefined, input.reviewStatus ? eq(creatorDomainArtifacts.reviewStatus, input.reviewStatus) : undefined].filter(Boolean) as Array<ReturnType<typeof eq>>;
+  if (filters.length === 2) return db.select().from(creatorDomainArtifacts).where(and(...filters)).orderBy(desc(creatorDomainArtifacts.createdAt)).limit(limit);
+  if (filters.length === 1) return db.select().from(creatorDomainArtifacts).where(filters[0]!).orderBy(desc(creatorDomainArtifacts.createdAt)).limit(limit);
   return db.select().from(creatorDomainArtifacts).orderBy(desc(creatorDomainArtifacts.createdAt)).limit(limit);
 }

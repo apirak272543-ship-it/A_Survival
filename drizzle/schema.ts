@@ -136,12 +136,17 @@ export const creatorDomainArtifacts = mysqlTable("creatorDomainArtifacts", {
   summary: json("summary").$type<Record<string, unknown>>().notNull(),
   provenance: json("provenance").$type<Record<string, unknown>>().notNull(),
   runtimePolicy: json("runtimePolicy").$type<Record<string, unknown>>().notNull(),
+  reviewStatus: mysqlEnum("reviewStatus", ["draft", "approved", "rejected"]).default("draft").notNull(),
+  reviewNote: varchar("reviewNote", { length: 512 }),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [
   index("creatorDomainArtifacts_domain_idx").on(table.domain),
   index("creatorDomainArtifacts_createdByUserId_idx").on(table.createdByUserId),
+  index("creatorDomainArtifacts_reviewStatus_idx").on(table.reviewStatus),
   index("creatorDomainArtifacts_createdAt_idx").on(table.createdAt),
 ]);
 
