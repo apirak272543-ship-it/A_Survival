@@ -21,11 +21,17 @@
 |---|---|
 | Repository | `apirak272543-ship-it/A_Survival` |
 | Branch หลัก | `main` |
-| Latest integration checkpoint | `c0299b02ea173d47a20abbf91e2b7f884b82671f` (docs correction; pending-action implementation `05b27c1a16e51f741256d7b08d57e5ee579bb9eb`) |
+| Latest integration checkpoint | `33778bd5e643efad402e47c60880b01c0a0718b3` (docs correction: Codex UI boundary plus matrix status reconciliation) |
 | Recovery ref ที่ต้องรักษา | `local-recovery-46a4812 -> 46a48125ab0377063cbad77bdd46edb864cc70c2` |
 | Stash | ว่าง ณ การตรวจล่าสุด |
-| Dev/test process | ไม่พบ process ที่ต้องหยุด ณ การตรวจล่าสุด |
-| สถานะล่าสุด | pending-action contract ถูก push แล้วใน `05b27c1`; registry อยู่ระหว่าง review; browser boundary smoke เก็บหลักฐานและหยุด dev server แล้ว |
+| Dev/test process | Codex smoke tree ถูก TERM แล้วและ port `3000` ไม่ listen; old watcher PID `505664` ยังอยู่บน `127.0.0.1` จากก่อนหน้าและไม่ได้แตะต้องเพราะไม่ใช่ smoke tree ที่ยืนยัน |
+| สถานะล่าสุด | C-01 Codex UI boundary implementation `1085ac2` และ docs/matrix correction `33778bd` ถูก push แล้ว; browser smoke หลักฐานอยู่ใน `docs/evidence/codex-ui-boundary-browser.md`; open worker PRs #9–#28 พบจาก GitHub แต่ยังไม่มีรายการใดถูก merge/รับเข้า main |
+
+## Open worker PR review queue
+
+พบ open PR ของ AI-1/AI-2 หมายเลข `#9` ถึง `#28` จาก GitHub ในการ audit หลัง C-01 checkpoint. รายการเหล่านี้เป็น external branches ที่ต้องตรวจ base SHA, task claim, exact files, diff, tests และ invariant ทีละรายการ; ยังไม่เปลี่ยนเป็น DONE และห้าม merge/cherry-pick อัตโนมัติ. Local clone มีเฉพาะ `origin/main` เป็น remote-tracking branch จึงไม่มีการแก้หรือ reset branch ของ worker.
+
+PR ที่ตรวจ body/files แล้วในรอบนี้ ได้แก่ `#27` S-03 (pure audit พบ blocker high-refresh disclaimer และยังไม่มี browser/device acceptance) และ `#28` O-04 (pure inventory/policy แต่แก้ registry บน base เก่า จึงต้อง rebase/review ก่อนรับ). PR อื่นในช่วง `#9–#26` ยังคงอยู่ใน review queue; ห้ามถือว่าเป็น implementation ที่ main รับรอง.
 
 ## ทะเบียนงานและ file reservation
 

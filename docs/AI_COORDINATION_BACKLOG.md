@@ -30,7 +30,7 @@
 | `DONE` | AI-0 | `NEXT-MOBILE-VIEWPORT-001` | M-01 sub-checkpoint: pure viewport/safe-area/orientation/touch/fullscreen policy for landscape WebView; implementation `6745751`; full validation `117` files / `483` tests; no CSS/index.html/GameCanvas edit or real-device acceptance claim in this round |
 | `DONE` | AI-0 | `NEXT-CODEX-UI-BOUNDARY-001` | C-01 sub-checkpoint: existing CodexSheet consumes `createCodexDiscoverySnapshot` and fails closed on invalid discovery input; implementation `1085ac2`; focused `1` file / `6` tests, full `117` files / `483` tests, check/build/browser smoke passed; no discovery event, persistence, network write or player map/control change |
 
-ณ การตรวจล่าสุดยังไม่พบ remote branch/PR ของ AI-1 หรือ AI-2 ใน `origin`; reservation แบบจำกัดสายงานเดิมจึงถูก **ปล่อยกลับเป็น AVAILABLE**. ตั้งแต่นี้ AI-1 และ AI-2 ใช้ autonomous worker instructions เลือกงานจาก backlog ทั้งหมดได้ ไม่ต้องรอข้อความมอบหมายราย Task แต่ต้อง claim exact files ก่อนเริ่ม. AI-0 จะเปลี่ยนเป็น `DONE` ก็ต่อเมื่อมี branch/PR, commit SHA, diff และ test evidence ที่ตรวจได้.
+จาก audit ล่าสุดพบ open PR ของ AI-1/AI-2 หมายเลข `#9–#28` บน GitHub แต่ local clone มีเฉพาะ `origin/main` เป็น remote-tracking branch. PR เหล่านี้ยังเป็น external contributions ที่ต้อง review base SHA, claim, exact files, diff, tests และ invariants ทีละรายการ; ยังไม่มีรายการใดถูก merge หรือเปลี่ยนเป็น `DONE` ใน main. Reservation แบบจำกัดสายงานเดิมถูก **ปล่อยกลับเป็น AVAILABLE**. ตั้งแต่นี้ AI-1 และ AI-2 ใช้ autonomous worker instructions เลือกงานจาก backlog ทั้งหมดได้ ไม่ต้องรอข้อความมอบหมายราย Task แต่ต้อง claim exact files ก่อนเริ่ม. AI-0 จะเปลี่ยนเป็น `DONE` ก็ต่อเมื่อมี branch/PR, commit SHA, diff และ test evidence ที่ตรวจได้.
 
 ## กติกาเลือกและจองงาน
 
