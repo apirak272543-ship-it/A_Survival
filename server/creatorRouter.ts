@@ -68,6 +68,7 @@ import { buildStoryProgressionContractDependencyGraph } from "./generators/story
 import { buildStoryMapCachePolicyDependencyGraph } from "./generators/storyMapCachePolicyDependencyGraph";
 import { buildStoryOfflineMapStateDependencyGraph } from "./generators/storyOfflineMapStateDependencyGraph";
 import { buildQuestGameplayEventDependencyGraph } from "./generators/questGameplayEventDependencyGraph";
+import { buildQuestRewardRuntimeDependencyGraph } from "./generators/questRewardRuntimeDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -391,6 +392,7 @@ export const creatorRouter = router({
     storyMapCachePolicyPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), requestedMapIds: z.array(z.string().trim().min(1).max(128)).min(1).max(3).optional(), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildStoryMapCachePolicyDependencyGraph(input) })),
     storyOfflineMapStatePreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), playerId: z.string().trim().min(1).max(64).optional(), requestedMapIds: z.array(z.string().trim().min(1).max(128)).min(1).max(3).optional(), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildStoryOfflineMapStateDependencyGraph(input) })),
     questGameplayEventPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), sampleQuestCount: z.number().int().min(1).max(20).default(8), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildQuestGameplayEventDependencyGraph(input) })),
+    questRewardRuntimePreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), sampleQuestCount: z.number().int().min(1).max(20).default(8), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildQuestRewardRuntimeDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),
