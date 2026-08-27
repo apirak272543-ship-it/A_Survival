@@ -19,7 +19,13 @@
 
 ## Routes และ enforcement
 
-`adminProcedure` อนุญาตเฉพาะ `gm`, `admin` และ `master` ทำให้ทุก creator preview/tool ใช้ได้ตามขอบเขตเดิม. `masterProcedure` สงวน `auth.authority.policy`, `auth.authority.list`, `auth.authority.setRole` และ `auth.authority.revokeCreatorAccess` ให้ Master เท่านั้น. `/authority-admin` เป็น route แยกและมี Master-only gate; ไม่ปรากฏใน player landing หรือเกม.
+`adminProcedure` อนุญาตเฉพาะ `gm`, `admin` และ `master` ทำให้ทุก creator preview/tool ใช้ได้ตามขอบเขตเดิม. `masterProcedure` สงวน `auth.authority.policy`, `auth.authority.list`, `auth.authority.audit`, `auth.authority.invitations`, `auth.authority.invite`, `auth.authority.revokeInvitation`, `auth.authority.setRole` และ `auth.authority.revokeCreatorAccess` ให้ Master เท่านั้น. `/authority-admin` เป็น route แยกและมี Master-only gate; ไม่ปรากฏใน player landing หรือเกม.
+
+## Invitation สำหรับ GM/Admin
+
+Master สร้าง invitation ได้จาก `/authority-admin` โดยระบุอีเมล, role `gm` หรือ `admin` และหมายเหตุได้ invitation ถูกเก็บแบบ email-bound พร้อมอายุ 7 วัน. ผู้รับต้องเข้าสู่ระบบ OAuth แล้วกดรับ invitation จาก `/account-security`; server จะใช้ email ที่อยู่ใน authenticated session เท่านั้น, ตรวจ pending/status/expiry แบบ case-insensitive และ grant role พร้อมเขียน authority audit event ใน transaction เดียว. Master เพิกถอน invitation ที่ยัง pending ได้.
+
+ระบบยังไม่ส่งอีเมลเอง เพราะ repository ไม่มี mail provider หรือ verified delivery contract. ดังนั้นการสร้าง invitation สำเร็จหมายถึงบันทึก pending invitation เท่านั้น ไม่ใช่หลักฐานว่าอีเมลถูกส่งหรือผู้รับเห็นข้อความแล้ว.
 
 ## Verification และ password boundary
 

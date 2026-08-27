@@ -39,11 +39,16 @@ describe("authority router", () => {
     const caller = appRouter.createCaller(createContext(role));
     await expect(caller.auth.authority.policy()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.auth.authority.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.auth.authority.audit()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.auth.authority.invitations()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.auth.authority.invite({ email: "new-gm@example.com", requestedRole: "gm" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("blocks unauthenticated authority management", async () => {
     const caller = appRouter.createCaller(createContext(null));
     await expect(caller.auth.authority.policy()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.auth.authority.invitations()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.auth.authority.invite({ email: "new-gm@example.com", requestedRole: "gm" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.auth.securityStatus()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 

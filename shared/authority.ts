@@ -38,6 +38,18 @@ export function roleGrantedByMasterEmail(input: {
   return email && masterEmail && email === masterEmail ? "master" : null;
 }
 
+export type AuthorityInvitationStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export function isAuthorityInvitationActive(input: { status: AuthorityInvitationStatus; expiresAt: Date; now: Date }): boolean {
+  return input.status === "pending" && input.expiresAt.getTime() > input.now.getTime();
+}
+
+export function canAcceptAuthorityInvitation(input: { invitationEmail: string; userEmail: string | null | undefined; status: AuthorityInvitationStatus; expiresAt: Date; now: Date }): boolean {
+  const invitationEmail = normalizeAuthorityEmail(input.invitationEmail);
+  const userEmail = normalizeAuthorityEmail(input.userEmail);
+  return Boolean(invitationEmail && userEmail && invitationEmail === userEmail && isAuthorityInvitationActive(input));
+}
+
 export function resolveOAuthAuthorityRole(input: {
   currentRole: AuthorityRole | null | undefined;
   openId: string;

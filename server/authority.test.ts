@@ -3,6 +3,8 @@ import {
   canManageAuthority,
   canRevokeCreatorAuthority,
   canUseCreatorTools,
+  canAcceptAuthorityInvitation,
+  isAuthorityInvitationActive,
   normalizeAuthorityEmail,
   resolveOAuthAuthorityRole,
   roleGrantedByMasterEmail,
@@ -13,6 +15,15 @@ describe("authority policy", () => {
     expect(normalizeAuthorityEmail("  APIRAK272543@GMAIL.COM ")).toBe("apirak272543@gmail.com");
     expect(roleGrantedByMasterEmail({ email: "APIRAK272543@GMAIL.COM", masterEmail: "apirak272543@gmail.com" })).toBe("master");
     expect(roleGrantedByMasterEmail({ email: "other@example.com", masterEmail: "apirak272543@gmail.com" })).toBeNull();
+  });
+
+  it("accepts only a pending, unexpired invitation for the exact OAuth email", () => {
+    const now = new Date("2026-08-27T00:00:00.000Z");
+    expect(isAuthorityInvitationActive({ status: "pending", expiresAt: new Date("2026-08-28T00:00:00.000Z"), now })).toBe(true);
+    expect(isAuthorityInvitationActive({ status: "pending", expiresAt: now, now })).toBe(false);
+    expect(canAcceptAuthorityInvitation({ invitationEmail: " GM@Example.com ", userEmail: "gm@example.com", status: "pending", expiresAt: new Date("2026-08-28T00:00:00.000Z"), now })).toBe(true);
+    expect(canAcceptAuthorityInvitation({ invitationEmail: "gm@example.com", userEmail: "other@example.com", status: "pending", expiresAt: new Date("2026-08-28T00:00:00.000Z"), now })).toBe(false);
+    expect(canAcceptAuthorityInvitation({ invitationEmail: "gm@example.com", userEmail: "gm@example.com", status: "revoked", expiresAt: new Date("2026-08-28T00:00:00.000Z"), now })).toBe(false);
   });
 
   it("keeps the configured owner as master while preserving invited creator roles", () => {

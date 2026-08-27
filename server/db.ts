@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { authorityAuditEvents, gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
+import { authorityAuditEvents, authorityInvitations, gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
-import { roleGrantedByMasterEmail, type AuthorityRole } from "../shared/authority";
+import { canAcceptAuthorityInvitation, isAuthorityInvitationActive, normalizeAuthorityEmail, roleGrantedByMasterEmail, type AuthorityRole } from "../shared/authority";
 import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeStorageDepositPayload, isSafeStorageWithdrawPayload, isSafeUseItemPayload } from "./syncActionValidation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -184,6 +184,93 @@ export async function listAuthorityAuditEvents(limit = 100): Promise<{ available
   }).from(authorityAuditEvents).orderBy(authorityAuditEvents.createdAt).limit(limit);
 
   return { available: true, events: rows as AuthorityAuditMemberEvent[] };
+}
+
+export type AuthorityInvitationRecord = {
+  id: number;
+  email: string;
+  requestedRole: "gm" | "admin";
+  status: "pending" | "accepted" | "revoked" | "expired";
+  invitedByUserId: number;
+  acceptedUserId: number | null;
+  note: string | null;
+  expiresAt: Date;
+  acceptedAt: Date | null;
+  createdAt: Date;
+};
+
+export async function createAuthorityInvitation(input: {
+  email: string;
+  requestedRole: "gm" | "admin";
+  invitedByUserId: number;
+  note?: string;
+  expiresAt: Date;
+}): Promise<AuthorityInvitationRecord | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const email = normalizeAuthorityEmail(input.email);
+  if (!email) throw new Error("Invitation email is required");
+
+  await db.insert(authorityInvitations).values({
+    email,
+    requestedRole: input.requestedRole,
+    invitedByUserId: input.invitedByUserId,
+    note: input.note ?? null,
+    expiresAt: input.expiresAt,
+  });
+  const rows = await db.select().from(authorityInvitations).where(and(eq(authorityInvitations.email, email), eq(authorityInvitations.invitedByUserId, input.invitedByUserId))).orderBy(desc(authorityInvitations.createdAt)).limit(1);
+  return (rows[0] as AuthorityInvitationRecord | undefined) ?? null;
+}
+
+export async function listAuthorityInvitations(limit = 100): Promise<{ available: boolean; invitations: AuthorityInvitationRecord[] }> {
+  const db = await getDb();
+  if (!db) return { available: false, invitations: [] };
+  const now = new Date();
+  const rows = await db.select().from(authorityInvitations).orderBy(desc(authorityInvitations.createdAt)).limit(limit);
+  const invitations = rows.map(row => isAuthorityInvitationActive({ status: row.status, expiresAt: row.expiresAt, now }) ? row : row.status === "pending" ? { ...row, status: "expired" as const } : row);
+  return { available: true, invitations: invitations as AuthorityInvitationRecord[] };
+}
+
+export async function revokeAuthorityInvitation(input: { invitationId: number }): Promise<AuthorityInvitationRecord | null> {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(authorityInvitations).set({ status: "revoked" }).where(and(eq(authorityInvitations.id, input.invitationId), eq(authorityInvitations.status, "pending")));
+  const rows = await db.select().from(authorityInvitations).where(eq(authorityInvitations.id, input.invitationId)).limit(1);
+  return (rows[0] as AuthorityInvitationRecord | undefined) ?? null;
+}
+
+export async function acceptAuthorityInvitation(input: { userId: number; email: string }): Promise<{ invitation: AuthorityInvitationRecord; member: AuthorityMember } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const email = normalizeAuthorityEmail(input.email);
+  if (!email) return null;
+  const now = new Date();
+
+  return db.transaction(async tx => {
+    const invitations = await tx.select().from(authorityInvitations).where(and(eq(authorityInvitations.email, email), eq(authorityInvitations.status, "pending"))).orderBy(desc(authorityInvitations.createdAt)).limit(20);
+    const invitation = invitations.find(candidate => canAcceptAuthorityInvitation({ invitationEmail: candidate.email, userEmail: email, status: candidate.status, expiresAt: candidate.expiresAt, now }));
+    if (!invitation) return null;
+
+    const targets = await tx.select({ id: users.id, role: users.role, openId: users.openId, name: users.name, email: users.email, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).where(eq(users.id, input.userId)).limit(1);
+    const target = targets[0];
+    if (!target || target.role === "master") return null;
+
+    await tx.update(users).set({ role: invitation.requestedRole }).where(eq(users.id, input.userId));
+    await tx.update(authorityInvitations).set({ status: "accepted", acceptedUserId: input.userId, acceptedAt: now }).where(eq(authorityInvitations.id, invitation.id));
+    await tx.insert(authorityAuditEvents).values({
+      actorUserId: invitation.invitedByUserId,
+      targetUserId: input.userId,
+      action: "grant",
+      fromRole: target.role,
+      toRole: invitation.requestedRole,
+      reason: `Authority invitation ${invitation.id} accepted by OAuth user ${input.userId}`,
+    });
+
+    return {
+      invitation: { ...invitation, status: "accepted" as const, acceptedUserId: input.userId, acceptedAt: now },
+      member: { ...target, role: invitation.requestedRole } as AuthorityMember,
+    };
+  });
 }
 
 export type GameProfileOpenInput = {

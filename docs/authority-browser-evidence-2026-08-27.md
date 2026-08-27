@@ -23,3 +23,11 @@ URL: `http://localhost:3001/account-security`
 ผลที่ตรวจพบหลังรอหน้าโหลด: แสดง `ACCOUNT SECURITY`, `เข้าสู่ระบบก่อนจัดการบัญชี`, ข้อความว่าเกมใช้ Manus OAuth เป็นเจ้าของ session และไม่รับหรือเก็บรหัสผ่านใน A_Survival พร้อมปุ่มเข้าสู่ระบบ. ไม่พบช่องกรอกรหัสผ่านหรือการอ้างว่า verify/change/reset password ภายในแอปทำได้.
 
 Screenshot: `/home/ubuntu/screenshots/localhost_2026-08-27_10-12-03_8428.webp`
+
+## Invitation-enabled authority route boundary
+
+URL: `http://localhost:3000/authority-admin`
+
+หลังเพิ่ม invitation UI และรอหน้าโหลด ผลยังแสดง `MASTER ONLY`, `เข้า Authority Admin ไม่ได้` และข้อความให้เข้าสู่ระบบด้วยบัญชี Master คนแรกก่อน. ไม่มี invitation form, member list, audit history หรือ role controls ให้ unauthenticated user.
+
+Screenshot: `/home/ubuntu/screenshots/localhost_2026-08-27_10-34-50_9538.webp`

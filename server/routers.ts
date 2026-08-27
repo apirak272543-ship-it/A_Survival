@@ -30,6 +30,10 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    acceptAuthorityInvitation: protectedProcedure.mutation(async ({ ctx }) => {
+      const result = await gameDb.acceptAuthorityInvitation({ userId: ctx.user.id, email: ctx.user.email ?? "" });
+      return { accepted: Boolean(result), result };
+    }),
     securityStatus: protectedProcedure.query(({ ctx }) => ({
       authProvider: "manus-oauth" as const,
       email: ctx.user.email,
@@ -44,6 +48,9 @@ export const appRouter = router({
       policy: masterProcedure.query(({ ctx }) => ({ role: ctx.user.role, canManageAuthority: true as const, canRevokeCreatorAuthority: true as const })),
       list: masterProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(100) }).optional()).query(({ input }) => gameDb.listAuthorityMembers(input?.limit ?? 100)),
       audit: masterProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(100) }).optional()).query(({ input }) => gameDb.listAuthorityAuditEvents(input?.limit ?? 100)),
+      invitations: masterProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(100) }).optional()).query(({ input }) => gameDb.listAuthorityInvitations(input?.limit ?? 100)),
+      invite: masterProcedure.input(z.object({ email: z.string().trim().email().max(320), requestedRole: z.enum(["gm", "admin"]), note: z.string().trim().max(512).optional() })).mutation(async ({ input, ctx }) => ({ success: true as const, invitation: await gameDb.createAuthorityInvitation({ ...input, invitedByUserId: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }) })),
+      revokeInvitation: masterProcedure.input(z.object({ invitationId: z.number().int().positive() })).mutation(async ({ input }) => ({ success: true as const, invitation: await gameDb.revokeAuthorityInvitation(input) })),
       setRole: masterProcedure.input(z.object({ targetUserId: z.number().int().positive(), role: z.enum(["user", "gm", "admin"]), reason: z.string().trim().min(3).max(512).default("Master authority role assignment") })).mutation(async ({ input, ctx }) => ({ success: true as const, member: await gameDb.setAuthorityMemberRole({ ...input, actorUserId: ctx.user.id }) })),
       revokeCreatorAccess: masterProcedure.input(z.object({ targetUserId: z.number().int().positive(), reason: z.string().trim().min(3).max(512).default("Master revoked creator access") })).mutation(async ({ input, ctx }) => ({ success: true as const, member: await gameDb.setAuthorityMemberRole({ actorUserId: ctx.user.id, targetUserId: input.targetUserId, role: "user", reason: input.reason }) })),
     }),

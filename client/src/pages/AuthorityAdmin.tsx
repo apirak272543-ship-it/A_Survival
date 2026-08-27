@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../_core/hooks/useAuth";
 import { trpc } from "../lib/trpc";
 
@@ -13,17 +13,28 @@ export default function AuthorityAdmin() {
   const { user } = useAuth();
   const membersQuery = trpc.auth.authority.list.useQuery({ limit: 100 }, { enabled: user?.role === "master" });
   const auditQuery = trpc.auth.authority.audit.useQuery({ limit: 100 }, { enabled: user?.role === "master" });
+  const invitationsQuery = trpc.auth.authority.invitations.useQuery({ limit: 100 }, { enabled: user?.role === "master" });
   const utils = trpc.useUtils();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"gm" | "admin">("gm");
+  const [inviteNote, setInviteNote] = useState("");
   const setRole = trpc.auth.authority.setRole.useMutation({
     onSuccess: () => { void utils.auth.authority.list.invalidate(); void utils.auth.authority.audit.invalidate(); },
   });
   const revoke = trpc.auth.authority.revokeCreatorAccess.useMutation({
     onSuccess: () => { void utils.auth.authority.list.invalidate(); void utils.auth.authority.audit.invalidate(); },
   });
+  const invite = trpc.auth.authority.invite.useMutation({
+    onSuccess: () => { setInviteEmail(""); setInviteNote(""); void utils.auth.authority.invitations.invalidate(); },
+  });
+  const revokeInvitation = trpc.auth.authority.revokeInvitation.useMutation({
+    onSuccess: () => void utils.auth.authority.invitations.invalidate(),
+  });
 
   const members = useMemo(() => membersQuery.data?.members ?? [], [membersQuery.data]);
-  const actionError = setRole.error?.message ?? revoke.error?.message ?? null;
+  const actionError = setRole.error?.message ?? revoke.error?.message ?? invite.error?.message ?? revokeInvitation.error?.message ?? null;
   const auditEvents = auditQuery.data?.events ?? [];
+  const invitations = invitationsQuery.data?.invitations ?? [];
 
   if (membersQuery.isLoading) {
     return <main className="grid min-h-dvh place-items-center bg-[#070a10] px-6 text-slate-100"><p className="text-sm text-cyan-100">กำลังโหลดรายชื่อ authority จาก server…</p></main>;
@@ -42,6 +53,10 @@ export default function AuthorityAdmin() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs font-bold text-slate-200">การเพิกถอน</p><p className="mt-1 text-xs text-slate-400">ลดกลับเป็น user โดยไม่ลบบันทึกบัญชีถาวร</p></div>
           </div>
         </header>
+
+        <section className="mt-6 rounded-3xl border border-cyan-300/15 bg-[#0c1422] p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-white">เชิญสมาชิกใหม่</h2><p className="mt-1 text-xs leading-relaxed text-slate-500">บันทึก invitation ผูกกับอีเมล OAuth เป็นเวลา 7 วัน แต่ระบบยังไม่ส่งอีเมลเองจนกว่าจะมี mail provider ที่ยืนยันแล้ว</p></div><span className="rounded-full border border-amber-300/20 bg-amber-300/[0.05] px-3 py-1 text-[11px] font-bold text-amber-100">Master เท่านั้น</span></div><form className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]" onSubmit={event => { event.preventDefault(); if (!inviteEmail.trim()) return; invite.mutate({ email: inviteEmail, requestedRole: inviteRole, note: inviteNote || undefined }); }}><input type="email" value={inviteEmail} onChange={event => setInviteEmail(event.target.value)} placeholder="อีเมลสมาชิก เช่น gm@example.com" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/40" required maxLength={320} /><select value={inviteRole} onChange={event => setInviteRole(event.target.value as "gm" | "admin")} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none"><option value="gm">เชิญเป็น GM</option><option value="admin">เชิญเป็น Admin</option></select><button type="submit" disabled={invite.isPending} className="rounded-xl border border-cyan-300/25 bg-cyan-300/[0.08] px-4 py-2 text-sm font-bold text-cyan-100 disabled:opacity-50">{invite.isPending ? "กำลังบันทึก…" : "สร้าง invitation"}</button><input type="text" value={inviteNote} onChange={event => setInviteNote(event.target.value)} placeholder="หมายเหตุ (ไม่บังคับ)" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/40 md:col-span-2" maxLength={512} /></form></section>
+
+        <section className="mt-6 rounded-3xl border border-violet-300/15 bg-[#0c1422] p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-white">Invitation ที่สร้างไว้</h2><p className="mt-1 text-xs text-slate-500">{invitations.length} รายการ · ผู้รับต้องเข้าสู่ระบบด้วย OAuth อีเมลตรงกันก่อนรับสิทธิ์</p></div></div>{invitationsQuery.data?.available === false && <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-4 text-sm text-amber-100">ฐานข้อมูลยังไม่พร้อม จึงยังสร้างหรือแสดง invitation จริงไม่ได้</div>}<div className="mt-4 divide-y divide-white/8">{invitations.map(invitation => <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="break-all text-sm font-bold text-white">{invitation.email}</p><p className="mt-1 text-xs text-slate-500">{invitation.requestedRole.toUpperCase()} · {invitation.status} · หมดอายุ {new Date(invitation.expiresAt).toLocaleString("th-TH")}</p>{invitation.note && <p className="mt-1 text-xs text-slate-400">{invitation.note}</p>}</div>{invitation.status === "pending" && <button type="button" onClick={() => revokeInvitation.mutate({ invitationId: invitation.id })} disabled={revokeInvitation.isPending} className="rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-3 py-2 text-xs font-bold text-rose-100 disabled:opacity-50">เพิกถอน invitation</button>}</div>)}{invitations.length === 0 && invitationsQuery.data?.available !== false && <p className="py-4 text-sm text-slate-500">ยังไม่มี invitation</p>}</div></section>
 
         <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-[#0c1422]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-5">

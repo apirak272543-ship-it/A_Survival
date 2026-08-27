@@ -34,6 +34,26 @@ export const authorityAuditEvents = mysqlTable("authorityAuditEvents", {
 
 export type AuthorityAuditEvent = typeof authorityAuditEvents.$inferSelect;
 
+/** Master-created email-bound invitation; acceptance remains server-reviewed because OAuth verification is not exposed here. */
+export const authorityInvitations = mysqlTable("authorityInvitations", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  requestedRole: mysqlEnum("requestedRole", ["gm", "admin"]).notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "revoked", "expired"]).default("pending").notNull(),
+  invitedByUserId: int("invitedByUserId").notNull().references(() => users.id),
+  acceptedUserId: int("acceptedUserId").references(() => users.id),
+  note: varchar("note", { length: 512 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  index("authorityInvitations_email_idx").on(table.email),
+  index("authorityInvitations_status_idx").on(table.status),
+  index("authorityInvitations_createdAt_idx").on(table.createdAt),
+]);
+
+export type AuthorityInvitation = typeof authorityInvitations.$inferSelect;
+
 /** Password-free player identity used by the game client. */
 export const gameProfiles = mysqlTable("gameProfiles", {
   id: int("id").autoincrement().primaryKey(),
