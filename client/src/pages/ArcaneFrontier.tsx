@@ -69,6 +69,7 @@ import { resolveLoadingVariant } from "@/game/ui/loadingVariant";
 import { CODEX_CATEGORIES, getDiscoveredCodexEntries, type CodexCategoryId, type CodexEntry } from "@/game/systems/codexSystem";
 import { CAMERA_MODE_OPTIONS, type CameraMode } from "@/game/systems/cameraModes";
 import { TARGET_FPS_OPTIONS } from "@/game/systems/renderDistance";
+import { getItemLongDetail, ITEM_DETAIL_HOLD_MS } from "@/game/systems/itemDetailSystem";
 
 type Screen = DirectRouteScreen;
 type Transition = { destination: Screen; mapId?: string; title: string; accent: string; progress: number; phase: string; cached?: boolean; offline?: boolean } | null;
@@ -266,9 +267,31 @@ function IntegritySheet({ report, syncAttention, close }: { report: IntegrityRep
   </section></div>;
 }
 
-function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncRequest, toast, getAssetUrl }: { session: LocalGameSession; quarantinedInstanceIds: Set<string>; close: () => void; onEquip: (instanceId: string) => void; onSyncRequest: () => void; toast: (message: string) => void; getAssetUrl: (assetId?: string) => string | undefined }) {
+function ItemDetailSheet({ instance, close, getAssetUrl }: { instance: ItemInstance; close: () => void; getAssetUrl: (assetId?: string) => string | undefined }) {
+  const definition = getItemDefinition(instance.definitionId);
+  if (!definition) return null;
+  const detail = getItemLongDetail(definition, instance);
+  return <div className="settings-scrim help-scrim" onPointerDown={close}><section className="settings-sheet help-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={`รายละเอียด ${detail.title}`}>
+    <header><div><p className="eyebrow">Item detail · long press {ITEM_DETAIL_HOLD_MS / 1000}s</p><h3>{detail.title}</h3></div><button className="icon-button" onClick={close} aria-label="ปิดรายละเอียดไอเทม"><X size={18} /></button></header>
+    <div className="item-detail-content"><div className="vault-preview">{getAssetUrl(definition.iconAssetId) ? <img className="vault-pack-preview" src={getAssetUrl(definition.iconAssetId)} alt="" /> : <Box size={38} />}<span style={{ background: TIER_RULES[definition.tier].color }} /></div><p>{detail.summary}</p><div className="codex-stat-grid"><div><small>หมวด</small><b>{detail.category}</b></div><div><small>ระดับ</small><b>{detail.tier}</b></div><div><small>STACK LIMIT</small><b>{detail.stackLimit}</b></div><div><small>ENHANCEMENT</small><b>+{detail.enhancement}</b></div><div><small>ITEM ID</small><b>{detail.definitionId}</b></div><div><small>PROVENANCE</small><b>{detail.provenanceType}</b></div></div><div className="codex-effect"><BookOpen size={16} /><span>{detail.effect}</span></div><p className="codex-detail-note">แท็ก: {detail.tags.join(" · ") || "ทั่วไป"}{detail.placeableBlockId ? ` · วางเป็น ${detail.placeableBlockId}` : ""}</p><p className="credits-footnote">Event: {detail.provenanceEventId}</p></div>
+  </section></div>;
+}
+
+function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncRequest, onLongPress, toast, getAssetUrl }: { session: LocalGameSession; quarantinedInstanceIds: Set<string>; close: () => void; onEquip: (instanceId: string) => void; onSyncRequest: () => void; onLongPress: (instanceId: string) => void; toast: (message: string) => void; getAssetUrl: (assetId?: string) => string | undefined }) {
   const [category, setCategory] = useState<"all" | "weapons" | "materials">("all");
   const [selectedInstanceId, setSelectedInstanceId] = useState(session.inventory[0]?.instanceId ?? "");
+  const holdTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (holdTimerRef.current !== null) window.clearTimeout(holdTimerRef.current); }, []);
+  const startItemHold = (instanceId: string) => {
+    if (holdTimerRef.current !== null) window.clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = window.setTimeout(() => onLongPress(instanceId), ITEM_DETAIL_HOLD_MS);
+  };
+  const cancelItemHold = () => {
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
   const visibleItems = session.inventory.filter(instance => {
     const definition = getItemDefinition(instance.definitionId);
     return category === "all" || category === "weapons" ? category === "all" || Boolean(definition?.equippable) : definition?.category === "material";
@@ -287,7 +310,7 @@ function VaultSheet({ session, quarantinedInstanceIds, close, onEquip, onSyncReq
   return <div className="settings-scrim vault-scrim" onPointerDown={close}><section className="vault-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Frontier Vault">
     <header><div><p className="eyebrow">Frontier vault</p><h3>คลังไอเทม</h3></div><button className="icon-button" onClick={close} aria-label="ปิดคลังไอเทม"><X size={18} /></button></header>
     <div className="vault-layout"><aside className="vault-nav"><div className="vault-player"><span>{session.playerId.slice(0, 1).toUpperCase()}</span><div><b>{session.playerId}</b><small>LOCAL SAVE · {navigator.onLine ? "ONLINE" : "OFFLINE"}</small></div></div><div className="vault-tabs"><button className={category === "all" ? "active" : ""} onClick={() => setCategory("all")}>ทั้งหมด</button><button className={category === "weapons" ? "active" : ""} onClick={() => setCategory("weapons")}>อาวุธ</button><button className={category === "materials" ? "active" : ""} onClick={() => setCategory("materials")}>วัตถุดิบ</button></div><p>เลือก item instance เพื่อดู provenance และสถานะการใช้งาน</p></aside>
-      <section className="vault-grid-panel"><div className="vault-grid-label"><span>ITEM INSTANCES</span><b>{visibleItems.length}</b></div><div className="vault-grid">{visibleItems.map(instance => { const item = getItemDefinition(instance.definitionId); const isQuarantined = quarantinedInstanceIds.has(instance.instanceId); const isEquipped = Object.values(equipment).includes(instance.instanceId); return <button key={instance.instanceId} className={`vault-item ${instance.instanceId === selected?.instanceId ? "selected" : ""} ${isQuarantined ? "quarantined" : ""}`} onClick={() => setSelectedInstanceId(instance.instanceId)} aria-label={`${item?.name ?? instance.definitionId}${isQuarantined ? ", รอการยืนยันและ actions ถูกจำกัด" : ""}`}><span className="vault-item-tier" style={{ background: TIER_RULES[item?.tier ?? "common"].color }} />{getAssetUrl(item?.iconAssetId) ? <img className="vault-pack-icon" src={getAssetUrl(item?.iconAssetId)} alt="" /> : <Box size={17} />}<b>{item?.name ?? instance.definitionId}</b><small>×{instance.quantity} · +{instance.enhancement}</small>{isEquipped && <em>ติดตั้ง</em>}{isQuarantined && <em className="quarantine-badge"><ShieldAlert size={11} /> รอยืนยัน</em>}</button>; })}</div></section>
+      <section className="vault-grid-panel"><div className="vault-grid-label"><span>ITEM INSTANCES</span><b>{visibleItems.length}</b></div><div className="vault-grid">{visibleItems.map(instance => { const item = getItemDefinition(instance.definitionId); const isQuarantined = quarantinedInstanceIds.has(instance.instanceId); const isEquipped = Object.values(equipment).includes(instance.instanceId); return <button key={instance.instanceId} className={`vault-item ${instance.instanceId === selected?.instanceId ? "selected" : ""} ${isQuarantined ? "quarantined" : ""}`} onClick={() => setSelectedInstanceId(instance.instanceId)} onPointerDown={() => startItemHold(instance.instanceId)} onPointerUp={cancelItemHold} onPointerCancel={cancelItemHold} onPointerLeave={cancelItemHold} onContextMenu={event => event.preventDefault()} aria-label={`${item?.name ?? instance.definitionId}${isQuarantined ? ", รอการยืนยันและ actions ถูกจำกัด" : ""} · แตะสั้นเพื่อเลือก · กดค้าง 3.5 วินาทีเพื่อดูรายละเอียด`}><span className="vault-item-tier" style={{ background: TIER_RULES[item?.tier ?? "common"].color }} />{getAssetUrl(item?.iconAssetId) ? <img className="vault-pack-icon" src={getAssetUrl(item?.iconAssetId)} alt="" /> : <Box size={17} />}<b>{item?.name ?? instance.definitionId}</b><small>×{instance.quantity} · +{instance.enhancement}</small>{isEquipped && <em>ติดตั้ง</em>}{isQuarantined && <em className="quarantine-badge"><ShieldAlert size={11} /> รอยืนยัน</em>}</button>; })}</div></section>
       <section className={`vault-detail ${quarantined ? "quarantined" : ""}`}>{selected && definition ? <><div className="vault-preview">{getAssetUrl(definition.iconAssetId) ? <img className="vault-pack-preview" src={getAssetUrl(definition.iconAssetId)} alt="" /> : <Box size={38} />}<span style={{ background: TIER_RULES[definition.tier].color }} /></div><p className="eyebrow">{definition.category} · {TIER_RULES[definition.tier].label}</p><h4>{definition.name}</h4><p>{definition.effect}</p>{quarantined ? <div className="vault-quarantine"><ShieldAlert size={18} /><div><b>รอการยืนยันข้อมูล</b><p>พบความคลาดเคลื่อนของข้อมูลไอเทมนี้ ระบบได้จำกัดการใช้งานชั่วคราวเพื่อป้องกันความเสียหายต่อไฟล์เซฟของคุณ</p></div></div> : <div className="vault-provenance"><Shield size={16} /><span>Provenance · {selected.provenance.type} · {selected.provenance.eventId.slice(0, 18)}</span></div>}<div className="vault-actions"><button disabled={!actionState("equip").allowed} onClick={() => action("equip")}>{equipped ? "ถอดอาวุธ" : "ติดตั้ง"}</button><button disabled={!actionState("use").allowed} onClick={() => action("use")}>ใช้</button><button disabled={quarantined} onClick={() => action("trade")}>แลกเปลี่ยน</button><button disabled={quarantined} onClick={() => action("dismantle")}>ย่อยสลาย</button></div>{quarantined && <button className="vault-verify" onClick={onSyncRequest}>ตรวจสอบและซิงก์ใหม่</button>}</> : <p>ไม่มี item instance ในหมวดนี้</p>}</section>
     </div>
   </section></div>;
@@ -401,6 +424,7 @@ export default function ArcaneFrontier() {
   const [cachedMapIds, setCachedMapIds] = useState<Set<string>>(() => new Set());
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot>({ health: 100, resources: 0, enemies: 7, phase: "night" });
   const [activeHotbarSlot, setActiveHotbarSlot] = useState(0);
+  const [detailInstanceId, setDetailInstanceId] = useState<string | null>(null);
   const [mapState, setMapState] = useState<OfflineMapState | null>(null);
   const [worldBlockOverrides, setWorldBlockOverrides] = useState<WorldBlockOverrides>({});
   const [worldFarmState, setWorldFarmState] = useState<WorldFarmState>({});
@@ -888,6 +912,14 @@ export default function ArcaneFrontier() {
   const selectedHomeObject = homeObjects.find(item => item.instanceId === selectedHomeObjectId) ?? homeObjects[0];
   const selectedHotbarInstance = session ? getHotbarInstance(session.inventory, session.hotbarBindings ?? {}, activeHotbarSlot as HotbarSlot) : undefined;
   const selectedHotbarDefinition = selectedHotbarInstance ? getItemDefinition(selectedHotbarInstance.definitionId) : undefined;
+  const detailInstance = session?.inventory.find(instance => instance.instanceId === detailInstanceId);
+  const previousHotbarInstanceIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (screen !== "game" || !selectedHotbarInstance || selectedHotbarInstance.instanceId === previousHotbarInstanceIdRef.current) return;
+    previousHotbarInstanceIdRef.current = selectedHotbarInstance.instanceId;
+    const definition = getItemDefinition(selectedHotbarInstance.definitionId);
+    if (definition) setToast(`เลือก ${definition.name} · ${definition.effect}`);
+  }, [screen, selectedHotbarInstance?.instanceId, selectedHotbarInstance?.definitionId]);
   const openWorldStorage = useMemo(() => {
     if (!openWorldStorageId || !mapState) return null;
     const anchor = getWorldStorageAnchor(openWorldStorageId, selectedMapId);
@@ -937,9 +969,10 @@ export default function ArcaneFrontier() {
     {showHelp && <HelpSheet topic={helpTopic} setTopic={setHelpTopic} close={() => setShowHelp(false)} />}
     {showCodex && session && <CodexSheet discoveredIds={session.discoveredItemIds} close={() => setShowCodex(false)} getAssetUrl={getPackIconUrl} />}
     {showCredits && <CreditsSheet manifest={assetPackManifest} close={() => setShowCredits(false)} />}
+    {detailInstance && <ItemDetailSheet instance={detailInstance} close={() => setDetailInstanceId(null)} getAssetUrl={getPackIconUrl} />}
     {showIntegrity && integrityReport && <IntegritySheet report={integrityReport} syncAttention={syncAttention} close={() => setShowIntegrity(false)} />}
     {showChest && session && screen === "game" && <ChestSheet session={session} storage={worldStorageById} chestId={activeChestId} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowChest(false)} onDeposit={depositFromChest} onWithdraw={withdrawFromChest} getAssetUrl={getPackIconUrl} />}
-    {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} toast={message => setToast(message)} getAssetUrl={getPackIconUrl} />}
+    {showVault && session && <VaultSheet session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setShowVault(false)} onEquip={equipVaultInstance} onSyncRequest={requestVaultSync} onLongPress={instanceId => setDetailInstanceId(instanceId)} toast={message => setToast(message)} getAssetUrl={getPackIconUrl} />}
     {openWorldStorage && session && screen === "game" && <WorldStorageSheet storage={openWorldStorage} session={session} quarantinedInstanceIds={quarantinedInstanceIds} close={() => setOpenWorldStorageId(null)} onStorageChange={persistWorldStorageMutation} onInventoryChange={inventory => { updateSession({ inventory }); }} toast={message => setToast(message)} />}
     {showTacticalMap && screen === "game" && <TacticalMapSheet map={activeMap} snapshot={gameSnapshot} close={() => setShowTacticalMap(false)} />}
     {showAiNpc && screen === "game" && selectedMapId === "obsidian-frontier" && gameSnapshot.aiNpcAvailable !== false && <AiNpcSheet dialogue={aiNpcDialogue} message={aiNpcMessage} setMessage={setAiNpcMessage} pending={aiNpcTurnMutation.isPending} onAsk={() => { if (!session || !aiNpcMessage.trim() || gameSnapshot.aiNpcAvailable === false) return; aiNpcTurnMutation.mutate({ playerId: session.playerId, mapId: "obsidian-frontier", npcId: "obsidian-frontier:special-ai", message: aiNpcMessage.trim(), phase: gameSnapshot.phase, biome: activeMap.biome, position: gameSnapshot.position ?? { x: 0, z: 0 }, localFacts: [gameSnapshot.mapState ?? "exploring", gameSnapshot.warning ?? "no active warning"], nearbyBlockIds: [] }); }} close={() => setShowAiNpc(false)} />}
