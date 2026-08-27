@@ -19,6 +19,7 @@
 | `AVAILABLE` | AI-1/AI-2/AI-0 | `AI2-CONTENT-001` | F-01–F-06, T-03 และ T-04 ในสาย content/provenance; เป็นงานที่ worker ใดก็เลือกได้เมื่อ exact files ไม่ชน; ห้ามสร้าง binary asset หรือแก้ Workbench/router |
 | `DONE` | AI-0 | `MAIN-REWARD-INVENTORY-001` | T-07 sub-checkpoint: quest reward → inventory capacity dry-run, implementation `f9bd3db20d3c7a7044ae147fbb1d24f19ee65e15` |
 | `DONE` | AI-0 | `NEXT-QUEST-REWARD-PERSISTENCE-INTEGRATION-001` | T-07 sub-checkpoint: fail-closed client queue serialization and server sync allow-list for the already-created quest-reward pending action; implementation `f55b154`; full validation `109` files / `431` tests; no gameplay caller or reward grant |
+| `RESERVED` | AI-0 | `NEXT-PERF-CAPABILITY-001` | T-01/S-04 sub-checkpoint: pure one-time WebGL/WebGPU/CPU/RAM/touch/storage capability normalization and advisory tier contract; no render-loop coupling or device benchmark claim |
 
 ณ การตรวจล่าสุดยังไม่พบ remote branch/PR ของ AI-1 หรือ AI-2 ใน `origin`; reservation แบบจำกัดสายงานเดิมจึงถูก **ปล่อยกลับเป็น AVAILABLE**. ตั้งแต่นี้ AI-1 และ AI-2 ใช้ autonomous worker instructions เลือกงานจาก backlog ทั้งหมดได้ ไม่ต้องรอข้อความมอบหมายราย Task แต่ต้อง claim exact files ก่อนเริ่ม. AI-0 จะเปลี่ยนเป็น `DONE` ก็ต่อเมื่อมี branch/PR, commit SHA, diff และ test evidence ที่ตรวจได้.
 
@@ -89,7 +90,7 @@
 
 ## Current next pick
 
-`NEXT-QUEST-REWARD-DISPATCH-001` อยู่สถานะ **DONE** ใน implementation `333078e3f78e3647ba6643f98b76493dc982b726`; pure item-only atomic transition และ read-only preview ผ่านแล้ว แต่ persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers. งานต่อยอด `NEXT-QUEST-REWARD-PERSISTENCE-001` ของ AI-0 ถูกปิดแล้วใน bounded scope บน base `4542ce9`; reservation ใหม่ `NEXT-QUEST-REWARD-PERSISTENCE-INTEGRATION-001` ปิดแล้วด้วย implementation `f55b154`; เพิ่มเฉพาะ queue serialization gate และ server sync allow-list โดยยังไม่เพิ่ม gameplay caller, reward grant หรือ quest completion. ตั้งแต่นี้ AI-1 และ AI-2 ไม่ถูกจำกัดให้อยู่ในสายงานเดิม แต่เลือก `AVAILABLE` task ใดก็ได้ตาม autonomous worker instructions, dependency และ exclusive file lock. หากไม่มีงานที่ปลอดภัยให้รับ ให้ส่ง blocker/evidence แทนการสร้างงานสมมติ.
+`NEXT-QUEST-REWARD-DISPATCH-001` อยู่สถานะ **DONE** ใน implementation `333078e3f78e3647ba6643f98b76493dc982b726`; pure item-only atomic transition และ read-only preview ผ่านแล้ว แต่ persistence caller, gameplay event emitter, reputation owner และ ability runtime owner ยังเป็น blockers. งานต่อยอด `NEXT-QUEST-REWARD-PERSISTENCE-001` ของ AI-0 ถูกปิดแล้วใน bounded scope บน base `4542ce9`; reservation ใหม่ `NEXT-QUEST-REWARD-PERSISTENCE-INTEGRATION-001` ปิดแล้วด้วย implementation `f55b154`; เพิ่มเฉพาะ queue serialization gate และ server sync allow-list โดยยังไม่เพิ่ม gameplay caller, reward grant หรือ quest completion. งานถัดไปที่ AI-0 จองคือ `NEXT-PERF-CAPABILITY-001` บน base `5dc54e1` สำหรับ pure capability contract เท่านั้น. ตั้งแต่นี้ AI-1 และ AI-2 ไม่ถูกจำกัดให้อยู่ในสายงานเดิม แต่เลือก `AVAILABLE` task ใดก็ได้ตาม autonomous worker instructions, dependency และ exclusive file lock. หากไม่มีงานที่ปลอดภัยให้รับ ให้ส่ง blocker/evidence แทนการสร้างงานสมมติ.
 
 ## Claim template
 
