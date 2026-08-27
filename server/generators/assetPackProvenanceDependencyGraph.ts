@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { canDistributeAsset, type AssetCredit } from "../../client/src/game/data/assetProvenance";
+import { canDistributeAsset, getAssetCredit, type AssetCredit } from "../../client/src/game/data/assetProvenance";
 import {
   readActivePlantAssetProvenanceSources,
   type DurableAssetRegistrySnapshot,
@@ -101,11 +101,12 @@ export type AssetPackProvenanceDependencyGraphOutput = {
 
 export function readActiveAssetPackProvenanceSources(): AssetPackProvenanceSources {
   const sources = readActivePlantAssetProvenanceSources();
+  const entryCredits = Object.fromEntries(Object.keys(sources.manifest.entries).map(assetId => [assetId, getAssetCredit(assetId) ?? null]));
   return {
     manifest: sources.manifest,
     fileStates: sources.fileStates,
     packCredit: sources.provenance,
-    entryCredits: {},
+    entryCredits,
     durableRegistry: sources.durableRegistry,
   };
 }
@@ -197,8 +198,8 @@ function pushUnresolved(unresolvedReferences: AssetPackProvenanceReference[], so
 }
 
 function selectedCredit(assetId: string, sources: AssetPackProvenanceSources) {
-  if (hasOwn(sources.entryCredits as Record<string, unknown>, assetId)) {
-    return { source: "entry" as const, credit: sources.entryCredits[assetId] ?? null };
+  if (hasOwn(sources.entryCredits as Record<string, unknown>, assetId) && sources.entryCredits[assetId]) {
+    return { source: "entry" as const, credit: sources.entryCredits[assetId]! };
   }
   return { source: "pack" as const, credit: sources.packCredit };
 }
