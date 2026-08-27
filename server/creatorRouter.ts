@@ -360,9 +360,10 @@ function buildCompositionTextureExport(input: z.infer<typeof creatorCompositionT
 }
 
 /**
- * Creator routes deliberately use adminProcedure. The current user model has
- * only user/admin roles; until a creator-specific role exists, generator
- * writes remain an admin-only developer capability and never enter `game`.
+ * Creator routes deliberately use the server-side creator guard. GM, admin and
+ * master roles may use creator tools; only master may manage authority. All
+ * generator actions remain developer-only previews/manual actions and never
+ * enter `game` runtime automatically.
  */
 export const creatorRouter = router({
   dependencyGraph: router({

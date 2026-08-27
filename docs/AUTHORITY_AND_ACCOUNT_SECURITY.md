@@ -1,0 +1,32 @@
+# Authority และ Account Security ของ A_Survival
+
+## สถานะของ checkpoint
+
+เอกสารนี้บันทึกขอบเขตที่ลงมือทำใน repository ปัจจุบันเท่านั้น โดยยังไม่อ้างว่า live database migration, authenticated E2E หรือ provider account operation ทำงานแล้ว.
+
+## Authority model
+
+`users.role` รองรับ `user`, `gm`, `admin` และ `master`. Server เป็นผู้ตัดสินสิทธิ์จาก session user ที่ authenticate แล้ว ไม่อ่าน role จาก localStorage หรือ client input เพื่อยกระดับสิทธิ์.
+
+| Role | ใช้ Creator Studio/Workbench | จัดการ role สมาชิก | เปลี่ยนหรือเพิกถอน Master |
+|---|---:|---:|---:|
+| `user` | ไม่ได้ | ไม่ได้ | ไม่ได้ |
+| `gm` | ได้ | ไม่ได้ | ไม่ได้ |
+| `admin` | ได้ | ไม่ได้ | ไม่ได้ |
+| `master` | ได้ | ได้ | ไม่ได้ผ่าน route นี้ |
+
+บัญชี Master คนแรกกำหนดได้จาก `MASTER_ADMIN_EMAIL` ซึ่งมีค่าเริ่มต้นตามคำขอของเจ้าของเป็น `apirak272543@gmail.com` และมี `OWNER_OPEN_ID` เป็น fallback สำหรับ deployment ที่ยืนยัน OpenID ได้. ระบบจะ normalize อีเมลก่อนเปรียบเทียบและไม่ส่ง password หรือ secret เข้า repository. การมอบ GM/Admin ใช้ `auth.authority.setRole` สำหรับบัญชีที่เข้าสู่ระบบ OAuth และปรากฏใน user table แล้ว; การเพิกถอน creator ใช้การลด role กลับเป็น `user` โดยไม่ลบบัญชีถาวร.
+
+## Routes และ enforcement
+
+`adminProcedure` อนุญาตเฉพาะ `gm`, `admin` และ `master` ทำให้ทุก creator preview/tool ใช้ได้ตามขอบเขตเดิม. `masterProcedure` สงวน `auth.authority.policy`, `auth.authority.list`, `auth.authority.setRole` และ `auth.authority.revokeCreatorAccess` ให้ Master เท่านั้น. `/authority-admin` เป็น route แยกและมี Master-only gate; ไม่ปรากฏใน player landing หรือเกม.
+
+## Verification และ password boundary
+
+Provider ที่ตรวจจาก source จริงคือ Manus OAuth. Contract ปัจจุบันมี sign-in/session และ user email แต่ไม่มี field หรือ endpoint ที่ยืนยัน email verification, เปลี่ยน password, reset password หรือส่ง recovery email. A_Survival จึงไม่รับหรือเก็บ password เอง และ `auth.securityStatus` รายงานข้อจำกัดนี้อย่างตรงไปตรงมา. `/account-security` แสดงสถานะ OAuth-managed และเปิดลิงก์ภายนอกได้ก็ต่อเมื่อ deployment ตั้ง `VITE_ACCOUNT_SECURITY_URL` หลังยืนยัน URL ของ provider แล้ว.
+
+> ห้ามใช้หน้า account-security นี้เป็นหลักฐานว่าการเปลี่ยนรหัสผ่านหรือ verify email สำเร็จแล้ว เพราะ provider endpoint และ authenticated provider E2E ยังไม่ได้เชื่อมต่อใน repository.
+
+## Migration และข้อจำกัด
+
+`drizzle/0008_authority_roles.sql` เป็น additive migration สำหรับขยาย enum ของ `users.role`. ยังไม่ได้รัน `db:push`, migration หรือแก้ข้อมูลจริง เพราะ local environment ไม่มีหลักฐาน `DATABASE_URL`/live database ที่พร้อมและการรันดังกล่าวอยู่นอกขอบเขตที่ได้รับอนุมัติ.

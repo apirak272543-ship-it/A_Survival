@@ -3,7 +3,7 @@ import { z } from "zod";
 import * as gameDb from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { masterProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { inspectSyncPayload, normalizePlayerId } from "./gameIntegrity";
 import { aiNpcService, SPECIAL_AI_NPC_MAPS } from "./aiNpcService";
 import { creatorRouter } from "./creatorRouter";
@@ -29,6 +29,22 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+    securityStatus: protectedProcedure.query(({ ctx }) => ({
+      authProvider: "manus-oauth" as const,
+      email: ctx.user.email,
+      emailVerification: "not-exposed-by-current-oauth-contract" as const,
+      password: {
+        storedByApp: false as const,
+        changeableInApp: false as const,
+        recoveryInApp: false as const,
+      },
+    })),
+    authority: router({
+      policy: masterProcedure.query(({ ctx }) => ({ role: ctx.user.role, canManageAuthority: true as const, canRevokeCreatorAuthority: true as const })),
+      list: masterProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(100) }).optional()).query(({ input }) => gameDb.listAuthorityMembers(input?.limit ?? 100)),
+      setRole: masterProcedure.input(z.object({ targetUserId: z.number().int().positive(), role: z.enum(["user", "gm", "admin"]) })).mutation(async ({ input }) => ({ success: true as const, member: await gameDb.setAuthorityMemberRole(input) })),
+      revokeCreatorAccess: masterProcedure.input(z.object({ targetUserId: z.number().int().positive() })).mutation(async ({ input }) => ({ success: true as const, member: await gameDb.setAuthorityMemberRole({ targetUserId: input.targetUserId, role: "user" }) })),
     }),
   }),
 

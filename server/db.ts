@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { gameIntegrityLogs, gameItemInstances, gameProfiles, gameSaves, gameSyncTransactions, itemProvenance, InsertUser, users } from "../drizzle/schema";
 import { incrementServerClock, mergeServerClock, type ServerVectorClock } from "./syncVector";
 import { ENV } from './_core/env';
+import { roleGrantedByMasterEmail, type AuthorityRole } from "../shared/authority";
 import { isSafeBlockBreakPayload, isSafeBlockPlacePayload, isSafeHarvestWorldCropPayload, isSafePlantWorldSeedPayload, isSafeStorageDepositPayload, isSafeStorageWithdrawPayload, isSafeUseItemPayload } from "./syncActionValidation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -57,9 +58,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+    } else if (user.openId === ENV.ownerOpenId || roleGrantedByMasterEmail({ email: user.email, masterEmail: ENV.masterEmail }) === "master") {
+      values.role = 'master';
+      updateSet.role = 'master';
     }
 
     if (!values.lastSignedIn) {
@@ -89,6 +90,58 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export type AuthorityMember = {
+  id: number;
+  openId: string;
+  name: string | null;
+  email: string | null;
+  role: AuthorityRole;
+  createdAt: Date;
+  lastSignedIn: Date;
+};
+
+export async function listAuthorityMembers(limit = 100): Promise<{ available: boolean; members: AuthorityMember[] }> {
+  const db = await getDb();
+  if (!db) return { available: false, members: [] };
+
+  const rows = await db.select({
+    id: users.id,
+    openId: users.openId,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).orderBy(users.createdAt).limit(limit);
+
+  return { available: true, members: rows as AuthorityMember[] };
+}
+
+export async function setAuthorityMemberRole(input: {
+  targetUserId: number;
+  role: Exclude<AuthorityRole, "master">;
+}): Promise<AuthorityMember | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Authority database is not available");
+
+  const target = await db.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+  if (!target[0]) return null;
+  if (target[0].role === "master") throw new Error("The master authority cannot be changed through this route");
+
+  await db.update(users).set({ role: input.role }).where(eq(users.id, input.targetUserId));
+  const rows = await db.select({
+    id: users.id,
+    openId: users.openId,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+  }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+
+  return (rows[0] as AuthorityMember | undefined) ?? null;
 }
 
 export type GameProfileOpenInput = {
