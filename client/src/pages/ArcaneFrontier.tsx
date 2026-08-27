@@ -72,7 +72,7 @@ import { CODEX_CATEGORIES, type CodexCategoryId, type CodexEntry } from "@/game/
 import { createCodexDiscoverySnapshot } from "@/game/systems/codexDiscoveryContract";
 import { CAMERA_MODE_OPTIONS, type CameraMode } from "@/game/systems/cameraModes";
 import { TARGET_FPS_OPTIONS } from "@/game/systems/renderDistance";
-import { getItemLongDetail, ITEM_DETAIL_HOLD_MS } from "@/game/systems/itemDetailSystem";
+import { getItemCategoryDetail, getItemLongDetail, ITEM_DETAIL_HOLD_MS } from "@/game/systems/itemDetailSystem";
 import { getPerformanceBudgetLabel, PERFORMANCE_TIERS } from "@/game/systems/performanceProfile";
 
 type Screen = DirectRouteScreen;
@@ -276,9 +276,11 @@ function ItemDetailSheet({ instance, close, getAssetUrl }: { instance: ItemInsta
   const definition = getItemDefinition(instance.definitionId);
   if (!definition) return null;
   const detail = getItemLongDetail(definition, instance);
+  const categoryDetail = getItemCategoryDetail(definition, instance);
+  const unavailableFacts = categoryDetail.facts.filter(fact => !fact.available);
   return <div className="settings-scrim help-scrim" onPointerDown={close}><section className="settings-sheet help-sheet" onPointerDown={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={`รายละเอียด ${detail.title}`}>
     <header><div><p className="eyebrow">Item detail · long press {ITEM_DETAIL_HOLD_MS / 1000}s</p><h3>{detail.title}</h3></div><button className="icon-button" onClick={close} aria-label="ปิดรายละเอียดไอเทม"><X size={18} /></button></header>
-    <div className="item-detail-content"><div className="vault-preview">{getAssetUrl(definition.iconAssetId) ? <img className="vault-pack-preview" src={getAssetUrl(definition.iconAssetId)} alt="" /> : <Box size={38} />}<span style={{ background: TIER_RULES[definition.tier].color }} /></div><p>{detail.summary}</p><div className="codex-stat-grid"><div><small>หมวด</small><b>{detail.category}</b></div><div><small>ระดับ</small><b>{detail.tier}</b></div><div><small>STACK LIMIT</small><b>{detail.stackLimit}</b></div><div><small>ENHANCEMENT</small><b>+{detail.enhancement}</b></div><div><small>ITEM ID</small><b>{detail.definitionId}</b></div><div><small>PROVENANCE</small><b>{detail.provenanceType}</b></div></div><div className="codex-effect"><BookOpen size={16} /><span>{detail.effect}</span></div><p className="codex-detail-note">แท็ก: {detail.tags.join(" · ") || "ทั่วไป"}{detail.placeableBlockId ? ` · วางเป็น ${detail.placeableBlockId}` : ""}</p><p className="credits-footnote">Event: {detail.provenanceEventId}</p></div>
+    <div className="item-detail-content"><div className="vault-preview">{getAssetUrl(definition.iconAssetId) ? <img className="vault-pack-preview" src={getAssetUrl(definition.iconAssetId)} alt="" /> : <Box size={38} />}<span style={{ background: TIER_RULES[definition.tier].color }} /></div><p>{detail.summary}</p><div className="codex-stat-grid"><div><small>หมวด</small><b>{detail.category}</b></div><div><small>ระดับ</small><b>{detail.tier}</b></div><div><small>ENHANCEMENT</small><b>+{detail.enhancement}</b></div><div><small>ITEM ID</small><b>{detail.definitionId}</b></div><div><small>PROVENANCE</small><b>{detail.provenanceType}</b></div></div><div className="codex-stat-grid item-detail-facts" data-detail-category={categoryDetail.category} data-unavailable-facts={categoryDetail.unavailable.join(",")}>{categoryDetail.facts.map(fact => <div key={fact.key} data-fact-availability={fact.available ? "available" : "unavailable"}><small>{fact.label}</small><b>{fact.value}</b></div>)}</div>{unavailableFacts.map(fact => <p key={fact.key} className="codex-detail-note">ข้อจำกัด: {fact.label} — {fact.reason}</p>)}<div className="codex-effect"><BookOpen size={16} /><span>{detail.effect}</span></div><p className="codex-detail-note">แท็ก: {detail.tags.join(" · ") || "ทั่วไป"}{detail.placeableBlockId ? ` · วางเป็น ${detail.placeableBlockId}` : ""}</p><p className="credits-footnote">Event: {detail.provenanceEventId}</p></div>
   </section></div>;
 }
 
