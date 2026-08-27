@@ -51,6 +51,7 @@ import { buildContentCatalogDependencyGraph } from "./generators/contentCatalogD
 import { buildQuestContentCatalogDependencyGraph } from "./generators/questContentCatalogDependencyGraph";
 import { buildWorldStructureDependencyGraph } from "./generators/worldStructureDependencyGraph";
 import { buildItemContentCatalogDependencyGraph } from "./generators/itemContentCatalogDependencyGraph";
+import { buildWorldBlockContentCatalogDependencyGraph } from "./generators/worldBlockContentCatalogDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -356,6 +357,7 @@ export const creatorRouter = router({
     questContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), mapCount: z.number().int().min(1).max(100).default(1), sampleQuestCount: z.number().int().min(1).max(20).default(4), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildQuestContentCatalogDependencyGraph(input) })),
     worldStructurePreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), radius: z.number().int().min(16).max(64).default(32), blueprintIds: z.array(z.string().trim().min(3).max(64)).max(5).optional(), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildWorldStructureDependencyGraph(input) })),
     itemContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), itemId: z.string().trim().min(3).max(64).optional(), samplePerCategory: z.number().int().min(1).max(8).default(1), maxPowerBudget: z.number().int().min(1).max(100).default(100), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildItemContentCatalogDependencyGraph(input) })),
+    worldBlockContentCatalogPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), radius: z.number().int().min(16).max(64).default(32), sampleBlockCount: z.number().int().min(1).max(48).default(24), samplePerCategory: z.number().int().min(1).max(8).default(8), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildWorldBlockContentCatalogDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),
