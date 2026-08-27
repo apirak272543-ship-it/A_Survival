@@ -19,6 +19,13 @@ export type UnresolvedWorldSpawnLootReference = {
   reason: string;
 };
 
+export type WorldSpawnLootGraphSource = {
+  world: GeneratedWorld;
+  sampledSpawns: GeneratedSpawnPoint[];
+  lootRecords: Array<{ spawn: GeneratedSpawnPoint; sampleIndex: number; loot: GeneratedLoot }>;
+  numericSeed: number;
+};
+
 export type WorldSpawnLootDependencyGraphOutput = {
   artifact: {
     mapId: string;
@@ -57,7 +64,7 @@ function boundedInteger(value: number | undefined, fallback: number, min: number
   return normalized;
 }
 
-function numericSeedFromLabel(seed: string) {
+export function worldSpawnLootNumericSeed(seed: string) {
   return Number.parseInt(hashStableJson(seed).slice(0, 8), 16) % 2_000_000_000;
 }
 
@@ -120,7 +127,7 @@ function buildStructureNodes(world: GeneratedWorld, worldNode: DependencyGraphNo
   } satisfies DependencyGraphNode));
 }
 
-function sampleSpawns(spawns: GeneratedSpawnPoint[], sampleSpawnCount: number) {
+export function sampleWorldSpawnPoints(spawns: GeneratedSpawnPoint[], sampleSpawnCount: number) {
   return spawns.slice().sort((left, right) => left.id.localeCompare(right.id)).slice(0, sampleSpawnCount);
 }
 
@@ -128,12 +135,12 @@ function spawnNodeKind(role: GeneratedSpawnPoint["role"]): GeneratorKind {
   return role === "npc" ? "other" : "mob";
 }
 
-function isLootSource(spawn: GeneratedSpawnPoint) {
+export function isWorldSpawnLootSource(spawn: GeneratedSpawnPoint) {
   return spawn.role === "regular" || spawn.role === "boss";
 }
 
-function lootSeed(seed: string, spawn: GeneratedSpawnPoint, index: number) {
-  return numericSeedFromLabel(`${seed}:${spawn.id}:${spawn.species}:${spawn.biome}:${index}`);
+export function worldSpawnLootSeed(seed: string, spawn: GeneratedSpawnPoint, index: number) {
+  return worldSpawnLootNumericSeed(`${seed}:${spawn.id}:${spawn.species}:${spawn.biome}:${index}`);
 }
 
 function addSpawnNodeDependencies(node: DependencyGraphNode, spawn: GeneratedSpawnPoint, biomeById: Map<string, DependencyGraphNode>, structureById: Map<string, DependencyGraphNode>, unresolvedReferences: UnresolvedWorldSpawnLootReference[]) {
@@ -184,18 +191,27 @@ function buildLootItemNode(item: ProceduralItemDefinition, lootNode: DependencyG
   };
 }
 
+export function generateWorldSpawnLootGraphSource(input: WorldSpawnLootDependencyGraphInput): WorldSpawnLootGraphSource {
+  const radius = boundedInteger(input.radius, 32, 16, 64, "radius");
+  const sampleSpawnCount = boundedInteger(input.sampleSpawnCount, 16, 1, 64, "sampleSpawnCount");
+  const numericSeed = worldSpawnLootNumericSeed(input.seed);
+  const world = generateWorld({ mapId: DEFAULT_GENERATOR_MAP_ID, seed: numericSeed, radius });
+  const sampledSpawns = sampleWorldSpawnPoints(world.spawnPoints, sampleSpawnCount);
+  const lootRecords = sampledSpawns.flatMap((spawn, sampleIndex) => isWorldSpawnLootSource(spawn) ? [{ spawn, sampleIndex, loot: generateLootDrop({ seed: worldSpawnLootSeed(input.seed, spawn, sampleIndex), monsterId: spawn.species, biome: spawn.biome, isBoss: spawn.role === "boss", count: spawn.role === "boss" ? 2 : 1 }) }] : []);
+  return { world, sampledSpawns, lootRecords, numericSeed };
+}
+
 export function buildWorldSpawnLootDependencyGraph(input: WorldSpawnLootDependencyGraphInput): WorldSpawnLootDependencyGraphOutput {
   const rulesVersion = input.rulesVersion ?? WORLD_SPAWN_LOOT_GRAPH_RULES_VERSION;
   if (rulesVersion !== WORLD_SPAWN_LOOT_GRAPH_RULES_VERSION) throw new Error(`Unsupported world spawn loot graph rules version: ${rulesVersion}`);
-  const radius = boundedInteger(input.radius, 32, 16, 64, "radius");
-  const sampleSpawnCount = boundedInteger(input.sampleSpawnCount, 16, 1, 64, "sampleSpawnCount");
-  const world = generateWorld({ mapId: DEFAULT_GENERATOR_MAP_ID, seed: numericSeedFromLabel(input.seed), radius });
+  const source = generateWorldSpawnLootGraphSource(input);
+  const { world, sampledSpawns, lootRecords } = source;
+  const lootBySpawnId = new Map(lootRecords.map(record => [record.spawn.id, record]));
   const worldNode = boundedWorldNode(world, input.seed, rulesVersion);
   const { biomeIds, nodes: biomeNodes } = buildBiomeNodes(world, worldNode, input.seed, rulesVersion);
   const biomeById = new Map(biomeNodes.map(node => [node.key.slice("biome:".length), node]));
   const structureNodes = buildStructureNodes(world, worldNode, biomeById, input.seed, rulesVersion);
   const structureById = new Map(structureNodes.map(node => [node.key.slice("world-structure:".length), node]));
-  const sampledSpawns = sampleSpawns(world.spawnPoints, sampleSpawnCount);
   const unresolvedReferences: UnresolvedWorldSpawnLootReference[] = [];
   const spawnNodes: DependencyGraphNode[] = [];
   const lootNodes: DependencyGraphNode[] = [];
@@ -216,8 +232,9 @@ export function buildWorldSpawnLootDependencyGraph(input: WorldSpawnLootDependen
     };
     addSpawnNodeDependencies(spawnNode, spawn, biomeById, structureById, unresolvedReferences);
     spawnNodes.push(spawnNode);
-    if (!isLootSource(spawn)) continue;
-    const loot = generateLootDrop({ seed: lootSeed(input.seed, spawn, index), monsterId: spawn.species, biome: spawn.biome, isBoss: spawn.role === "boss", count: spawn.role === "boss" ? 2 : 1 });
+    const lootRecord = lootBySpawnId.get(spawn.id);
+    if (!lootRecord) continue;
+    const loot = lootRecord.loot;
     const lootNode = buildLootNode(loot, spawnNode, input.seed, rulesVersion);
     lootNodes.push(lootNode);
     loots.push(loot);
@@ -256,7 +273,7 @@ export function buildWorldSpawnLootDependencyGraph(input: WorldSpawnLootDependen
       dropItemIds,
       spawnCount: world.spawnPoints.length,
       sampledSpawnCount: sampledSpawns.length,
-      lootSourceSpawnCount: sampledSpawns.filter(isLootSource).length,
+      lootSourceSpawnCount: sampledSpawns.filter(isWorldSpawnLootSource).length,
       lootCount: lootNodes.length,
       dropCount: lootItemNodes.length,
       roleCounts,

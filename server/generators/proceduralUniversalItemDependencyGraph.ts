@@ -92,7 +92,7 @@ function rarityCost(rarity: ProceduralItemDefinition["rarity"]) {
   return rarity === "common" ? 1 : rarity === "uncommon" ? 2 : rarity === "rare" ? 4 : rarity === "epic" ? 7 : rarity === "legendary" ? 10 : 14;
 }
 
-function buildUniversalItemInput(weapon: ProceduralItemDefinition): UniversalItemGenerationInput {
+export function buildUniversalItemInput(weapon: ProceduralItemDefinition): UniversalItemGenerationInput {
   const element = mapElement(weapon.element);
   const role = mapRole(weapon.category);
   const effect = {
