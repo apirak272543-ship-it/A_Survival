@@ -3,6 +3,7 @@ import type { ItemInstance } from "@/game/data/catalog";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
 import type { LocalGameSession } from "./session";
 import { incrementVectorClock, mergeVectorClocks, type VectorClock } from "./vectorClock";
+import { isRuntimeMapAllowed } from "@/game/routing/directRoute";
 import { normalizeWorldFarmState, createDefaultWorldFarmState, type WorldFarmState } from "@/game/systems/worldFarmSystem";
 import { createEmptyWorldStorage, normalizeWorldStorage, type WorldStorageById } from "@/game/systems/worldStorageSystem";
 import { DEFAULT_CAMERA_MODE, DEFAULT_IN_MAP_SETTINGS, normalizeCameraMode, normalizeInMapSettings, type CameraMode, type InMapSettings } from "@/game/systems/cameraModes";
@@ -96,6 +97,7 @@ export async function loadOfflineMapState(mapId: string, playerId: string) {
 }
 
 export async function saveOfflineMapState(state: OfflineMapState) {
+  if (!isRuntimeMapAllowed(state.mapId)) throw new Error("Offline map state writes are blocked for maps that are not runtime-approved.");
   const normalized = normalizeOfflineMapState(state, state.mapId, state.playerId);
   normalized.updatedAt = Date.now();
   await offlineDb.mapStates.put(normalized);

@@ -66,6 +66,7 @@ import { buildMap001EncounterDependencyGraph } from "./generators/map001Encounte
 import { buildMap001StoryGateDependencyGraph } from "./generators/map001StoryGateDependencyGraph";
 import { buildStoryProgressionContractDependencyGraph } from "./generators/storyProgressionContractDependencyGraph";
 import { buildStoryMapCachePolicyDependencyGraph } from "./generators/storyMapCachePolicyDependencyGraph";
+import { buildStoryOfflineMapStateDependencyGraph } from "./generators/storyOfflineMapStateDependencyGraph";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -387,6 +388,7 @@ export const creatorRouter = router({
     map001StoryGatePreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), mapCount: z.number().int().min(2).max(3).default(2), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildMap001StoryGateDependencyGraph(input) })),
     storyProgressionContractPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildStoryProgressionContractDependencyGraph(input) })),
     storyMapCachePolicyPreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), requestedMapIds: z.array(z.string().trim().min(1).max(128)).min(1).max(3).optional(), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildStoryMapCachePolicyDependencyGraph(input) })),
+    storyOfflineMapStatePreview: adminProcedure.input(z.object({ seed: z.string().trim().min(1).max(128), playerId: z.string().trim().min(1).max(64).optional(), requestedMapIds: z.array(z.string().trim().min(1).max(128)).min(1).max(3).optional(), completedQuestCount: z.number().int().min(0).max(20).default(0), rulesVersion: z.string().trim().min(1).max(64).optional() })).mutation(({ input }) => ({ previewOnly: true as const, ...buildStoryOfflineMapStateDependencyGraph(input) })),
   }),
   texture: router({
     validateInput: adminProcedure.input(texturePackInputSchema).mutation(({ input }) => validateTexturePackInput(input as TexturePackInput)),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultOfflineMapState, normalizeOfflineMapState } from "../client/src/game/storage/indexedDb";
+import { defaultOfflineMapState, normalizeOfflineMapState, saveOfflineMapState } from "../client/src/game/storage/indexedDb";
 import { CHEST_SLOT_LIMIT, STORAGE_CHEST_ID } from "../client/src/game/systems/worldStorageSystem";
 import { DEFAULT_IN_MAP_SETTINGS } from "../client/src/game/systems/cameraModes";
 
@@ -19,6 +19,12 @@ describe("offline map storage persistence", () => {
   it("normalizes a valid camera preference without changing the map/player namespace", () => {
     const normalized = normalizeOfflineMapState({ ...legacyState, inMapSettings: { cameraMode: "side", viewDistanceBlocks: 50, targetFps: 120 } }, "obsidian-frontier", "player-a");
     expect(normalized).toMatchObject({ mapId: "obsidian-frontier", playerId: "player-a", inMapSettings: { cameraMode: "side", viewDistanceBlocks: 50, targetFps: 120 } });
+  });
+
+  it("blocks future-map offline state writes before IndexedDB while keeping normalization data-only", async () => {
+    const future = normalizeOfflineMapState(legacyState, "future-map", "player-a");
+    expect(future.mapId).toBe("future-map");
+    await expect(saveOfflineMapState(future)).rejects.toThrow("not runtime-approved");
   });
 
   it("keeps the same chest id isolated by the map+player identity supplied to normalization", () => {
