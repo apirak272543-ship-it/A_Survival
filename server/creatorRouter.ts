@@ -41,6 +41,7 @@ import { listCreatorArtifacts, registerTexturePackArtifact } from "./creatorArti
 import { analyzeRuntimePerformanceSnapshot } from "./generators/runtimePerformanceProfiler";
 import { buildCreatorDomainArtifactMetadata, exportCreatorDomainArtifact, getCreatorDomainArtifact, listCreatorDomainArtifactReviewEvents, listCreatorDomainArtifacts, registerCreatorDomainArtifact, reviewCreatorDomainArtifact } from "./creatorDomainArtifactRegistry";
 import { validateCreatorDomainArtifactCompatibility } from "./creatorDomainArtifactCompatibility";
+import { buildCreatorComposition } from "./creatorCompositionBuilder";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -134,6 +135,16 @@ const creatorDomainArtifactInputSchema = z.object({
 }).superRefine((input, context) => {
   if (JSON.stringify(input.manifest).length > 32_768) context.addIssue({ code: "custom", message: "Artifact manifest is too large", path: ["manifest"] });
   if (JSON.stringify(input.summary).length > 32_768) context.addIssue({ code: "custom", message: "Artifact summary is too large", path: ["summary"] });
+});
+
+const creatorCompositionInputSchema = z.object({
+  templateId: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/),
+  subject: z.enum(["block", "structure", "item", "weapon", "animation"]),
+  canvasWidth: z.number().int().min(1).max(128),
+  canvasHeight: z.number().int().min(1).max(128),
+  layers: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), role: z.enum(["base", "outline", "shadow", "detail", "accent", "mask"]), zIndex: z.number().int().min(-128).max(128), visible: z.boolean(), opacity: z.number().finite().min(0).max(1) })).min(1).max(32),
+  parts: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), slot: z.enum(["head", "body", "arm", "leg", "tool", "weapon", "surface", "accent"]), x: z.number().int().min(0).max(127), y: z.number().int().min(0).max(127), width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128), layerIds: z.array(z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/)).min(1).max(32) })).min(1).max(64),
+  palette: z.array(z.object({ id: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/), label: z.string().trim().min(1).max(80), hex: z.string().trim().regex(/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/), semantic: z.string().trim().min(1).max(80) })).min(1).max(64),
 });
 
 const creatorArtifactCompatibilitySchema = z.object({
@@ -384,6 +395,9 @@ export const creatorRouter = router({
       const generated = generateUniversalItem({ item: buildNoCodeItemInput(input), maxPowerBudget: input.maxPowerBudget });
       return { previewOnly: true as const, output: generated, validation: { valid: true as const, issues: [] as string[] } };
     }),
+  }),
+  composition: router({
+    preview: adminProcedure.input(creatorCompositionInputSchema).mutation(({ input }) => buildCreatorComposition(input)),
   }),
   artifact: router({
     preview: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(({ input }) => ({ previewOnly: true as const, reviewStatus: "draft" as const, ...buildCreatorDomainArtifactMetadata(input) })),
