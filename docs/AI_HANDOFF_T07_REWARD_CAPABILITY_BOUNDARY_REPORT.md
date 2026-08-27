@@ -52,5 +52,5 @@ Implementation branch ยังไม่ merge เข้า `main`; AI-0 ต้�
 - Task ID: `T-07` bounded reward capability-boundary sub-checkpoint
 - Branch: `ai-6/t07-reward-capability-boundary`
 - Base SHA: `4a41ab74e120a7a41b59dbb3faeb1f9366590d8d`
-- Implementation commit SHA: จะเติมหลัง commit checkpoint
+- Implementation commit SHA: `ef79f738407024f004e3a34cf888a32173af175c`
 - Status requested: `WAITING_EVIDENCE` จนกว่า AI-0 จะตรวจ diff และหลักฐานซ้ำ
