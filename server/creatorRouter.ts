@@ -45,6 +45,7 @@ import { buildCreatorComposition } from "./creatorCompositionBuilder";
 import { buildCompositionTextureInput } from "./creatorCompositionTextureAdapter";
 import { buildCreatorCompositionTextureExport } from "./creatorCompositionTextureExport";
 import { validateCreatorCompositionTextureExport } from "./creatorCompositionTextureCompatibility";
+import { buildVerifiedCreatorCompositionTexture } from "./creatorCompositionTextureRegistration";
 
 const identifierSchema = z.string().min(2).max(64);
 const rgbaChannelSchema = z.number().int().min(0).max(255);
@@ -308,11 +309,13 @@ function buildGeneratedTextureResponse(input: TexturePackRequest, seed: string) 
   return { artifact, preview: registry.preview(artifact) };
 }
 
+function buildCompositionTextureRegistrationInput(input: z.infer<typeof creatorCompositionTexturePreviewSchema>) {
+  const { source, provenanceRef, textureSampling, ...composition } = input;
+  return { composition, source, provenanceRef, textureSampling };
+}
+
 function buildCompositionTextureExport(input: z.infer<typeof creatorCompositionTexturePreviewSchema>) {
-  const composition = buildCreatorComposition(input);
-  const textureInput = buildCompositionTextureInput(composition, { source: input.source, provenanceRef: input.provenanceRef, textureSampling: input.textureSampling });
-  const output = buildTexturePack(textureInput);
-  return buildCreatorCompositionTextureExport({ output, compositionHash: composition.registryMetadata.contentSha256 });
+  return buildVerifiedCreatorCompositionTexture(buildCompositionTextureRegistrationInput(input)).exported;
 }
 
 /**
@@ -431,6 +434,11 @@ export const creatorRouter = router({
     }),
     exportPreview: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => buildCompositionTextureExport(input)),
     byteCompatibility: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(({ input }) => validateCreatorCompositionTextureExport(buildCompositionTextureExport(input))),
+    register: adminProcedure.input(creatorCompositionTexturePreviewSchema).mutation(async ({ input, ctx }) => {
+      const verified = buildVerifiedCreatorCompositionTexture(buildCompositionTextureRegistrationInput(input));
+      const artifact = await registerTexturePackArtifact({ output: verified.output, createdByUserId: ctx.user.id });
+      return { previewOnly: true as const, runtimeImportAllowed: false as const, compositionHash: verified.compositionHash, compatibility: verified.compatibility, artifact };
+    }),
   }),
   artifact: router({
     preview: adminProcedure.input(creatorDomainArtifactInputSchema).mutation(({ input }) => ({ previewOnly: true as const, reviewStatus: "draft" as const, ...buildCreatorDomainArtifactMetadata(input) })),

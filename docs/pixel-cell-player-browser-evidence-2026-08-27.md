@@ -55,3 +55,11 @@ After the archive size/path guards and final ZIP download UI were added, a fresh
 ## Texture byte compatibility boundary check
 
 After adding the admin-only byte compatibility route/result for manifest, PNG and ZIP verification, a fresh player landing check still displayed only normal player controls. No compatibility result, ZIP/manifest/PNG download, texture, skin, composition, registry, review or creator controls appeared. This is player boundary evidence only; no authenticated creator compatibility execution is claimed.
+
+## Explicit composition registration boundary check
+
+After adding the explicit admin-only composition texture registration action, a fresh player landing check still displayed only normal player controls. No register texture, registry, ZIP/manifest/PNG download, compatibility, texture, skin, composition or creator controls appeared. This is player boundary evidence only; no authenticated registration, object-storage upload or database E2E claim is made.
+
+## Unauthenticated creator-workbench gate check
+
+A fresh visit to `/creator-workbench` without an authenticated session displayed `DEVELOPER ONLY`, stated that Creator Studio access was unavailable, requested an administrator login, and offered only `กลับหน้าผู้เล่น`. The composition register action and Workbench controls were not rendered. This verifies the unauthenticated route gate only; it does not claim an authenticated creator session or durable registration.
