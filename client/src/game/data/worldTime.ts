@@ -30,7 +30,8 @@ export const BIOME_TIME_MODES: Record<string, BiomeTimeMode> = {
 
 export function getWorldLighting(mapId: string, now = Date.now()): WorldLighting {
   const mode = getMapDefinition(mapId)?.timeMode ?? BIOME_TIME_MODES[mapId] ?? "cycle";
-  const cyclePosition = now % FULL_CYCLE_MS;
+  const safeNow = Number.isFinite(now) ? Math.max(0, Math.floor(now)) : 0;
+  const cyclePosition = safeNow % FULL_CYCLE_MS;
   const isDay = cyclePosition < DAY_LENGTH_MS;
   const progress = (isDay ? cyclePosition : cyclePosition - DAY_LENGTH_MS) / DAY_LENGTH_MS;
 

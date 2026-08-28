@@ -40,4 +40,12 @@ describe("Arcane Frontier world time", () => {
     expect(getWorldLighting("obsidian-frontier", 0).phase).toBe("day");
     expect(getWorldLighting("obsidian-frontier", 16 * 60 * 1000).phase).toBe("night");
   });
+
+  it("normalizes malformed world time to a deterministic cycle origin", () => {
+    for (const now of [Number.NaN, Number.POSITIVE_INFINITY, -1.5]) {
+      const lighting = getWorldLighting("obsidian-frontier", now);
+      expect(lighting.phase).toBe("day");
+      expect(lighting.progress).toBe(0);
+    }
+  });
 });
