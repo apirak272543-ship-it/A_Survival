@@ -40,10 +40,13 @@ export function getCameraModePose(mode: unknown) {
 
 export function cameraRelativeMovement(mode: unknown, inputX: number, inputY: number, facingY = 0) {
   const normalized = normalizeCameraMode(mode);
-  const angle = normalized === "overhead" ? -Math.PI / 4 : normalized === "side" ? 0 : facingY;
+  const safeInputX = Number.isFinite(inputX) ? inputX : 0;
+  const safeInputY = Number.isFinite(inputY) ? inputY : 0;
+  const safeFacingY = Number.isFinite(facingY) ? facingY : 0;
+  const angle = normalized === "overhead" ? -Math.PI / 4 : normalized === "side" ? 0 : safeFacingY;
   const forward = new Vector3(Math.sin(angle), 0, Math.cos(angle));
   const right = new Vector3(Math.cos(angle), 0, -Math.sin(angle));
-  return right.scale(inputX).add(forward.scale(inputY));
+  return right.scale(safeInputX).add(forward.scale(safeInputY));
 }
 
 export function supportsFirstPerson(mode: unknown) {

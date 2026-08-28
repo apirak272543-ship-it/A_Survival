@@ -22,6 +22,13 @@ describe("camera mode contract", () => {
     expect(firstPersonForward.z).toBeCloseTo(0, 5);
   });
 
+  it("fails closed on malformed movement and facing input", () => {
+    const vector = cameraRelativeMovement("first-person", Number.NaN, Number.POSITIVE_INFINITY, Number.NaN);
+    expect(vector.x).toBe(0);
+    expect(vector.y).toBe(0);
+    expect(vector.z).toBe(0);
+  });
+
   it("supports bounded in-map view-distance and FPS settings", () => {
     expect(DEFAULT_IN_MAP_SETTINGS).toEqual({ cameraMode: "overhead", viewDistanceBlocks: 20, targetFps: 60 });
     expect(VIEW_DISTANCE_BLOCKS).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
