@@ -20,6 +20,17 @@ describe("block world grouped records", () => {
     expect(new Set(group.blocks.map(block => block.key)).size).toBe(group.blocks.length);
   });
 
+  it("normalizes fractional offsets so record coordinates match the rounded key", () => {
+    const group = generateBlockGroup({
+      moduleId: "fixture.group",
+      groupId: "fractional-group",
+      seed: 12,
+      offsets: [{ x: 1.4, y: 2.6, z: -3.4, blockId: "terrain.obsidian" }],
+    });
+
+    expect(group.blocks[0]).toMatchObject({ key: "1:3:-3", x: 1, y: 3, z: -3 });
+  });
+
   it("keeps grouped output deterministic for the same offsets and seed", () => {
     const input = {
       moduleId: "fixture.group",

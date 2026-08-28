@@ -30,13 +30,16 @@ function seededInt(seed: number, salt: number, min: number, max: number): number
 function createWorldBlock(input: { blockId: string; moduleId: string; x: number; y: number; z: number; seed: number; state?: BlockState; groupId: string }): WorldBlock {
   const definition = getBlockDefinition(input.blockId);
   const maxHitPoints = Math.max(1, definition?.hardness ?? 1);
+  const x = Math.round(input.x);
+  const y = Math.round(input.y);
+  const z = Math.round(input.z);
   return {
-    key: blockKey(input.x, input.y, input.z),
+    key: blockKey(x, y, z),
     blockId: input.blockId,
     moduleId: input.moduleId,
-    x: input.x,
-    y: input.y,
-    z: input.z,
+    x,
+    y,
+    z,
     state: input.state ?? "intact",
     hitPoints: maxHitPoints,
     maxHitPoints,
