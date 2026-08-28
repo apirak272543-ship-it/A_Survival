@@ -139,4 +139,19 @@ describe("world storage system", () => {
     expect(result.action.payload.mapId).toBe("obsidian-frontier");
     expect(result.action.payload.chestId).toBe(STORAGE_CHEST_ID);
   });
+
+  it("fails closed on fractional or non-finite world-storage quantities", () => {
+    const stored = createMapRewardInstance("material-001", 8, "obsidian-frontier", "quantity-guard", "drop");
+    const storage = createMapWorldStorage("obsidian-frontier", OBSIDIAN_STORAGE_ID, [stored]);
+    const inventory = [stored];
+    for (const quantity of [0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const deposit = depositInstanceToWorldStorage(storage, inventory, stored.instanceId, quantity);
+      expect(deposit.accepted).toBe(false);
+      expect(deposit.storage).toBe(storage);
+      expect(deposit.inventory).toBe(inventory);
+      const withdraw = withdrawInstanceFromWorldStorage(storage, [], stored.instanceId, quantity);
+      expect(withdraw.accepted).toBe(false);
+      expect(withdraw.storage).toBe(storage);
+    }
+  });
 });

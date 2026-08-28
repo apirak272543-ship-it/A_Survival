@@ -192,7 +192,7 @@ export function createMapWorldStorage(mapId: string, storageId: string, slots: I
 export function depositInstanceToWorldStorage(storage: WorldStorage, inventory: ItemInstance[], instanceId: string, quantity: number) {
   const incoming = inventory.find(item => item.instanceId === instanceId);
   if (!incoming) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "ไม่พบ item ในกระเป๋า" };
-  if (quantity < 1 || quantity > incoming.quantity) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "จำนวนที่จะใส่หีบไม่ถูกต้อง" };
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > incoming.quantity) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "จำนวนที่จะใส่หีบไม่ถูกต้อง" };
   const transfer = addItemToContainer(storage.slots, { ...incoming, quantity }, storage.capacity);
   if (!transfer.accepted) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: transfer.message };
   const movedQuantity = quantity - (transfer.remainder?.quantity ?? 0);
@@ -204,7 +204,7 @@ export function depositInstanceToWorldStorage(storage: WorldStorage, inventory: 
 export function withdrawInstanceFromWorldStorage(storage: WorldStorage, inventory: ItemInstance[], instanceId: string, quantity: number) {
   const stored = storage.slots.find(item => item.instanceId === instanceId);
   if (!stored) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "ไม่พบ item ในหีบ" };
-  if (quantity < 1 || quantity > stored.quantity) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "จำนวนที่จะหยิบไม่ถูกต้อง" };
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > stored.quantity) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "จำนวนที่จะหยิบไม่ถูกต้อง" };
   const transfer = addItemToContainer(inventory, { ...stored, quantity }, PLAYER_INVENTORY_SLOTS);
   if (!transfer.accepted || transfer.remainder) return { accepted: false as const, storage, inventory, movedQuantity: 0, message: "กระเป๋าเต็ม จึงหยิบของจากหีบไม่ได้" };
   const removed = removeItemInstanceQuantity(storage.slots, instanceId, quantity);
