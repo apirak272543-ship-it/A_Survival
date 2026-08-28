@@ -20,6 +20,11 @@ describe("runtime spatial visibility policy", () => {
     expect(shouldEnableRuntimeObject({ x: 17.1, z: 0 }, { ...base, safetyPaddingBlocks: 1 })).toBe(false);
   });
 
+  it("caps extreme visibility distances at the supported 100-block policy", () => {
+    expect(shouldEnableRuntimeObject({ x: 100, z: 0 }, { ...base, viewDistanceBlocks: 1000 })).toBe(true);
+    expect(shouldEnableRuntimeObject({ x: 100.1, z: 0 }, { ...base, viewDistanceBlocks: 1000 })).toBe(false);
+  });
+
   it("never re-enables a broken object and preserves malformed metadata", () => {
     expect(shouldEnableRuntimeObject({ x: 1, z: 1, state: "broken" }, base)).toBe(false);
     expect(shouldEnableRuntimeObject({ x: "unknown", z: 1 }, base)).toBe(true);

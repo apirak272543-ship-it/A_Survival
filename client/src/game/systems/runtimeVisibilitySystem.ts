@@ -34,7 +34,7 @@ export function shouldEnableRuntimeObject(metadata: RuntimeSpatialMetadata | nul
   const viewDistanceBlocks = finiteNumber(input.viewDistanceBlocks);
   if (positionX === null || positionZ === null || viewDistanceBlocks === null) return true;
   const padding = Math.max(0, finiteNumber(input.safetyPaddingBlocks) ?? 0);
-  const radius = Math.max(0, viewDistanceBlocks + padding);
+  const radius = Math.min(100, Math.max(0, viewDistanceBlocks + padding));
   const dx = coordinate.x - positionX;
   const dz = coordinate.z - positionZ;
   return dx * dx + dz * dz <= radius * radius;
