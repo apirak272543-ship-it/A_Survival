@@ -249,6 +249,8 @@ export class CommonGeneratorRegistry {
     const outputValidation = plugin.validate(output, input);
     if (!outputValidation.valid) throw new GeneratorValidationError(outputValidation.issues);
     const assetRefs = plugin.preview?.(output).assetRefs ?? [];
+    const assetRefIssues = validateAssetRefs(assetRefs);
+    if (assetRefIssues.length > 0) throw new GeneratorValidationError(assetRefIssues);
     const artifact: GeneratorArtifact<I, O> = {
       schemaVersion: COMMON_GENERATOR_SCHEMA_VERSION,
       generatorId,

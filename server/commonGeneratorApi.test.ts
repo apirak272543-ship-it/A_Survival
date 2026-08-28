@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CommonGeneratorRegistry, GeneratorValidationError, type GeneratorPlugin } from "./generators/commonGeneratorApi";
+import { CommonGeneratorRegistry, GeneratorValidationError, type GeneratorAssetRef, type GeneratorPlugin } from "./generators/commonGeneratorApi";
 
 type StructureInput = { biome: string; count: number };
 type StructureRecord = { id: string; biome: string; assetId: string };
 
-function makeStructureGenerator(): GeneratorPlugin<StructureInput, StructureRecord[]> {
+function makeStructureGenerator(assetRefs: GeneratorAssetRef[] = [{ assetId: "models.structure.placeholder", kind: "model", source: "starter-authored" }]): GeneratorPlugin<StructureInput, StructureRecord[]> {
   return {
     id: "structure-basic",
     version: "1.0.0",
@@ -24,7 +24,7 @@ function makeStructureGenerator(): GeneratorPlugin<StructureInput, StructureReco
     preview: output => ({
       recordCount: output.length,
       ids: output.map(record => record.id),
-      assetRefs: [{ assetId: "models.structure.placeholder", kind: "model", source: "starter-authored" }],
+      assetRefs,
     }),
   };
 }
@@ -62,6 +62,41 @@ describe("CommonGeneratorRegistry", () => {
       ids: ["7-obsidian-1", "7-obsidian-2"],
       assetRefs: [{ assetId: "models.structure.placeholder", kind: "model", source: "starter-authored" }],
     });
+  });
+
+  it("keeps a valid generated asset reference on the generated artifact", () => {
+    const assetRefs: GeneratorAssetRef[] = [{
+      assetId: "generated.structure.key-art",
+      kind: "key-art",
+      source: "generated",
+      sha256: "a".repeat(64),
+    }];
+    const registry = new CommonGeneratorRegistry().register(makeStructureGenerator(assetRefs));
+    const artifact = registry.generate("structure-basic", { biome: "obsidian", count: 1 }, { seed: "asset-safe" });
+
+    expect(artifact.assetRefs).toEqual(assetRefs);
+  });
+
+  it("fails closed during generate when asset references are invalid", () => {
+    const invalidAssetRefs: GeneratorAssetRef[] = [
+      { assetId: "invalid.structure", kind: "model", source: "generated", sha256: "bad" },
+      { assetId: "reference.structure", kind: "model", source: "reference-only" },
+      { assetId: "invalid.structure", kind: "model", source: "starter-authored" },
+    ];
+    const registry = new CommonGeneratorRegistry().register(makeStructureGenerator(invalidAssetRefs));
+
+    let caught: unknown;
+    try {
+      registry.generate("structure-basic", { biome: "obsidian", count: 1 }, { seed: "asset-invalid" });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(GeneratorValidationError);
+    expect((caught as GeneratorValidationError).issues).toEqual(expect.arrayContaining([
+      "invalid asset sha256: invalid.structure",
+      "reference-only asset needs provenanceRef: reference.structure",
+      "duplicate asset reference: invalid.structure",
+    ]));
   });
 
   it("validates before save/export and rejects a tampered artifact", () => {
