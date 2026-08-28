@@ -32,3 +32,13 @@ Wiki แยกหัวข้อ item เป็นของที่สร้า
 Official listing จึงเหมาะสำหรับกำหนดนโยบายของเราเป็น: นับ canonical block definitions แยกจาก runtime states, นับ item definitions แยกจาก placeable block records, และใช้ category/relationship เป็น reference architecture ไม่ใช่การนำ `minecraft:` IDs มาใช้ในเกม.
 
 หมายเหตุ: เนื่องจากหน้า listing ยาวมากและ extraction ถูกตัดบางส่วน จึงยังไม่อ้างตัวเลขรวมจากหน้านี้จนกว่าจะทำ deterministic parse ของ source ที่ดาวน์โหลดได้ครบหรือกำหนดชุดข้อมูลที่นับได้อย่างโปร่งใส.
+
+## Deterministic A_Survival catalog baseline
+
+จาก source ปัจจุบันและกฎการนับที่แยก canonical definitions ออกจาก runtime states: `BOTANICAL_REFERENCES` มี 30 รายการ และ `ORIGINAL_VARIANTS` มี 10 แบบ จึงสร้าง `PLANT_CATALOG` ได้ 300 plant definitions และ `PLANT_ITEMS` ได้ 300 seed item definitions. `ITEM_CATALOG` มี 9 หมวด หมวดละ 400 รายการ รวม 3,600 generated item definitions; `BLOCK_ITEM_DEFINITIONS` มี 10 placeable block-item definitions. ดังนั้น `ALL_ITEMS` ปัจจุบันมี 3,910 definitions (3,600 + 10 + 300) ก่อนนับ runtime instances.
+
+`OBSIDIAN_BLOCKS` มี 14 canonical world block definitions ใน source ปัจจุบัน ได้แก่ terrain, liquid, rock, ore, log, leaf, plant, obstacle, storage และ player-placed records ตามที่ประกาศจริง ส่วน tree templates 2 รายการและ rock templates 3 รายการเป็น placement templates ไม่ใช่ block definitions เพิ่มเติม และ block states/coordinates ที่เกิดใน runtime ไม่ควรถูกนับเป็น definitions ใหม่.
+
+Baseline นี้ชี้ว่าความต้องการเดิม “300 ต่อหมวด” ถูกสร้างเกิน Minecraft-like playable slice ในบางหมวดแล้ว จึงควร **หยุดการเพิ่ม content แบบกว้าง** และใช้หมวด/ความสัมพันธ์/stack rules แบบ reference architecture ก่อน จากนั้นค่อยลดหรือจัดกลุ่ม content ที่ผู้เล่นเข้าถึงจริงใน Obsidian slice โดยไม่ทำลาย data extensibility และไม่คัดลอก Minecraft assets/code/IDs.
+
+วิธีนับนี้เป็น deterministic source audit ของ A_Survival ไม่ใช่ตัวเลขรวมของ Minecraft Bedrock/PE เพราะ official Bedrock listings รวม identifiers และ state variants คนละ universe กับ creative inventory, survival-obtainable items และ wiki categories; จึงไม่ควรอ้างตัวเลข Minecraft เดียวโดยไม่กำหนด counting policy.
