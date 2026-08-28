@@ -53,6 +53,15 @@ describe("Obsidian block-first action rules", () => {
   it("normalizes only known block modules while retaining explicit removed cells", () => {
     expect(normalizeWorldBlockOverrides({ "0:0:0": null, "0:1:0": "player.placed", bad: "player.placed", "0:2:0": "unknown.module" })).toEqual({ "0:0:0": null, "0:1:0": "player.placed" });
   });
+
+  it("fails closed on non-finite block coordinates without creating invalid override keys", () => {
+    const overrides = { "0:0:0": "terrain.ash" };
+    expect(getWorldBlockAt({ x: Number.NaN, y: 0, z: 0 }, overrides)).toBeNull();
+    const broken = breakBlockAt({ moduleId: "obstacle.obsidian.slab", coordinate: { x: Number.POSITIVE_INFINITY, y: 0, z: 0 }, tool: "pickaxe", overrides });
+    expect(broken).toMatchObject({ accepted: false, message: "พิกัดบล็อกไม่ถูกต้อง", overrides });
+    const placed = placeBlockAt({ moduleId: "player.placed", coordinate: { x: 0, y: Number.NaN, z: 0 }, supportModuleId: "terrain.ash", existingModuleId: null, overrides });
+    expect(placed).toMatchObject({ accepted: false, reason: "พิกัดบล็อกไม่ถูกต้อง", overrides });
+  });
 });
 
 describe("map and player scoped block persistence", () => {

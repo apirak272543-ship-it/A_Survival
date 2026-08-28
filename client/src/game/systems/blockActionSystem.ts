@@ -73,7 +73,12 @@ export function resolveBlockBreak(block: WorldBlock, toolTag?: BlockToolTag): Bl
 export type BlockCoordinate = { x: number; y: number; z: number };
 export type WorldBlockOverrides = Record<string, string | null>;
 
+function hasFiniteCoordinates(coordinate: BlockCoordinate) {
+  return Number.isFinite(coordinate.x) && Number.isFinite(coordinate.y) && Number.isFinite(coordinate.z);
+}
+
 export function getBlockAt(moduleId: string | null, coordinate: BlockCoordinate, overrides: WorldBlockOverrides) {
+  if (!hasFiniteCoordinates(coordinate)) return null;
   const key = blockKey(coordinate.x, coordinate.y, coordinate.z);
   return Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : moduleId;
 }
@@ -115,6 +120,7 @@ export function breakBlockAt(input: {
   tool: BlockTool;
   overrides: WorldBlockOverrides;
 }) {
+  if (!hasFiniteCoordinates(input.coordinate)) return { accepted: false as const, blockKey: "invalid-coordinate", blockId: input.moduleId, action: "break" as const, removed: false, usedCorrectTool: false, dropKind: "none" as const, dropQuantity: 0, message: "พิกัดบล็อกไม่ถูกต้อง", overrides: input.overrides };
   const result = resolveBlockBreak(worldBlockForCoordinate(input.moduleId, input.coordinate), asBlockToolTag(input.tool));
   if (!result.accepted || !result.removed) return { ...result, overrides: input.overrides };
   return {
@@ -131,6 +137,7 @@ export function placeBlockAt(input: {
   existingModuleId?: string | null;
   overrides: WorldBlockOverrides;
 }) {
+  if (!hasFiniteCoordinates(input.coordinate)) return { accepted: false as const, reason: "พิกัดบล็อกไม่ถูกต้อง", overrides: input.overrides };
   const placement = canPlaceBlock(input.moduleId, input.supportModuleId, input.existingModuleId);
   if (!placement.accepted) return { ...placement, overrides: input.overrides };
   return {
