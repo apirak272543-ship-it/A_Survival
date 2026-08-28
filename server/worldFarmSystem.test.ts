@@ -72,6 +72,12 @@ describe("Obsidian world farming", () => {
     expect(normalized["farm-plot-01"]?.plantId).toBeUndefined();
     expect(normalized["farm-plot-02"]?.plantId).toBe("plant-001");
     expect(normalized["farm-plot-02"]?.seedDefinitionId).toBe("seed-001");
+
+    const mismatched = normalizeWorldFarmState({
+      "farm-plot-01": { plantId: "plant-001", seedDefinitionId: "seed-002", plantedAt: 2, growthDurationMs: 3_000, coordinate: { x: 3, y: 0, z: 1 }, soilId: "terra-loam", updatedAt: 2 },
+    });
+    expect(mismatched["farm-plot-01"]?.plantId).toBe("plant-001");
+    expect(mismatched["farm-plot-01"]?.seedDefinitionId).toBeUndefined();
   });
 
   it("accepts only capped fictional mature effects", () => {

@@ -60,7 +60,7 @@ export function normalizeWorldFarmState(candidate: unknown): WorldFarmState {
       coordinate: [x, y, z].every(Number.isInteger) ? { x, y, z } : fallback.coordinate,
       soilId: soilId === "terra-loam" || soilId === "ashen-volcanic" || soilId === "red-dune" || soilId === "verdant-humus" || soilId === "aether-crystal" ? soilId : fallback.soilId,
       ...(plant ? { plantId: plant.id } : {}),
-      ...(typeof value.seedDefinitionId === "string" && getItemDefinition(value.seedDefinitionId)?.category === "seed" ? { seedDefinitionId: value.seedDefinitionId } : {}),
+      ...(typeof value.seedDefinitionId === "string" && getItemDefinition(value.seedDefinitionId)?.category === "seed" && getWorldPlantBySeed(value.seedDefinitionId)?.id === plant?.id ? { seedDefinitionId: value.seedDefinitionId } : {}),
       ...(typeof value.seedInstanceId === "string" ? { seedInstanceId: value.seedInstanceId } : {}),
       ...(Number.isFinite(Number(value.plantedAt)) ? { plantedAt: Number(value.plantedAt) } : {}),
       ...(Number.isFinite(Number(value.growthDurationMs)) && Number(value.growthDurationMs) > 0 ? { growthDurationMs: Number(value.growthDurationMs) } : {}),
