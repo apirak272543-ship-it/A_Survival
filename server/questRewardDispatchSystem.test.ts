@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMapRewardInstance, createStarterInstance } from "../client/src/game/data/catalog";
+import { createMapRewardInstance, createStarterInstance, getItemDefinition } from "../client/src/game/data/catalog";
 import { createDefaultStoryProgressState, normalizeStoryProgressState } from "../client/src/game/systems/storyProgressionSystem";
 import { dispatchQuestReward, type QuestRewardDispatchInput } from "../client/src/game/systems/questRewardDispatchSystem";
 import { generateQuestProgression } from "./generators/questProgressionGenerator";
@@ -40,6 +40,18 @@ describe("quest reward dispatch system", () => {
 
     expect(result).toMatchObject({ accepted: false, code: "unsupported-reward" });
     expect(result.reason).toContain("reputation");
+  });
+
+  it("rejects malformed or over-capacity quantities before creating a reward instance", () => {
+    const stackLimit = getItemDefinition("material-001")!.stackLimit;
+    for (const quantity of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, stackLimit + 1]) {
+      const input = inputFor({ quest: { ...questFixture()[0]!, rewards: [{ itemDefinitionId: "material-001", quantity }] } });
+      const result = dispatchQuestReward(input);
+      expect(result).toMatchObject({ accepted: false, code: "invalid-reward-quantity" });
+      expect(result.state).toBe(input.state);
+      expect(result.inventory).toBe(input.inventory);
+      expect(result.discoveredItemIds).toBe(input.discoveredItemIds);
+    }
   });
 
   it("fails atomically when inventory capacity rejects the reward", () => {

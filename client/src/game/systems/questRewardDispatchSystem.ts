@@ -32,6 +32,7 @@ type QuestRewardDispatchFailureCode =
   | "reward-definition-missing"
   | "inventory-capacity"
   | "ability-runtime-missing"
+  | "invalid-reward-quantity"
   | "unsupported-reward";
 
 export type QuestRewardDispatchResult =
@@ -111,8 +112,13 @@ export function dispatchQuestReward(input: QuestRewardDispatchInput): QuestRewar
     if (!reward.itemDefinitionId) {
       return failure(input, "unsupported-reward", "reward นี้ไม่มี item definition หรือ runtime owner ที่ตรวจสอบได้");
     }
-    if (!getItemDefinition(reward.itemDefinitionId)) {
+    const definition = getItemDefinition(reward.itemDefinitionId);
+    if (!definition) {
       return failure(input, "reward-definition-missing", `ไม่พบ item definition ของ ${reward.itemDefinitionId}`);
+    }
+    const quantity = reward.quantity ?? 1;
+    if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity < 1 || quantity > definition.stackLimit) {
+      return failure(input, "invalid-reward-quantity", `จำนวน reward ของ ${reward.itemDefinitionId} ไม่อยู่ในขอบเขต stack ${definition.stackLimit}`);
     }
 
     const incoming = createMapRewardInstance(
@@ -121,7 +127,7 @@ export function dispatchQuestReward(input: QuestRewardDispatchInput): QuestRewar
       input.mapId,
       eventId,
       "reward",
-      reward.quantity ?? 1,
+      quantity,
     );
     const added = addItemToContainer(nextInventory, incoming, PLAYER_INVENTORY_SLOTS);
     if (!added.accepted || added.remainder) {
