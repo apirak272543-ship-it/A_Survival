@@ -154,4 +154,16 @@ describe("world storage system", () => {
       expect(withdraw.storage).toBe(storage);
     }
   });
+
+  it("fails closed on invalid chest transfer timestamps", () => {
+    const stored = item("material-001", 80);
+    const storage = { [STORAGE_CHEST_ID]: [stored] };
+    const carry = [item("material-002", 81)];
+    for (const now of [Number.NaN, Number.POSITIVE_INFINITY, -1, 1.5]) {
+      expect(depositIntoChest({ mapId: "obsidian-frontier", chestId: STORAGE_CHEST_ID, carry, storage, itemInstanceId: carry[0]!.instanceId, now })).toMatchObject({ ok: false, reason: "เวลาการย้ายของไม่ถูกต้อง" });
+      expect(withdrawFromChest({ mapId: "obsidian-frontier", chestId: STORAGE_CHEST_ID, carry: [], storage, itemInstanceId: stored.instanceId, now })).toMatchObject({ ok: false, reason: "เวลาการย้ายของไม่ถูกต้อง" });
+      expect(storage[STORAGE_CHEST_ID]?.[0]).toEqual(stored);
+      expect(carry).toHaveLength(1);
+    }
+  });
 });

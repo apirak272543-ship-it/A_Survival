@@ -103,6 +103,10 @@ export function hasCarryCapacity(carry: ItemInstance[], additionalSlots = 1): bo
   return carrySlotCount(carry) + additionalSlots <= CARRY_SLOT_LIMIT;
 }
 
+function isValidTransferTimestamp(now: number) {
+  return Number.isFinite(now) && Number.isInteger(now) && now >= 0;
+}
+
 function actionId(type: StorageTransferActionType, now: number, chestId: string, instanceId: string) {
   return `${type}-${now}-${chestId}-${instanceId}`.slice(0, 128);
 }
@@ -125,6 +129,7 @@ export function depositIntoChest(input: {
   now?: number;
 }): StorageTransferResult {
   const { mapId, chestId, carry, storage, itemInstanceId, now = Date.now() } = input;
+  if (!isValidTransferTimestamp(now)) return { ok: false, reason: "เวลาการย้ายของไม่ถูกต้อง" };
   if (!validChestId(chestId)) return { ok: false, reason: "ไม่รู้จักหีบนี้" };
   const carryIndex = carry.findIndex(item => item.instanceId === itemInstanceId);
   if (carryIndex < 0) return { ok: false, reason: "ไม่พบไอเทมในช่องติดตัว" };
@@ -149,6 +154,7 @@ export function withdrawFromChest(input: {
   now?: number;
 }): StorageTransferResult {
   const { mapId, chestId, carry, storage, itemInstanceId, now = Date.now() } = input;
+  if (!isValidTransferTimestamp(now)) return { ok: false, reason: "เวลาการย้ายของไม่ถูกต้อง" };
   if (!validChestId(chestId)) return { ok: false, reason: "ไม่รู้จักหีบนี้" };
   if (!hasCarryCapacity(carry)) return { ok: false, reason: `ช่องติดตัวเต็มแล้ว · รับได้สูงสุด ${CARRY_SLOT_LIMIT} ช่อง` };
   const slots = getWorldStorageSlots(storage, chestId);
