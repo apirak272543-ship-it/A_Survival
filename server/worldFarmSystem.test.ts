@@ -51,6 +51,21 @@ describe("Obsidian world farming", () => {
     expect(rejectedPlant.inventory).toEqual([seed]);
   });
 
+  it("keeps a mature crop intact when harvest output cannot fit the 40-slot carry", () => {
+    const seed = createStarterInstance("seed-001", 2);
+    const state = createDefaultWorldFarmState();
+    const planted = plantWorldSeed({ mapId: "obsidian-frontier", state, inventory: [seed], plotId: "farm-plot-01", seedInstanceId: seed.instanceId, now: 30_000 });
+    expect(planted.accepted).toBe(true);
+    const fullInventory = Array.from({ length: 40 }, (_, index) => createStarterInstance("sword-001", index + 10));
+    const harvested = harvestWorldPlant({ mapId: "obsidian-frontier", state: planted.state, inventory: fullInventory, plotId: "farm-plot-01", now: 30_000 + planted.plot!.growthDurationMs! });
+
+    expect(harvested.accepted).toBe(false);
+    expect(harvested.reason).toContain("กระเป๋าไม่พอ");
+    expect(harvested.state).toBe(planted.state);
+    expect(harvested.inventory).toBe(fullInventory);
+    expect(harvested.state["farm-plot-01"]?.plantId).toBe("plant-001");
+  });
+
   it("normalizes legacy or malformed farm state to the four bounded Obsidian plots", () => {
     const normalized = normalizeWorldFarmState({ "farm-plot-01": { plantId: "unknown", seedDefinitionId: "seed-001", coordinate: { x: 3, y: 0, z: 1 }, soilId: "terra-loam", updatedAt: 1 }, "farm-plot-02": { plantId: "world-plant-001", seedDefinitionId: "seed-001", plantedAt: 2, growthDurationMs: 3_000, coordinate: { x: 4, y: 0, z: 1 }, soilId: "ashen-volcanic", updatedAt: 2 }, "foreign-plot": { plantId: "world-plant-001" } });
     expect(Object.keys(normalized)).toEqual(["farm-plot-01", "farm-plot-02", "farm-plot-03", "farm-plot-04"]);

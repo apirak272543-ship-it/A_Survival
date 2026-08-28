@@ -1,5 +1,6 @@
 import { createMapRewardInstance, getItemDefinition, type ItemInstance, type SoilId } from "@/game/data/catalog";
 import { consumeOneFromStack } from "@/game/systems/blockActionSystem";
+import { addItemToContainer, PLAYER_INVENTORY_SLOTS } from "@/game/systems/inventorySystem";
 import {
   getWorldPlantBySeed,
   getWorldPlantDefinition,
@@ -172,7 +173,14 @@ export function planHarvestWorldPlant(input: { mapId: string; state: WorldFarmSt
 export function harvestWorldPlant(input: { mapId: string; state: WorldFarmState; inventory: ItemInstance[]; plotId: string; now?: number }) {
   const plan = planHarvestWorldPlant(input);
   if (!plan.accepted || !plan.reward) return { ...plan, inventory: input.inventory };
-  return { ...plan, inventory: input.inventory.concat(plan.reward) };
+  const added = addItemToContainer(input.inventory, plan.reward, PLAYER_INVENTORY_SLOTS);
+  if (!added.accepted || added.remainder) {
+    return {
+      ...emptyPlan(input.state, `กระเป๋าไม่พอรับผลผลิตจาก ${input.plotId}`),
+      inventory: input.inventory,
+    };
+  }
+  return { ...plan, inventory: added.inventory };
 }
 
 export function validateWorldFarmEffect(effect: WorldPlantEffect | undefined) {
