@@ -186,7 +186,31 @@ export function harvestWorldPlant(input: { mapId: string; state: WorldFarmState;
 export function validateWorldFarmEffect(effect: WorldPlantEffect | undefined) {
   if (!effect) return { valid: true, issues: [] as string[] };
   const issues: string[] = [];
-  if (effect.kind === "repel" && (effect.radius > WORLD_FARM_MAX_REPEL_RADIUS || effect.stackable || effect.durationMs <= 0)) issues.push("unsafe mature-only repel effect");
-  if (effect.kind === "restore" && (effect.amount > WORLD_FARM_MAX_FICTIONAL_RESTORE || effect.cap > WORLD_FARM_MAX_FICTIONAL_RESTORE)) issues.push("unsafe fictional restore effect");
+  if (effect.kind === "repel") {
+    const invalid = !Number.isFinite(effect.radius)
+      || effect.radius < 0
+      || effect.radius > WORLD_FARM_MAX_REPEL_RADIUS
+      || !Number.isFinite(effect.durationMs)
+      || !Number.isInteger(effect.durationMs)
+      || effect.durationMs <= 0
+      || effect.stackable !== false
+      || typeof effect.label !== "string"
+      || effect.label.trim().length === 0;
+    if (invalid) issues.push("unsafe mature-only repel effect");
+  }
+  if (effect.kind === "restore") {
+    const invalid = !Number.isFinite(effect.amount)
+      || !Number.isInteger(effect.amount)
+      || effect.amount < 0
+      || effect.amount > WORLD_FARM_MAX_FICTIONAL_RESTORE
+      || !Number.isFinite(effect.cap)
+      || !Number.isInteger(effect.cap)
+      || effect.cap < 0
+      || effect.cap > WORLD_FARM_MAX_FICTIONAL_RESTORE
+      || effect.amount > effect.cap
+      || typeof effect.label !== "string"
+      || effect.label.trim().length === 0;
+    if (invalid) issues.push("unsafe fictional restore effect");
+  }
   return { valid: issues.length === 0, issues };
 }

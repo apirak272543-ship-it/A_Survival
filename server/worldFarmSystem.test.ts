@@ -78,4 +78,26 @@ describe("Obsidian world farming", () => {
     expect(validateWorldFarmEffect({ kind: "repel", radius: 6, durationMs: 30_000, stackable: false, label: "ไม่ทำลาย" })).toEqual({ valid: true, issues: [] });
     expect(validateWorldFarmEffect({ kind: "repel", radius: 7, durationMs: 30_000, stackable: false, label: "ไม่ทำลาย" }).valid).toBe(false);
   });
+
+  it("fails closed on malformed repel effect values", () => {
+    const malformed = [
+      { kind: "repel", radius: Number.NaN, durationMs: 30_000, stackable: false, label: "ไม่ทำลาย" },
+      { kind: "repel", radius: -1, durationMs: 30_000, stackable: false, label: "ไม่ทำลาย" },
+      { kind: "repel", radius: 1, durationMs: Number.POSITIVE_INFINITY, stackable: false, label: "ไม่ทำลาย" },
+      { kind: "repel", radius: 1, durationMs: 30_000, stackable: true, label: "ไม่ทำลาย" },
+      { kind: "repel", radius: 1, durationMs: 30_000, stackable: false, label: " " },
+    ] as unknown[];
+    for (const effect of malformed) expect(validateWorldFarmEffect(effect as never).valid).toBe(false);
+  });
+
+  it("fails closed when restore is fractional, negative, over cap, or unlabeled", () => {
+    const malformed = [
+      { kind: "restore", amount: 1.5, cap: 4, label: "ฟื้นพลัง" },
+      { kind: "restore", amount: -1, cap: 4, label: "ฟื้นพลัง" },
+      { kind: "restore", amount: 5, cap: 4, label: "ฟื้นพลัง" },
+      { kind: "restore", amount: 4, cap: Number.NaN, label: "ฟื้นพลัง" },
+      { kind: "restore", amount: 4, cap: 4, label: "" },
+    ] as unknown[];
+    for (const effect of malformed) expect(validateWorldFarmEffect(effect as never).valid).toBe(false);
+  });
 });
