@@ -1,4 +1,4 @@
-import type { MapDefinition } from "@/game/data/maps";
+import { MAP_REGISTRY, type MapDefinition } from "@/game/data/maps";
 import { isRuntimeMapAllowed } from "@/game/routing/directRoute";
 
 export const MAP_CACHE_NAME = "arcane-frontier-map-modules-v3" as const;
@@ -20,6 +20,29 @@ function cacheKey(mapId: string) {
   return `/offline-map-modules/${encodeURIComponent(mapId)}.json`;
 }
 
+function isValidCachedMapPayload(payload: unknown, map: MapDefinition) {
+  if (!payload || typeof payload !== "object") return false;
+  const record = payload as { id?: unknown; name?: unknown; cachedAt?: unknown; keyArt?: unknown; content?: unknown };
+  return record.id === map.id
+    && record.name === map.name
+    && (record.keyArt ?? undefined) === (map.keyArt ?? undefined)
+    && Number.isFinite(record.cachedAt)
+    && Number(record.cachedAt) > 0
+    && JSON.stringify(record.content) === JSON.stringify(map.content);
+}
+
+async function hasValidCachedMapResponse(map: MapDefinition) {
+  if (typeof window === "undefined" || !isRuntimeMapAllowed(map.id) || !("caches" in window)) return false;
+  try {
+    const cache = await caches.open(MAP_CACHE_NAME);
+    const response = await cache.match(cacheKey(map.id));
+    if (!response) return false;
+    return isValidCachedMapPayload(await response.clone().json(), map);
+  } catch {
+    return false;
+  }
+}
+
 export async function prepareMapModule(map: MapDefinition, onProgress?: (update: MapPreparationUpdate) => void) {
   if (typeof window === "undefined") return { cached: false, offline: false, ready: false } satisfies MapPreparationResult;
   const offline = navigator.onLine === false;
@@ -27,7 +50,7 @@ export async function prepareMapModule(map: MapDefinition, onProgress?: (update:
     onProgress?.({ progress: 100, phase: "แผนที่นี้ยังปิดใน runtime", cached: false, offline });
     return { cached: false, offline, ready: false } satisfies MapPreparationResult;
   }
-  const alreadyCached = await hasCachedMapModule(map.id);
+  const alreadyCached = await hasCachedMapModule(map.id, map);
   onProgress?.({ progress: alreadyCached ? 18 : 4, phase: alreadyCached ? "อ่านโมดูลที่บันทึกไว้" : "กำลังจัดเตรียม map module", cached: alreadyCached, offline });
   if (offline && !alreadyCached) {
     onProgress?.({ progress: 38, phase: "ออฟไลน์: แผนที่ยังไม่พร้อม", cached: false, offline: true });
@@ -71,20 +94,17 @@ export async function cacheMapModule(map: MapDefinition) {
   await prepareMapModule(map);
 }
 
-export async function hasCachedMapModule(mapId: string) {
+export async function hasCachedMapModule(mapId: string, expectedMap?: MapDefinition) {
   if (typeof window === "undefined" || !isRuntimeMapAllowed(mapId)) return false;
-  if ("caches" in window) {
-    const cache = await caches.open(MAP_CACHE_NAME);
-    if (await cache.match(cacheKey(mapId))) return true;
-  }
-  try {
-    return localStorage.getItem(`arcane-frontier.map-cache.${mapId}`) === "ready";
-  } catch {
-    return false;
-  }
+  const map = expectedMap ?? MAP_REGISTRY.find(candidate => candidate.id === mapId);
+  if (!map || map.id !== mapId) return false;
+  return hasValidCachedMapResponse(map);
 }
 
 export async function getCachedMapIds(mapIds: string[]) {
-  const checks = await Promise.all(mapIds.map(async mapId => (await hasCachedMapModule(mapId)) ? mapId : null));
+  const checks = await Promise.all(mapIds.map(async mapId => {
+    const map = MAP_REGISTRY.find(candidate => candidate.id === mapId);
+    return (map && await hasCachedMapModule(mapId, map)) ? mapId : null;
+  }));
   return checks.filter((mapId): mapId is string => Boolean(mapId));
 }

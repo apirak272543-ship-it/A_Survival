@@ -28,6 +28,7 @@ function installCacheHarness(online = true) {
   globalRecord.caches = { open: async () => cache };
   Object.defineProperty(globalThis, "navigator", { value: { onLine: online }, configurable: true });
   globalThis.fetch = vi.fn(async () => new Response("key-art"));
+  return { entries };
 }
 
 describe("map cache preparation", () => {
@@ -53,6 +54,22 @@ describe("map cache preparation", () => {
     expect(result.ready).toBe(false);
     expect(phases).toContain("ออฟไลน์: แผนที่ยังไม่พร้อม");
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale cached payload instead of treating its presence as integrity proof", async () => {
+    const { entries } = installCacheHarness();
+    const map = MAP_REGISTRY[0]!;
+    await prepareMapModule(map);
+    entries.set(`/offline-map-modules/${encodeURIComponent(map.id)}.json`, new Response(JSON.stringify({
+      id: map.id,
+      name: "stale-map-definition",
+      cachedAt: Date.now(),
+      keyArt: map.keyArt,
+      content: map.content,
+    }), { headers: { "Content-Type": "application/json" } }));
+    expect(await hasCachedMapModule(map.id)).toBe(false);
+    Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true });
+    await expect(prepareMapModule(map)).resolves.toMatchObject({ cached: false, offline: true, ready: false });
   });
 
   it("opens a previously cached map offline without fetching", async () => {
