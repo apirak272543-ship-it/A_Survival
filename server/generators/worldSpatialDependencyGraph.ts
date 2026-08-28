@@ -85,8 +85,10 @@ function boundedRadius(value: number | undefined): number {
 }
 
 function boundedSubjects(value: SpatialSubject[] | undefined): SpatialSubject[] {
-  const subjects = value ?? ["terrain", "water", "tree", "sapling", "grass", "cactus", "rock", "ore", "structure", "npc", "animal", "monster"];
-  if (subjects.length < 1 || subjects.length > MAX_WORLD_SPATIAL_PLACEMENT_SAMPLES) throw new Error(`placementSubjects must contain between 1 and ${MAX_WORLD_SPATIAL_PLACEMENT_SAMPLES} subjects`);
+  const raw = value ?? ["terrain", "water", "tree", "sapling", "grass", "cactus", "rock", "ore", "structure", "npc", "animal", "monster"];
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_WORLD_SPATIAL_PLACEMENT_SAMPLES) throw new Error(`placementSubjects must contain between 1 and ${MAX_WORLD_SPATIAL_PLACEMENT_SAMPLES} subjects`);
+  if (raw.some(subject => typeof subject !== "string" || !Object.prototype.hasOwnProperty.call(OBSIDIAN_OBJECT_RULES, subject))) throw new Error("placementSubjects contains unsupported subject");
+  const subjects = raw as SpatialSubject[];
   const unique = Array.from(new Set(subjects));
   if (unique.length !== subjects.length) throw new Error("placementSubjects must be unique");
   return unique;

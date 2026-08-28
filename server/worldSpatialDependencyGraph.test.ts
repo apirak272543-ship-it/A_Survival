@@ -45,4 +45,10 @@ describe("world spatial dependency graph", () => {
     expect(() => buildWorldSpatialDependencyGraph({ seed: 1.5 })).toThrow("seed must be a signed 32-bit integer");
     expect(() => buildWorldSpatialDependencyGraph({ seed: 2_147_483_648 })).toThrow("seed must be a signed 32-bit integer");
   });
+
+  it("rejects unknown and malformed placement subjects before generation", () => {
+    expect(() => buildWorldSpatialDependencyGraph({ placementSubjects: ["unknown-subject"] as never })).toThrow("placementSubjects contains unsupported subject");
+    expect(() => buildWorldSpatialDependencyGraph({ placementSubjects: ["tree", 7] as never })).toThrow("placementSubjects contains unsupported subject");
+    expect(() => buildWorldSpatialDependencyGraph({ placementSubjects: "tree" as never })).toThrow("placementSubjects must contain between 1 and 12 subjects");
+  });
 });
