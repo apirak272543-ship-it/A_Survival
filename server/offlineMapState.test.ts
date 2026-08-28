@@ -21,6 +21,20 @@ describe("offline map storage persistence", () => {
     expect(normalized).toMatchObject({ mapId: "obsidian-frontier", playerId: "player-a", inMapSettings: { cameraMode: "side", viewDistanceBlocks: 50, targetFps: 120 } });
   });
 
+  it("keeps known block overrides and null tombstones while dropping unknown or malformed values", () => {
+    const normalized = normalizeOfflineMapState({
+      ...legacyState,
+      worldBlockOverrides: {
+        "1:2:3": "terrain.obsidian",
+        "2:2:3": "unknown.block",
+        "3:2": "terrain.ash",
+        "4:2:3": null,
+        "malformed": "terrain.ash",
+      },
+    }, "obsidian-frontier", "player-a");
+    expect(normalized.worldBlockOverrides).toEqual({ "1:2:3": "terrain.obsidian", "4:2:3": null });
+  });
+
   it("blocks future-map offline state writes before IndexedDB while keeping normalization data-only", async () => {
     const future = normalizeOfflineMapState(legacyState, "future-map", "player-a");
     expect(future.mapId).toBe("future-map");

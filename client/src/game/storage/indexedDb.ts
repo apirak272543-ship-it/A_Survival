@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type { ItemInstance } from "@/game/data/catalog";
+import { getBlockDefinition } from "@/game/data/blockModules";
 import type { HomeAction } from "@/game/home/homeSystemV2";
 import { isSafeQuestRewardPendingAction } from "@/game/systems/questRewardPendingAction";
 import type { WorldPlantState } from "@/game/systems/worldFarmingSystem";
@@ -47,7 +48,7 @@ export type OfflineMapState = {
 
 function normalizeWorldBlockOverrideMap(candidate: unknown): Record<string, string | null> {
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return {};
-  return Object.fromEntries(Object.entries(candidate).filter(([key, value]) => /^-?\d+:-?\d+:-?\d+$/.test(key) && (typeof value === "string" || value === null))) as Record<string, string | null>;
+  return Object.fromEntries(Object.entries(candidate).filter(([key, value]) => /^-?\d+:-?\d+:-?\d+$/.test(key) && (value === null || (typeof value === "string" && Boolean(getBlockDefinition(value)))))) as Record<string, string | null>;
 }
 
 function normalizeLegacyWorldPlants(candidate: unknown): Record<string, WorldPlantState> {
