@@ -67,6 +67,22 @@ describe("Optional AI NPC service", () => {
     expect(result).toMatchObject({ accepted: true, source: "fallback", reason: "invalid-provider-output", action: { type: "none" } });
   });
 
+  it("clears the timeout after a provider abort and falls back safely", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      }));
+      const service = new AiNpcService(enabledConfig, fetcher as never);
+      const pending = service.turn(baseInput);
+      await vi.advanceTimersByTimeAsync(enabledConfig.timeoutMs);
+      await expect(pending).resolves.toMatchObject({ accepted: true, source: "fallback", reason: "provider-error", action: { type: "none" } });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("limits conversation memory and falls back on provider errors", async () => {
     const prompts: string[] = [];
     const fetcher = vi.fn(async (_url: string, init?: RequestInit) => {

@@ -193,9 +193,10 @@ export class AiNpcService {
     this.lastRequestAt.set(key, now);
     const turns = this.memory.get(key) ?? [];
     const prompt = createPrompt(cleaned, turns);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
+      timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
       const response = await this.fetcher("https://generativelanguage.googleapis.com/v1beta/interactions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
@@ -206,7 +207,6 @@ export class AiNpcService {
         }),
         signal: controller.signal,
       });
-      clearTimeout(timeout);
       if (!response.ok) return fallbackResult(cleaned, "provider-error");
       const body = await response.json() as GeminiResponse;
       const raw = body.output_text ?? body.response?.output_text ?? "";
@@ -217,6 +217,8 @@ export class AiNpcService {
       return { accepted: true, source: "gemini", npcId: cleaned.npcId, ...parsed, remainingCooldownMs: this.config.cooldownMs };
     } catch {
       return fallbackResult(cleaned, "provider-error");
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
     }
   }
 }
