@@ -40,7 +40,8 @@ function allocateStackInstanceId(baseId: string, usedIds: Set<string>, sequence:
  */
 export function addItemToContainer(container: ItemInstance[], incoming: ItemInstance, capacity: number): InventoryAddResult {
   const definition = getItemDefinition(incoming.definitionId);
-  if (!definition || incoming.quantity < 1) return { accepted: false, inventory: container, remainder: incoming, addedQuantity: 0, message: "ไม่พบ item definition หรือจำนวนไม่ถูกต้อง" };
+  if (!definition || !Number.isFinite(incoming.quantity) || !Number.isInteger(incoming.quantity) || incoming.quantity < 1) return { accepted: false, inventory: container, remainder: incoming, addedQuantity: 0, message: "ไม่พบ item definition หรือจำนวนไม่ถูกต้อง" };
+  if (!Number.isFinite(capacity) || !Number.isInteger(capacity) || capacity < 0) return { accepted: false, inventory: container, remainder: incoming, addedQuantity: 0, message: "ความจุคลังไม่ถูกต้อง" };
   const stackLimit = definition.stackLimit;
   const next = container.map(item => ({ ...item }));
   const usedIds = new Set(next.map(item => item.instanceId));

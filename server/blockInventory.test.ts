@@ -51,6 +51,21 @@ describe("block drops and bounded storage", () => {
     expect(result.addedQuantity).toBe(1);
   });
 
+  it("rejects non-finite or non-integer quantity and capacity before allocation", () => {
+    const incoming = createMapRewardInstance("block-obsidian-stone", 9, "obsidian-frontier", "invalid-input", "drop", 1);
+    for (const quantity of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const result = addItemToContainer([], { ...incoming, quantity }, 1);
+      expect(result.accepted).toBe(false);
+      expect(result.inventory).toEqual([]);
+      expect(result.addedQuantity).toBe(0);
+      expect(result.remainder?.quantity).toBe(quantity);
+    }
+
+    const invalidCapacity = addItemToContainer([], incoming, Number.NaN);
+    expect(invalidCapacity).toMatchObject({ accepted: false, inventory: [], addedQuantity: 0, message: "ความจุคลังไม่ถูกต้อง" });
+    expect(invalidCapacity.remainder).toEqual(incoming);
+  });
+
   it("keeps world storage separate and allows carry-over after withdrawal", () => {
     const storage = createWorldStorage("obsidian-frontier", "starter-chest");
     const incoming = createMapRewardInstance("block-obsidian-stone", 3, "obsidian-frontier", "chest-stone", "drop");
