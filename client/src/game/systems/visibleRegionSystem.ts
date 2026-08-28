@@ -12,6 +12,8 @@ export function chunkKey(x: number, z: number) {
 }
 
 export function getVisibleChunkKeys(input: VisibleRegionInput) {
+  if (![input.positionX, input.positionZ, input.terrainTiles, input.tileSize, input.chunkSize, input.radiusChunks].every(Number.isFinite)) return new Set<string>();
+  if (input.terrainTiles <= 0 || input.tileSize <= 0 || input.chunkSize <= 0) return new Set<string>();
   const columns = Math.ceil(input.terrainTiles / input.chunkSize);
   const rows = Math.ceil(input.terrainTiles / input.chunkSize);
   const originX = -(input.terrainTiles * input.tileSize) / 2;
@@ -40,11 +42,13 @@ export type StreamingRegionInput = {
 };
 
 export function getStreamingChunkKeys(input: StreamingRegionInput) {
-  const chunkWorldSize = Math.max(0.001, input.chunkWorldSize);
+  if (![input.positionX, input.positionZ, input.chunkWorldSize, input.visibleRadiusMeters, input.mapRadiusMeters].every(Number.isFinite)) return new Set<string>();
+  if (input.chunkWorldSize <= 0 || input.mapRadiusMeters < 0) return new Set<string>();
+  const chunkWorldSize = input.chunkWorldSize;
   const centerX = Math.floor(input.positionX / chunkWorldSize);
   const centerZ = Math.floor(input.positionZ / chunkWorldSize);
-  const radiusChunks = Math.max(0, Math.ceil(input.visibleRadiusMeters / chunkWorldSize));
-  const mapChunkRadius = Math.max(0, Math.ceil(input.mapRadiusMeters / chunkWorldSize));
+  const mapChunkRadius = Math.ceil(input.mapRadiusMeters / chunkWorldSize);
+  const radiusChunks = Math.min(mapChunkRadius, Math.max(0, Math.ceil(input.visibleRadiusMeters / chunkWorldSize)));
   const visible = new Set<string>();
 
   for (let z = centerZ - radiusChunks; z <= centerZ + radiusChunks; z += 1) {
@@ -58,5 +62,6 @@ export function getStreamingChunkKeys(input: StreamingRegionInput) {
 }
 
 export function getStreamingChunkCoordinate(position: number, chunkWorldSize: number) {
-  return Math.floor(position / Math.max(0.001, chunkWorldSize));
+  if (!Number.isFinite(position) || !Number.isFinite(chunkWorldSize) || chunkWorldSize <= 0) return null;
+  return Math.floor(position / chunkWorldSize);
 }

@@ -39,4 +39,12 @@ describe("Arcane visible terrain regions", () => {
     expect(after.has(chunkKey(1, 0))).toBe(true);
     expect(after.has(chunkKey(0, 0))).toBe(false);
   });
+
+  it("fails closed on malformed region dimensions and caps infinite radius requests", () => {
+    expect(getVisibleChunkKeys({ positionX: 0, positionZ: 0, terrainTiles: Number.NaN, tileSize: 2, chunkSize: 16, radiusChunks: 1 })).toEqual(new Set());
+    expect(getStreamingChunkKeys({ positionX: 0, positionZ: 0, chunkWorldSize: 16, visibleRadiusMeters: Number.POSITIVE_INFINITY, mapRadiusMeters: 500 }).size).toBe(0);
+    expect(getStreamingChunkKeys({ positionX: 0, positionZ: 0, chunkWorldSize: 16, visibleRadiusMeters: 100000, mapRadiusMeters: 500 }).size).toBe(4225);
+    expect(getStreamingChunkCoordinate(Number.NaN, 16)).toBeNull();
+    expect(getStreamingChunkCoordinate(0, Number.POSITIVE_INFINITY)).toBeNull();
+  });
 });
