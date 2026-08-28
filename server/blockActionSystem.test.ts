@@ -62,6 +62,16 @@ describe("Obsidian block-first action rules", () => {
     const placed = placeBlockAt({ moduleId: "player.placed", coordinate: { x: 0, y: Number.NaN, z: 0 }, supportModuleId: "terrain.ash", existingModuleId: null, overrides });
     expect(placed).toMatchObject({ accepted: false, reason: "พิกัดบล็อกไม่ถูกต้อง", overrides });
   });
+
+  it("does not consume malformed block-stack quantities", () => {
+    for (const quantity of [0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const stack = { ...createStarterInstance("structure-001", 200), quantity };
+      const result = placeBlockWithInventory({ inventory: [stack], instanceId: stack.instanceId, coordinate: { x: 0, y: 1, z: 0 }, supportModuleId: "terrain.ash", existingModuleId: null, overrides: {} });
+      expect(result.accepted).toBe(false);
+      expect(result.inventory).toEqual([stack]);
+      expect(result.overrides).toEqual({});
+    }
+  });
 });
 
 describe("map and player scoped block persistence", () => {

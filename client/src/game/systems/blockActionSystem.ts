@@ -147,7 +147,7 @@ export function placeBlockAt(input: {
 }
 
 export function consumeOneFromStack(inventory: ItemInstance[], instanceId: string) {
-  const instance = inventory.find(candidate => candidate.instanceId === instanceId && candidate.quantity > 0);
+  const instance = inventory.find(candidate => candidate.instanceId === instanceId && Number.isInteger(candidate.quantity) && Number.isFinite(candidate.quantity) && candidate.quantity > 0);
   if (!instance) return { accepted: false as const, inventory, reason: "ไม่พบไอเทมในช่องถือ" };
   const inventoryAfter = instance.quantity === 1
     ? inventory.filter(candidate => candidate.instanceId !== instanceId)
