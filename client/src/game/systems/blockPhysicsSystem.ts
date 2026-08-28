@@ -83,7 +83,11 @@ export function getHazardContacts(world: BlockWorld, entity: BlockEntityBounds, 
 }
 
 export function canApplyHazardDamage(contact: BlockContact, lastAppliedAt: number | undefined, now: number) {
-  return Boolean(contact.hazard && (lastAppliedAt === undefined || now - lastAppliedAt >= contact.hazard.cooldownSeconds * 1000));
+  if (!contact.hazard) return false;
+  const cooldownSeconds = contact.hazard.cooldownSeconds;
+  if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || !Number.isFinite(now)) return false;
+  if (lastAppliedAt !== undefined && !Number.isFinite(lastAppliedAt)) return false;
+  return lastAppliedAt === undefined || now - lastAppliedAt >= cooldownSeconds * 1000;
 }
 
 function isSupportBlock(block: WorldBlock | undefined) {
@@ -108,6 +112,7 @@ export type PlacementResult = {
 };
 
 export function canPlaceBlock(world: BlockWorld, blockId: string, x: number, y: number, z: number, terrainSupport?: PlacementSupport): PlacementResult {
+  if (![x, y, z].every(Number.isFinite)) return { accepted: false, reason: "unknown-block" };
   if (world.blocks.has(`${x}:${y}:${z}`)) return { accepted: false, reason: "occupied" };
   const definition = getBlockDefinition(blockId);
   if (!definition) return { accepted: false, reason: "unknown-block" };

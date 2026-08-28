@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canApplyHazardDamage,
   canPlaceBlock,
   getUnsupportedGravityBlocks,
 } from "../client/src/game/systems/blockPhysicsSystem";
@@ -72,5 +73,17 @@ describe("Obsidian support and gravity boundary", () => {
     const world = worldWith(brokenSupport);
     expect(canPlaceBlock(world, "rock.obsidian.small", 0, 1, 0)).toEqual({ accepted: false, reason: "requires-support" });
     expect(getUnsupportedGravityBlocks(world)).toEqual([]);
+  });
+
+  it("fails closed on non-finite placement coordinates and hazard timestamps", () => {
+    expect(canPlaceBlock(emptyWorld(), "terrain.obsidian", Number.NaN, 0, 0)).toEqual({ accepted: false, reason: "unknown-block" });
+    const contact = {
+      block: makeBlock("thorn.obsidian", 0, 0, 0),
+      bounds: { minX: 0, maxX: 1, minY: 0, maxY: 1, minZ: 0, maxZ: 1 },
+      hazard: { kind: "thorn", damage: 1, cooldownSeconds: 1, affects: "all" as const },
+    };
+    expect(canApplyHazardDamage(contact, undefined, Number.NaN)).toBe(false);
+    expect(canApplyHazardDamage(contact, Number.POSITIVE_INFINITY, 1000)).toBe(false);
+    expect(canApplyHazardDamage({ ...contact, hazard: { ...contact.hazard, cooldownSeconds: Number.POSITIVE_INFINITY } }, undefined, 1000)).toBe(false);
   });
 });
