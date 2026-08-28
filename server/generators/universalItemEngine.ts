@@ -159,6 +159,7 @@ export function calculateItemBalance(item: Omit<UniversalItemDefinition, "balanc
 
 export function validateUniversalItem(item: UniversalItemDefinition, maxPowerBudget = MAX_POWER_BUDGET): GeneratorValidationResult {
   const issues: string[] = [];
+  if (!Number.isFinite(maxPowerBudget) || maxPowerBudget < 0 || maxPowerBudget > MAX_POWER_BUDGET) issues.push("max power budget is invalid");
   if (!/^[a-z0-9][a-z0-9.-]{2,63}$/.test(item.id)) issues.push("item id is invalid");
   if (!hasText(item.name) || !hasText(item.purpose) || !hasText(item.identity) || !hasText(item.weakness)) issues.push("item must have name, purpose, identity, and weakness");
   if (!ITEM_FAMILIES.includes(item.family)) issues.push("item family is unsupported");
@@ -169,19 +170,20 @@ export function validateUniversalItem(item: UniversalItemDefinition, maxPowerBud
   if (!hasTags(item.materialTags) || !hasTags(item.environmentTags)) issues.push("item needs material and environment tags");
   if (item.counters.length === 0) issues.push("item needs at least one counter");
   if (item.recommendedBuilds.length === 0 || item.recommendedBuilds.some(role => !ITEM_ROLES.includes(role))) issues.push("item needs valid recommended builds");
-  if (item.resources.length === 0 || item.resources.some(resource => !RESOURCE_SOURCES.includes(resource.source) || !resource.resourceId || resource.quantity <= 0)) issues.push("item needs valid world resource links");
+  if (item.resources.length === 0 || item.resources.some(resource => !RESOURCE_SOURCES.includes(resource.source) || !resource.resourceId || !Number.isFinite(resource.quantity) || resource.quantity <= 0)) issues.push("item needs valid world resource links");
   for (const [stat, value] of Object.entries(item.stats)) if (!Number.isFinite(value) || value < 0 || value > MAX_STAT) issues.push(`stat out of range: ${stat}`);
-  if (!Number.isInteger(item.durability.maximum) || item.durability.maximum < 1 || item.durability.current < 0 || item.durability.current > item.durability.maximum) issues.push("durability is invalid");
+  if (!Number.isInteger(item.durability.maximum) || !Number.isFinite(item.durability.current) || item.durability.maximum < 1 || item.durability.current < 0 || item.durability.current > item.durability.maximum) issues.push("durability is invalid");
   if (item.uses !== undefined && (!Number.isInteger(item.uses) || item.uses < 1)) issues.push("uses must be a positive integer");
   if (item.charges !== undefined && (!Number.isInteger(item.charges) || item.charges < 1)) issues.push("charges must be a positive integer");
   for (const effect of item.effects) {
-    if (!effect.id || !ELEMENTS.includes(effect.element) || effect.strength < 0 || effect.durationSeconds < 0 || effect.stackLimit < 1 || effect.cooldownSeconds < 0) issues.push(`effect is invalid: ${effect.id}`);
+    if (!effect.id || !ELEMENTS.includes(effect.element) || !Number.isFinite(effect.strength) || effect.strength < 0 || !Number.isFinite(effect.durationSeconds) || effect.durationSeconds < 0 || !Number.isInteger(effect.stackLimit) || effect.stackLimit < 1 || !Number.isFinite(effect.cooldownSeconds) || effect.cooldownSeconds < 0) issues.push(`effect is invalid: ${effect.id}`);
     if (effect.counterTags.length === 0) issues.push(`effect needs a counter: ${effect.id}`);
   }
-  for (const tradeOff of item.tradeOffs) if (!(tradeOff.stat in item.stats) || tradeOff.amount <= 0 || !hasText(tradeOff.reason)) issues.push("trade-off is invalid");
-  for (const resource of item.repair.resources) if (!RESOURCE_SOURCES.includes(resource.source) || resource.quantity <= 0 || !resource.resourceId) issues.push("repair resource link is invalid");
+  for (const tradeOff of item.tradeOffs) if (!(tradeOff.stat in item.stats) || !Number.isFinite(tradeOff.amount) || tradeOff.amount <= 0 || !hasText(tradeOff.reason)) issues.push("trade-off is invalid");
+  if (!Number.isFinite(item.repair.baseCost) || item.repair.baseCost < 0) issues.push("repair base cost is invalid");
+  for (const resource of item.repair.resources) if (!RESOURCE_SOURCES.includes(resource.source) || !Number.isFinite(resource.quantity) || resource.quantity <= 0 || !resource.resourceId) issues.push("repair resource link is invalid");
   for (const rule of item.compatibility) if (!rule.target || !rule.tag || !["allowed", "restricted", "forbidden", "special"].includes(rule.result) || !hasText(rule.reason)) issues.push("compatibility rule is invalid");
-  if (item.performanceCost < 0 || item.performanceCost > MAX_STAT) issues.push("performanceCost must be 0–100");
+  if (!Number.isFinite(item.performanceCost) || item.performanceCost < 0 || item.performanceCost > MAX_STAT) issues.push("performanceCost must be 0–100");
   roleFamilyIsCoherent(item, issues);
   if (item.effects.some(effect => effect.stackLimit > 5)) issues.push("effect stack limit cannot exceed 5");
   if (item.stats.damage > 85 && item.stats.range > 85 && item.stats.attackSpeed > 85 && item.stats.defense > 85 && item.tradeOffs.length < 2) issues.push("high power across four axes needs at least two trade-offs");

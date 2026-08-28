@@ -106,4 +106,31 @@ describe("Universal Item Engine", () => {
     expect(registry.validate(first)).toEqual({ valid: true, issues: [] });
     expect(registry.preview(first)).toMatchObject({ kind: "item", recordCount: 1, ids: ["obsidian-rift-blade"] });
   });
+
+  it("fails closed on non-finite numeric item payloads", () => {
+    const input = validSword();
+    const malformed = {
+      ...input.item,
+      stats: { ...input.item.stats, damage: Number.NaN },
+      durability: { maximum: 300, current: Number.POSITIVE_INFINITY },
+      effects: [{ id: "unstable", element: "fire" as const, strength: Number.POSITIVE_INFINITY, durationSeconds: 10, stackLimit: 1, cooldownSeconds: 1, counterTags: ["water"] }],
+      tradeOffs: [{ stat: "range" as const, amount: Number.NaN, reason: "เสียระยะ" }],
+      repair: { ...input.item.repair, baseCost: Number.NaN, resources: [{ source: "mining" as const, resourceId: "ore", quantity: Number.POSITIVE_INFINITY }] },
+      resources: [{ source: "mining" as const, resourceId: "ore", quantity: Number.NaN }],
+      performanceCost: Number.POSITIVE_INFINITY,
+    };
+    const result = validateUniversalItem(malformed, Number.NaN);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      "max power budget is invalid",
+      "stat out of range: damage",
+      "durability is invalid",
+      "effect is invalid: unstable",
+      "trade-off is invalid",
+      "repair base cost is invalid",
+      "repair resource link is invalid",
+      "item needs valid world resource links",
+      "performanceCost must be 0–100",
+    ]));
+  });
 });
