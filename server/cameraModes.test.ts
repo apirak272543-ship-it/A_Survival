@@ -8,6 +8,7 @@ describe("camera mode contract", () => {
     expect(getCameraModeOption("unknown").id).toBe("overhead");
     expect(normalizeCameraMode("side")).toBe("side");
     expect(normalizeCameraMode("invalid")).toBe("overhead");
+    expect(normalizeCameraMode("invalid", "not-a-camera" as never)).toBe("overhead");
   });
 
   it("keeps movement camera-relative without changing the player coordinate contract", () => {

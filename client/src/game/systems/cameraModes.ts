@@ -21,7 +21,8 @@ export const CAMERA_MODE_OPTIONS: readonly CameraModeOption[] = [
 export const DEFAULT_CAMERA_MODE: CameraMode = "overhead";
 
 export function normalizeCameraMode(value: unknown, fallback: CameraMode = DEFAULT_CAMERA_MODE): CameraMode {
-  return CAMERA_MODES.includes(value as CameraMode) ? value as CameraMode : fallback;
+  const safeFallback = CAMERA_MODES.includes(fallback) ? fallback : DEFAULT_CAMERA_MODE;
+  return CAMERA_MODES.includes(value as CameraMode) ? value as CameraMode : safeFallback;
 }
 
 export function getCameraModeOption(mode: unknown) {
