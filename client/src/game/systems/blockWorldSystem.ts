@@ -77,18 +77,20 @@ export function removeWorldBlock(world: BlockWorld, x: number, y: number, z: num
 
 export function generateBlockGroup(input: { moduleId: string; groupId: string; seed: number; offsets: BlockOffset[]; state?: BlockState }): GeneratedBlockGroup {
   const occupied = new Set<string>();
-  const blocks = input.offsets.map(offset => createWorldBlock({
-    blockId: offset.blockId,
-    moduleId: input.moduleId,
-    groupId: input.groupId,
-    seed: input.seed,
-    x: offset.x,
-    y: offset.y,
-    z: offset.z,
-    state: input.state,
-  }));
-  blocks.forEach(block => occupied.add(block.key));
-  return { groupId: input.groupId, moduleId: input.moduleId, blocks: blocks.filter(block => occupied.has(block.key)) };
+  const blocks: WorldBlock[] = [];
+  for (const offset of input.offsets) {
+    addIfEmpty(blocks, occupied, createWorldBlock({
+      blockId: offset.blockId,
+      moduleId: input.moduleId,
+      groupId: input.groupId,
+      seed: input.seed,
+      x: offset.x,
+      y: offset.y,
+      z: offset.z,
+      state: input.state,
+    }));
+  }
+  return { groupId: input.groupId, moduleId: input.moduleId, blocks };
 }
 
 function treeHeight(template: TreeTemplate, seed: number, state: Extract<BlockState, "sapling" | "young" | "mature">): number {
