@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canApplyHazardDamage,
   canPlaceBlock,
+  intersectsBlockEntity,
   getUnsupportedGravityBlocks,
 } from "../client/src/game/systems/blockPhysicsSystem";
 import { getBlockDefinition, type WorldBlock } from "../client/src/game/data/blockModules";
@@ -85,5 +86,13 @@ describe("Obsidian support and gravity boundary", () => {
     expect(canApplyHazardDamage(contact, undefined, Number.NaN)).toBe(false);
     expect(canApplyHazardDamage(contact, Number.POSITIVE_INFINITY, 1000)).toBe(false);
     expect(canApplyHazardDamage({ ...contact, hazard: { ...contact.hazard, cooldownSeconds: Number.POSITIVE_INFINITY } }, undefined, 1000)).toBe(false);
+  });
+
+  it("ignores malformed entity bounds without affecting valid collision", () => {
+    const world = worldWith(makeBlock("rock.obsidian.small", 0, 0, 0));
+    expect(getUnsupportedGravityBlocks(world)).toEqual([]);
+    expect(canPlaceBlock(world, "rock.obsidian.small", 0, 1, 0)).toEqual({ accepted: true, reason: "placed" });
+    expect(intersectsBlockEntity(makeBlock("rock.obsidian.small", 0, 0, 0), { x: Number.NaN, y: 0.2, z: 0.5, radius: 0.25, height: 1 })).toBe(false);
+    expect(intersectsBlockEntity(makeBlock("rock.obsidian.small", 0, 0, 0), { x: 0.5, y: 0.2, z: 0.5, radius: -1, height: 1 })).toBe(false);
   });
 });

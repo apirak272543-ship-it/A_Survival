@@ -52,6 +52,7 @@ function overlaps(aMin: number, aMax: number, bMin: number, bMax: number) {
 }
 
 export function intersectsBlockEntity(block: WorldBlock, entity: BlockEntityBounds): boolean {
+  if (![entity.x, entity.y, entity.z, entity.radius, entity.height].every(Number.isFinite) || entity.radius < 0 || entity.height < 0) return false;
   const bounds = getBlockShapeBounds(block);
   if (!bounds || block.state === "broken") return false;
   return overlaps(entity.x - entity.radius, entity.x + entity.radius, bounds.minX, bounds.maxX)
