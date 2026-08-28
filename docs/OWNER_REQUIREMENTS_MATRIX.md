@@ -9,7 +9,7 @@
 | O-01 | ต้องทำงานต่อจากคำสั่งทั้งหมดตั้งแต่เริ่มแชท ไม่ข้ามงานเก่า | matrix นี้สร้างจากบริบทที่ทบทวนแล้ว | PARTIAL | ตรวจ matrix ทุก checkpoint และเพิ่มแถวเมื่อมีคำสั่งใหม่ |
 | O-02 | เล่นได้เฉพาะ Obsidian Frontier จนกว่า vertical slice จะเสร็จและได้รับอนุมัติ | `RUNTIME_MAP_ID`, direct-route tests, browser direct URL และ selector proof | VERIFIED | รักษา allow-list ต่อไปเมื่อเพิ่มระบบใหม่ |
 | O-03 | ข้อมูล future maps เก็บเป็น planned/backend data ได้ แต่ห้ามมี playable runtime entry, cache preparation หรือ generator UI | selector/cache lookup จำกัดที่ `RUNTIME_MAP_ID`; browser map selector แสดงการ์ดเดียวและ direct map-002 fallback เข้า Obsidian | VERIFIED | คง future records เป็นข้อมูลหลังบ้านเท่านั้น และเพิ่ม guard เมื่อมี cache caller ใหม่ |
-| O-04 | ถ้างานใดพึ่งเครื่องมือที่เจ้าของสั่ง ให้สร้าง/ตรวจเครื่องมือนั้นก่อน; หลังเกมเสถียรให้ใช้ Engine แทนการเขียนโค้ดตรง | มีข้อกำหนดในแผนงานและฐาน generator เดิมยังไม่ครบ | PENDING | สร้าง tools ตามลำดับและ enforce dependency gate |
+| O-04 | ถ้างานใดพึ่งเครื่องมือที่เจ้าของสั่ง ให้สร้าง/ตรวจเครื่องมือนั้นก่อน; หลังเกมเสถียรให้ใช้ Engine แทนการเขียนโค้ดตรง | มี Common Generator API/registry และ `cc7bc85` เพิ่ม generation-time `GeneratorAssetRef` gate: invalid SHA, missing reference-only provenance และ duplicate asset IDs fail closed ก่อน artifact reuse/save; PR #28 ยังแยกอ้าง tool inventory/dependency policy และยังไม่ merge | PARTIAL | สร้าง/ตรวจ tool inventory และ dependency policy ให้ครบทุก tool/domain, เชื่อม durable registry/orchestrator/export/review และยืนยันเครื่องมือใช้งานจริงโดยไม่เปิด player generator UI |
 | O-05 | ทำทีละหน่วยที่จบ ตรวจจริง บันทึก matrix แล้ว commit/push ทันที ไม่รวมส่งทีเดียว | workflow นี้ใช้ checkpoint แยก; หน่วยแรกผ่าน test/check/build/browser แล้ว | PARTIAL | ต้องทำแบบเดียวกันกับทุกหน่วยถัดไป |
 
 ## ภาพ เกม และ mobile foundation
@@ -378,3 +378,10 @@ AI-0 ตรวจ `client/src/game/systems/questRewardDispatchSystem.ts` แล�
 AI-0 ตรวจ canonical `createWorldBlock` ใน `client/src/game/systems/blockWorldSystem.ts` และพบว่าเดิม `blockKey` ปัดพิกัดด้วย `Math.round` แต่ fields `x/y/z` เก็บค่าทศนิยมเดิม ทำให้ record อาจไม่สอดคล้องกับ key. Implementation commit `dc4e47f` ปัด x/y/z ครั้งเดียวก่อนเขียนทั้ง fields และ key; ไม่เปลี่ยน map allow-list, persistence, physics, inventory หรือ UI. Regression ใน `server/blockWorldSystem.test.ts` ยืนยัน fractional offsets ให้ fields ตรงกับ rounded key และยังคง first-wins/deterministic grouped output.
 
 Focused suite ผ่าน `1` file / `3` tests, full suite ผ่าน `128` files / `543` tests, `pnpm check`, `git diff --check` และ heap-limited production build. หลักฐานนี้แก้เฉพาะ coordinate-record consistency; B-01 ยังคง `PARTIAL` เพราะยังขาด universal block-family records, authoritative mutation/persistence/inventory/physics integration และ browser/device acceptance.
+
+
+### Checkpoint 2026-08-28 — O-04 generator asset-reference gate
+
+AI-0 ตรวจ `CommonGeneratorRegistry.generate` ใน `server/generators/commonGeneratorApi.ts` และพบว่า plugin output validation ผ่านแล้ว แต่ asset references จาก `preview` ยังไม่ถูกตรวจจนกว่าจะเรียก validate/save/export. Implementation commit `cc7bc85` เพิ่ม generation-time validation ของ `GeneratorAssetRef[]`; invalid SHA-256, `reference-only` ที่ไม่มี provenance และ duplicate asset IDs จะ fail closed ด้วย `GeneratorValidationError` ก่อน artifact ถูกส่งต่อไปยัง store/reuse path. ไม่มีการเปิด generator ใน player runtime และไม่เปลี่ยน generate-once/store/cache/reuse semantics.
+
+เพิ่ม regression ใน `server/commonGeneratorApi.test.ts`; focused suite ผ่าน `1` file / `7` tests, full suite ผ่าน `128` files / `545` tests, `pnpm check`, `git diff --check` และ heap-limited production build. หลักฐานนี้ลด O-04 จาก `PENDING` เป็น `PARTIAL` เฉพาะ asset-reference gate; ยังขาด tool inventory/dependency policy ครบทุก domain, durable registry/orchestrator/export/review และการพิสูจน์การใช้งานเครื่องมือจริง. PR #28 เป็น worker scope แยกและยังไม่ merge.
