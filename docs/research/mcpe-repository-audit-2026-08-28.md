@@ -32,3 +32,11 @@ Repository นี้มีโครงสร้างกว้างและเ
 
 [1]: https://github.com/Endlad2/MCPE "Endlad2/MCPE repository"
 [2]: https://gitea.sffempire.ru/Kolyah35/minecraft-pe-0.6.1 "Upstream Gitea repository linked from README"
+
+## Detailed mapping from selected classes
+
+การอ่านไฟล์แบบ read-only พบ domain ที่ตรงกับงานของ A_Survival ได้แก่ `client/renderer/RenderChunk` และ `DirtyChunkSorter` สำหรับ dirty-region/priority rendering, `FrustumCuller` สำหรับ culling, `world/level` สำหรับ level/chunk/world lifecycle, `world/inventory` สำหรับ container/menu, `world/item` สำหรับ item/tool/recipe families และ `world/phys/AABB` สำหรับ collision/hit testing. Mapping นี้ช่วยยืนยันว่าควรแยก data, simulation, visibility และ rendering ออกจากกัน แต่ implementation ต้องเขียนใหม่เป็น TypeScript/Babylon.js และใช้ canonical contracts ของ A_Survival.
+
+`AABB` ใน upstream แสดงรูปแบบ axis-aligned collision operations เช่น expand/grow/move/intersects และ axis clipping ซึ่งนำมาเป็นแนวคิดสำหรับ block/entity collision tests ได้ อย่างไรก็ตาม ห้าม port class หรือ source โดยตรง เพราะ repository ไม่ประกาศ license และ project identity เป็น Minecraft PE source code. เช่นเดียวกัน `RenderChunk`/`DirtyChunkSorter` ใช้เป็นแนวคิดเรื่อง dirty-set และ priority queue เท่านั้น ไม่ใช่โค้ดที่นำเข้า.
+
+จาก mapping นี้ checkpoint ที่เหมาะสมสำหรับ A_Survival คือการทำ finite-input และ bounded-loop guards รอบ canonical visible-region, physics และ runtime performance contracts ก่อนเพิ่ม renderer หรือ native platform features ซึ่งสอดคล้องกับ `5225051` และ `e5b54dd` ที่ push ไปแล้ว. ยังไม่มีการนำไฟล์จาก Endlad2/MCPE เข้าสู่ production source หรือ runtime asset registry.
