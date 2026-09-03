@@ -56,7 +56,7 @@ if(${PLATFORM} MATCHES "Web")
 
     add_library(png INTERFACE IMPORTED)
     set_target_properties(png PROPERTIES
-        INTERFACE_COMPILE_OPTIONS "-sUSE_LIBPNG=1" 
+        INTERFACE_COMPILE_OPTIONS "-sUSE_LIBPNG=1"
         INTERFACE_LINK_OPTIONS "-sUSE_LIBPNG=1"
     )
 
@@ -97,19 +97,21 @@ else()
     )
 endif()
 
-CPMAddPackage(
-    NAME "openal"
-    GIT_REPOSITORY "https://github.com/kcat/openal-soft.git"
-    GIT_TAG "1.25.1"
-    OPTIONS
-        "ALSOFT_EXAMPLES OFF"
-        "ALSOFT_TESTS OFF"
-        "ALSOFT_UTILS OFF"
-        "LIBTYPE ${AL_LIBTYPE}"
-        "ALSOFT_ENABLE_MODULES OFF"
-        "ALSOFT_STATIC_STDCXX ON"
-        "ALSOFT_STATIC_LIBGCC ON"
-)
+if(NOT ${PLATFORM} MATCHES "Web")
+    CPMAddPackage(
+        NAME "openal"
+        GIT_REPOSITORY "https://github.com/kcat/openal-soft.git"
+        GIT_TAG "1.25.1"
+        OPTIONS
+            "ALSOFT_EXAMPLES OFF"
+            "ALSOFT_TESTS OFF"
+            "ALSOFT_UTILS OFF"
+            "LIBTYPE ${AL_LIBTYPE}"
+            "ALSOFT_ENABLE_MODULES OFF"
+            "ALSOFT_STATIC_STDCXX ON"
+            "ALSOFT_STATIC_LIBGCC ON"
+    )
+endif()
 
 # TODO: Clear this paths with *
 file(GLOB SERVER_SOURCES
@@ -221,9 +223,9 @@ file(GLOB SERVER_SOURCES
     "src/world/level/tile/entity/*.cpp"
 
     "src/world/phys/HitResult.cpp"
-) 
+)
 
-file(GLOB CLIENT_SOURCES 
+file(GLOB CLIENT_SOURCES
     "src/client/*.cpp"
 
     "src/client/gamemode/*.cpp"
@@ -249,9 +251,9 @@ file(GLOB CLIENT_SOURCES
     "src/client/renderer/tileentity/*.cpp"
 
     "src/client/sound/*.cpp"
-    
+
     "src/locale/*.cpp"
-    
+
     "src/nbt/*.cpp"
 
     "src/network/*.cpp"
@@ -262,9 +264,9 @@ file(GLOB CLIENT_SOURCES
     "src/platform/input/*.cpp"
 
     "src/raknet/**.cpp"
-    
+
     "src/server/**.cpp"
-    
+
     "src/util/**.cpp"
 
     "src/util/Color.cpp"
@@ -313,15 +315,16 @@ file(GLOB CLIENT_SOURCES
 
 if (${PLATFORM} STREQUAL "Desktop")
     list(APPEND CLIENT_SOURCES glad/src/glad.c)
+else()
+    list(FILTER CLIENT_SOURCES EXCLUDE REGEX "SoundSystemAL\\.cpp$")
 endif()
-
 # Server
-if(UNIX)
+if(UNIX AND NOT ${PLATFORM} MATCHES "Web")
     add_executable("${PROJECT_NAME}-server" ${SERVER_SOURCES})
 
     target_compile_definitions("${PROJECT_NAME}-server" PUBLIC "STANDALONE_SERVER" "SERVER_PROFILER")
 
-    target_include_directories("${PROJECT_NAME}-server" PUBLIC 
+    target_include_directories("${PROJECT_NAME}-server" PUBLIC
         "${CMAKE_SOURCE_DIR}/glad/include/"
         "${CMAKE_SOURCE_DIR}/src/"
         "project/lib_projects/raknet/jni/RaknetSources"
@@ -334,19 +337,21 @@ add_executable(${PROJECT_NAME} ${CLIENT_SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PLATFORM_CPP})
 
-target_include_directories(${PROJECT_NAME} PUBLIC 
+target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_SOURCE_DIR}/glad/include/"
     "${CMAKE_SOURCE_DIR}/src"
-    "${openal_SOURCE_DIR}/include"
     "${glfw_SOURCE_DIR}/include"
     "lib/include"
 )
+if(NOT ${PLATFORM} MATCHES "Web")
+    target_include_directories(${PROJECT_NAME} PUBLIC "${openal_SOURCE_DIR}/include")
+endif()
 
 if(${PLATFORM} MATCHES "Web")
     set(CMAKE_CXX_STANDARD 11)
     # uuuh i hate it
-    set(EM_FLAGS "-pthread -sUSE_PTHREADS=1 -sUSE_LIBPNG=1 -sSHARED_MEMORY=1")
-    
+    set(EM_FLAGS "-sUSE_LIBPNG=1")
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EM_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EM_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EM_FLAGS} --preload-file ${CMAKE_SOURCE_DIR}/data@/data")
@@ -387,7 +392,11 @@ endif()
 
 # Client
 target_compile_definitions(${PROJECT_NAME} PUBLIC "OPENGL_ES" "NO_EGL" ${PLATFORM})
-target_link_libraries(${PROJECT_NAME} zlib ${PNG_LIB} OpenAL::OpenAL glfw ${EXTRA_LIBS})
+if(${PLATFORM} MATCHES "Web")
+    target_link_libraries(${PROJECT_NAME} zlib ${PNG_LIB} glfw ${EXTRA_LIBS})
+else()
+    target_link_libraries(${PROJECT_NAME} zlib ${PNG_LIB} OpenAL::OpenAL glfw ${EXTRA_LIBS})
+endif()
 
 if (OpenSSL_FOUND)
     target_link_libraries(${PROJECT_NAME} OpenSSL::SSL OpenSSL::Crypto)
@@ -396,22 +405,22 @@ endif()
 
 if (NOT UNIX)
     add_custom_command(
-        TARGET ${PROJECT_NAME} 
+        TARGET ${PROJECT_NAME}
         POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}> 
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>
             COMMAND_EXPAND_LISTS
     )
 endif()
 
 if(NOT ${PLATFORM} MATCHES "Web")
     add_custom_command(
-        TARGET ${PROJECT_NAME} 
+        TARGET ${PROJECT_NAME}
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/data" $<TARGET_FILE_DIR:${PROJECT_NAME}>/data
     )
 else()
     add_custom_command(
-        TARGET ${PROJECT_NAME} 
+        TARGET ${PROJECT_NAME}
         POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/misc/web/index.html" $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
