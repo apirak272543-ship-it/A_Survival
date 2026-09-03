@@ -295,6 +295,7 @@ file(GLOB CLIENT_SOURCES
     "src/world/level/tile/entity/*.cpp"
 
     "src/SharedConstants.cpp"
+    "src/obsidian/ObsidianRuntime.cpp"
     "src/main.cpp"
     "src/NinecraftApp.cpp"
 

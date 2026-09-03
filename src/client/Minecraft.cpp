@@ -1,4 +1,6 @@
 #include "Minecraft.h"
+#include "../obsidian/ObsidianRuntime.h"
+
 #include "Options.h"
 #include "client/Options.h"
 #include "client/player/input/IBuildInput.h"
@@ -122,7 +124,7 @@ int Minecraft::customDebugId = Minecraft::CDI_NONE;
 
 bool Minecraft::useAmbientOcclusion = false;
 
-Minecraft::Minecraft() :	
+Minecraft::Minecraft() :
 	level(NULL),
 	player(NULL),
 	cameraTargetPlayer(NULL),
@@ -242,6 +244,13 @@ Minecraft::~Minecraft()
 // Only called by server
 void Minecraft::selectLevel( const std::string& levelId, const std::string& levelName, const LevelSettings& settings )
 {
+	// A world without an id cannot be safely persisted or associated with the
+	// Obsidian runtime namespace. Reject it before allocating a Level.
+	if (levelId.empty()) {
+		LOGE("Obsidian runtime rejected an empty level id\n");
+		return;
+	}
+	LOGI("Obsidian level namespace: %s\n", ObsidianRuntime::storageNamespace(levelId).c_str());
 #if defined(CREATORMODE)
 	level = new CreatorLevel(
 #else
@@ -1311,7 +1320,7 @@ void Minecraft::_reloadInput() {
 	if (useTouchHolder) {
 		inputHolder = new TouchInputHolder(this, &options);
 	} else {
-#if defined(ANDROID) || defined(__APPLE__) 
+#if defined(ANDROID) || defined(__APPLE__)
 		inputHolder = new CustomInputHolder(
 			new XperiaPlayInput(&options),
 			new ControllerTurnInput(2, ControllerTurnInput::MODE_DELTA),
@@ -1361,7 +1370,7 @@ bool Minecraft::joinMultiplayer( const PingedCompatibleServer& server )
 }
 
 bool Minecraft::joinMultiplayerFromString( const std::string& server )
-{	
+{
 	std::string ip = "";
 	std::string port = "19132";
 
