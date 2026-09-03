@@ -16,8 +16,9 @@ class Inventory: public FillingContainer
 {
 	typedef FillingContainer super;
 public:
+	static const int INVENTORY_SIZE = 40; // Total player slots, including hotbar
 	static const int INVENTORY_SIZE_DEMO = 27;
-	static const int MAX_SELECTION_SIZE = 9; // Including "More..." right now
+	static const int MAX_SELECTION_SIZE = 9; // Hotbar/selection links
 	static const int POP_TIME_DURATION = 5;
 
     Inventory(Player* player, bool creativeMode);
@@ -29,7 +30,7 @@ public:
 	//
 	void			selectSlot(int slot);
     ItemInstance*	getSelected();
-    
+
 	static int		getSelectionSize();
 	// Special for this "selection based" inventory
 	bool			moveToSelectionSlot(int selectionSlot, int inventorySlot, bool propagate);

@@ -9,8 +9,8 @@
 #include "../../level/tile/SandStoneTile.h"
 
 Inventory::Inventory( Player* player, bool creativeMode )
-:   super(	36 + Inventory::MAX_SELECTION_SIZE,
-			MAX_SELECTION_SIZE,
+:   super(	Inventory::INVENTORY_SIZE,
+				MAX_SELECTION_SIZE,
 			ContainerType::INVENTORY,
 			creativeMode),
 	player(player),
@@ -143,7 +143,7 @@ void Inventory::setupDefault() {
 		addItem(new ItemInstance(Tile::sandStone, 1, 2));
 		addItem(new ItemInstance(Tile::sand));
 		addItem(new ItemInstance(Tile::gravel));
-		
+
 		Sel[7] = addItem(new ItemInstance(Tile::treeTrunk, 1, 0));
 		addItem(new ItemInstance(Tile::treeTrunk, 1, 1));
 		addItem(new ItemInstance(Tile::treeTrunk, 1, 2));
@@ -167,8 +167,8 @@ void Inventory::setupDefault() {
 		addItem(new ItemInstance(Tile::quartzBlock, 1, QuartzBlockTile::TYPE_LINES));
 		addItem(new ItemInstance(Tile::quartzBlock, 1, QuartzBlockTile::TYPE_CHISELED));
 
-		
-		
+
+
 		// Ores
 		addItem(new ItemInstance(Tile::coalOre));
 		addItem(new ItemInstance(Tile::ironOre));
@@ -187,7 +187,7 @@ void Inventory::setupDefault() {
         addItem(new ItemInstance(Tile::lightGem));
 
 		addItem(new ItemInstance(Tile::netherReactor));
-		
+
 		addItem(new ItemInstance(Tile::cloth, 1, 0));
 		addItem(new ItemInstance(Tile::cloth, 1, 7));
 		addItem(new ItemInstance(Tile::cloth, 1, 6));
