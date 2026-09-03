@@ -120,6 +120,7 @@ file(GLOB SERVER_SOURCES
     "src/obsidian/ObsidianRuntime.cpp"
     "src/obsidian/PlantRegistry.cpp"
     "src/obsidian/PerformanceProfile.cpp"
+    "src/obsidian/QuestProgression.cpp"
 
     "src/client/IConfigListener.cpp"
     "src/client/Minecraft.cpp"
@@ -300,6 +301,7 @@ file(GLOB CLIENT_SOURCES
     "src/obsidian/ObsidianRuntime.cpp"
     "src/obsidian/PlantRegistry.cpp"
     "src/obsidian/PerformanceProfile.cpp"
+    "src/obsidian/QuestProgression.cpp"
     "src/main.cpp"
     "src/NinecraftApp.cpp"
 
