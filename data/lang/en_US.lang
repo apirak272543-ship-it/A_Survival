@@ -148,7 +148,7 @@ options.group.mojang=Login
 options.group.general=General
 options.group.game=Game
 options.group.controls=Controls
-options.group.graphics=Graphics
+options.group.graphics=Frontier Performance
 options.group.tweaks=Tweaks
 options.allowSprint=Allow sprint
 options.barOnTop=HUD above inventory
@@ -175,7 +175,7 @@ options.betaSky=Java Beta Sky
 
 options.restoredAnims=Restored Animations
 
-options.normalLighting=Java Beta/Normals Shading
+options.normalLighting=Enhanced lighting
 
 options.isJoyTouchArea=Use Split Controls
 
@@ -194,7 +194,7 @@ options.viewBobbing=View Bobbing
 options.ao=Smooth Lighting
 options.anaglyph=3D Anaglyph
 options.framerateLimit=Performance
-options.limitFramerate=Limit Framerate
+options.limitFramerate=Frame-rate limit
 options.vsync=VSync
 options.difficulty=Difficulty
 options.difficulty.peaceful=Peaceful
@@ -225,7 +225,7 @@ options.smoothCamera=Smooth camera
 options.destroyVibration=Destroy vibration
 options.isLeftHanded=Left handed
 options.useTouchscreen=Use touchscreen
-options.fancyGraphics=Fancy graphics
+options.fancyGraphics=High-quality rendering
 options.renderDebug=Debug render
 options.anaglyph3d=3D anaglyph
 
