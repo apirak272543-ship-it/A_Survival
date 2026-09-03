@@ -16,12 +16,13 @@
       width: 100vw;
       height: 100vh;
       display: block;
+      outline: none;
     }
   </style>
 </head>
 <body>
 
-<canvas id="canvas"></canvas>
+<canvas id="canvas" tabindex="0" aria-label="Obsidian Frontier game canvas"></canvas>
 
 <script>
   var Module = {
@@ -35,7 +36,13 @@
     canvas.height = window.innerHeight;
   }
 
+  function focusGameCanvas() {
+    Module.canvas.focus({ preventScroll: true });
+  }
+
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('pointerdown', focusGameCanvas);
+  window.addEventListener('load', focusGameCanvas);
   window.addEventListener('onunload', () => {
     FS.syncfs(true, function (err) { console.log('Sync FS failed: ' + err) });
   })

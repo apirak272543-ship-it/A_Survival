@@ -1,8 +1,4 @@
-# Web Browser Smoke
 
-วันที่ตรวจ: 2026-09-03
-URL: `http://localhost:4173/`
+## Retest หลัง canvas focus bridge
 
-Web artifact จาก `build-web` โหลดใน Chromium ได้จริงและแสดง native canvas ที่หน้า username screen พร้อม texture background, username field และปุ่ม Done ขนาด viewport 893×893
-
-การส่ง keyboard events จาก browser console เข้า canvas/body ยังไม่ทำให้ข้อความปรากฏในช่อง username เนื่องจากระบบ input ของ legacy canvas ใช้ event/focus path เฉพาะ จึงยืนยันได้เพียง `browser_load=PASS` และ `username_screen=PASS`; `username_entry=UNVERIFIED` และ `world_entry=UNVERIFIED`
+เพิ่ม `tabindex`, `aria-label`, focus on load และ focus on pointerdown ใน `misc/web/index.html` แล้วคัดลอก wrapper ไปยัง `build-web` จากนั้น reload browser สำเร็จและยังแสดง username screen ได้ตามปกติ การกด `O` ผ่าน browser automation ยังไม่ทำให้ข้อความใน TextBox เปลี่ยน จึงยังต้องตรวจ GLFW/Emscripten keyboard event bridge เพิ่มเติมก่อนยืนยัน username entry
