@@ -71,6 +71,10 @@ NinecraftApp::~NinecraftApp()
 void NinecraftApp::init()
 {
 	// Global initialization goes here
+	if (!ObsidianRuntime::acceptsMapId(ObsidianRuntime::RUNTIME_MAP_ID)) {
+		LOGE("Obsidian runtime identity validation failed\n");
+		return;
+	}
 	LOGI("Obsidian runtime map: %s\n", ObsidianRuntime::RUNTIME_MAP_ID);
 	Mth::initMth();
 
@@ -364,7 +368,7 @@ void NinecraftApp::testCreationAndDestruction()
 void NinecraftApp::testJoiningAndDestruction()
 {
 	if (_state == -1) {
-		//LightUpdate sz[2] = {	LightUpdate(LightLayer::Block, 0, 0, 0, 1, 1, 1), 
+		//LightUpdate sz[2] = {	LightUpdate(LightLayer::Block, 0, 0, 0, 1, 1, 1),
 		//						LightUpdate(LightLayer::Sky, 0, 0, 0, 1, 1, 1) };
 		//LOGI("size of lightupdate: %lu == %d\n", sizeof(LightUpdate), (const char*)&sz[1] - (const char*)&sz[0]);
 		_stateTicksLeft = 100;
