@@ -1,6 +1,7 @@
 #include "CropTile.h"
 #include "Tile.h"
 #include "../../entity/item/ItemEntity.h"
+#include "../../../obsidian/PlantRegistry.h"
 
 CropTile::CropTile( int id, int tex ) : super(id, tex) {
 	this->tex = tex;
@@ -13,7 +14,13 @@ void CropTile::tick( Level* level, int x, int y, int z, Random* random ) {
 	super::tick(level, x, y, z, random);
 	if(level->getRawBrightness(x, y, z) >= Level::MAX_BRIGHTNESS - 6) {
 		int age = level->getData(x, y, z);
-		if(age < 7) {
+		const ObsidianRuntime::PlantDefinition* definition =
+			ObsidianRuntime::findPlantDefinition("wheat");
+		const int maxStage = definition &&
+			ObsidianRuntime::isValidPlantDefinition(*definition) ?
+			definition->maxStage : 7;
+		if (age < 0) age = 0;
+		if(age < maxStage) {
 			float growthSpeed = getGrowthSpeed(level, x, y, z);
 			if(random->nextInt(int(25 / growthSpeed)) == 0) {
 				age++;
@@ -24,7 +31,12 @@ void CropTile::tick( Level* level, int x, int y, int z, Random* random ) {
 }
 
 void CropTile::growCropsToMax( Level* level, int x, int y, int z ) {
-	level->setData(x, y, z, 7);
+	const ObsidianRuntime::PlantDefinition* definition =
+		ObsidianRuntime::findPlantDefinition("wheat");
+	const int maxStage = definition &&
+		ObsidianRuntime::isValidPlantDefinition(*definition) ?
+		definition->maxStage : 7;
+	level->setData(x, y, z, maxStage);
 }
 
 float CropTile::getGrowthSpeed( Level* level, int x, int y, int z ) {
@@ -66,12 +78,24 @@ float CropTile::getGrowthSpeed( Level* level, int x, int y, int z ) {
 
 int CropTile::getTexture( LevelSource* level, int x, int y, int z, int face ) {
 	int data = level->getData(x, y, z);
-	if (data < 0) data = 7;
+	const ObsidianRuntime::PlantDefinition* definition =
+		ObsidianRuntime::findPlantDefinition("wheat");
+	const int maxStage = definition &&
+		ObsidianRuntime::isValidPlantDefinition(*definition) ?
+		definition->maxStage : 7;
+	if (data < 0) data = 0;
+	if (data > maxStage) data = maxStage;
 	return tex + data;
 }
 
 int CropTile::getTexture( int face, int data ) {
-	if (data < 0) data = 7;
+	const ObsidianRuntime::PlantDefinition* definition =
+		ObsidianRuntime::findPlantDefinition("wheat");
+	const int maxStage = definition &&
+		ObsidianRuntime::isValidPlantDefinition(*definition) ?
+		definition->maxStage : 7;
+	if (data < 0) data = 0;
+	if (data > maxStage) data = maxStage;
 	return tex + data;
 }
 
