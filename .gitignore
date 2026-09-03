@@ -118,4 +118,5 @@ client/public/__manus__/version.json
 
 # Native build/runtime outputs
 build-native/
+build-web/
 options.txt
