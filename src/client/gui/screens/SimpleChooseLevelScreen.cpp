@@ -19,8 +19,8 @@ SimpleChooseLevelScreen::SimpleChooseLevelScreen(const std::string& levelName)
     hasChosen(false),
     gamemode(GameType::Survival),
     cheatsEnabled(false),
-    tLevelName(0, "World name"),
-    tSeed(1, "World seed")
+    tLevelName(0, "Expedition name"),
+    tSeed(1, "Frontier seed")
 {
 }
 
@@ -42,10 +42,10 @@ void SimpleChooseLevelScreen::init()
     // first") when the name already existed.
     ChooseLevelScreen::init();
 
-    tLevelName.text = "New world";
+    tLevelName.text = "New expedition";
 
     // header + close button
-    bHeader = new Touch::THeader(0, "Create World");
+    bHeader = new Touch::THeader(0, "Create Expedition");
     // create the back/X button as ImageButton like CreditsScreen
     bBack = new ImageButton(2, "");
     {
@@ -57,13 +57,13 @@ void SimpleChooseLevelScreen::init()
         bBack->setImageDef(def, true);
     }
     if (/* minecraft->useTouchscreen() */ true) {
-        bGamemode = new Touch::TButton(1, "Survival mode");
+        bGamemode = new Touch::TButton(1, "Survival expedition");
         bCheats  = new Touch::TButton(4, "Cheats: Off");
-        bCreate  = new Touch::TButton(3, "Create");
+        bCreate  = new Touch::TButton(3, "Begin");
     } else {
-        bGamemode = new Button(1, "Survival mode");
+        bGamemode = new Button(1, "Survival expedition");
         bCheats  = new Button(4, "Cheats: Off");
-        bCreate  = new Button(3, "Create");
+        bCreate  = new Button(3, "Begin");
     }
 
     buttons.push_back(bHeader);
@@ -150,16 +150,16 @@ void SimpleChooseLevelScreen::render( int xm, int ym, float a )
 
     const char* modeDesc = NULL;
     if (gamemode == GameType::Survival) {
-        modeDesc = "Mobs, health and gather resources";
+        modeDesc = "Gather resources, manage health, and survive the frontier";
     } else if (gamemode == GameType::Creative) {
-        modeDesc = "Unlimited resources and flying";
+        modeDesc = "Build freely with unlimited resources";
     }
     if (modeDesc) {
         drawCenteredString(minecraft->font, modeDesc, width / 2, bGamemode->y + bGamemode->height + 4, 0xffcccccc);
     }
 
-    drawString(minecraft->font, "World name:", tLevelName.x, tLevelName.y - Font::DefaultLineHeight - 2, 0xffcccccc);
-    drawString(minecraft->font, "World seed:", tSeed.x, tSeed.y - Font::DefaultLineHeight - 2, 0xffcccccc);
+    drawString(minecraft->font, "Expedition name:", tLevelName.x, tLevelName.y - Font::DefaultLineHeight - 2, 0xffcccccc);
+    drawString(minecraft->font, "Frontier seed:", tSeed.x, tSeed.y - Font::DefaultLineHeight - 2, 0xffcccccc);
 
     Screen::render(xm, ym, a);
     glDisable2(GL_BLEND);
@@ -208,7 +208,7 @@ void SimpleChooseLevelScreen::buttonClicked( Button* button )
 
     if (button == bGamemode) {
         gamemode ^= 1;
-        bGamemode->msg = (gamemode == GameType::Survival) ? "Survival mode" : "Creative mode";
+        bGamemode->msg = (gamemode == GameType::Survival) ? "Survival expedition" : "Creative expedition";
         return;
     }
 
@@ -256,5 +256,5 @@ void SimpleChooseLevelScreen::keyPressed(int eventKey)
 bool SimpleChooseLevelScreen::handleBackEvent(bool isDown) {
 	if (!isDown)
 		minecraft->screenChooser.setScreen(SCREEN_STARTMENU);
-	return true; 
+	return true;
 }
