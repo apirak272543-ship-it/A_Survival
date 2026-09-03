@@ -58,6 +58,13 @@ void character_callback(GLFWwindow* window, unsigned int codepoint) {
 	Keyboard::feedText(codepoint);
 }
 
+#ifdef __EMSCRIPTEN__
+extern "C" void obsidianWebFeedText(int codepoint) {
+	if (codepoint >= 32 && codepoint < 127)
+		Keyboard::feedText(static_cast<char>(codepoint));
+}
+#endif
+
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 	static double lastX = 0.0, lastY = 0.0;
 	static bool firstMouse = true;
@@ -76,7 +83,7 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 
 	if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
 		Mouse::feed(0, 0, xpos, ypos, deltaX, deltaY);
-	} else { 
+	} else {
 		Mouse::feed( MouseAction::ACTION_MOVE, 0, xpos, ypos);
 	}
 	Multitouch::feed(0, 0, xpos, ypos, 0);
@@ -169,7 +176,7 @@ int main(void) {
 	AppPlatform_glfw* platform = (AppPlatform_glfw*)appContext.platform;
 
 	platform->window = glfwCreateWindow(appContext.platform->getScreenWidth(), appContext.platform->getScreenHeight(), "Minecraft PE 0.6.1", NULL, NULL);
-	
+
 	if (platform->window == NULL) {
 		return 1;
 	}
@@ -214,7 +221,7 @@ int main(void) {
 #endif
 
 	appContext.platform->finish();
-	
+
 	delete appContext.platform;
 
 	return 0;

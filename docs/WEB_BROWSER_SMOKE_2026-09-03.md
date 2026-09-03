@@ -6,3 +6,9 @@
 ## Console evidence
 
 Browser console ยืนยัน `Obsidian runtime map: obsidian-frontier`, สร้างโฟลเดอร์ IDBFS สำหรับ worlds สำเร็จ และ render loop รายงานประมาณ 40–50 FPS อย่างต่อเนื่อง โดยระบบตรวจ `IS TOUCHSCREEN? 1` ใน browser session มี warning เดิมของ legacy tile category บางรายการ (`tile.hellrock`, `tile.grass` และรายการว่าง) แต่ไม่พบ JavaScript exception ที่หยุด runtime
+
+## Character bridge retest result
+
+เพิ่ม C ABI `obsidianWebFeedText`, export function ใน Web target, browser `keypress` fallback และ auto-focus ใน `UsernameScreen` แล้ว rebuild Web artifact สำเร็จ `[363/363]` หลัง reload browser สามารถส่ง character `O` เข้า TextBox ได้จริง เห็นข้อความ `O` ในช่อง username และกด `Enter` ผ่านไปยัง native start menu ได้จริง
+
+ผลล่าสุด: `web_load=PASS`, `username_input=PASS`, `username_to_start_menu=PASS`, `world_entry=UNVERIFIED`

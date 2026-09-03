@@ -25,6 +25,8 @@ void UsernameScreen::init()
     tabButtons.push_back(&_btnDone);
     textBoxes.push_back(&tUsername);
     setupPositions();
+    // Focus immediately so keyboard/character input works consistently on desktop and Web.
+    tUsername.setFocus(minecraft);
 }
 
 void UsernameScreen::setupPositions()

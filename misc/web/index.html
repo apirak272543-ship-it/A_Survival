@@ -43,6 +43,13 @@
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('pointerdown', focusGameCanvas);
   window.addEventListener('load', focusGameCanvas);
+  window.addEventListener('keypress', function (event) {
+    if (event.ctrlKey || event.metaKey || !event.charCode) return;
+    if (typeof Module._obsidianWebFeedText === 'function') {
+      Module._obsidianWebFeedText(event.charCode);
+      event.preventDefault();
+    }
+  }, true);
   window.addEventListener('onunload', () => {
     FS.syncfs(true, function (err) { console.log('Sync FS failed: ' + err) });
   })
