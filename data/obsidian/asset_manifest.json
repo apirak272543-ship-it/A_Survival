@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "packId": "obsidian-frontier-base",
+  "runtimeMapId": "obsidian-frontier",
+  "policy": {
+    "generatedAssetsMustDeclareSource": true,
+    "legacyAssetsMustRemainAttributable": true,
+    "runtimeMustNotGenerateTextures": true
+  },
+  "packs": [
+    {
+      "id": "a-survival-original",
+      "kind": "original",
+      "status": "reserved",
+      "path": "data/obsidian/original",
+      "credit": "A_Survival / Obsidian Frontier"
+    },
+    {
+      "id": "mcpe-native-foundation",
+      "kind": "legacy-foundation",
+      "status": "inherited",
+      "path": "data/images",
+      "credit": "See repository source and upstream attribution"
+    }
+  ]
+}
