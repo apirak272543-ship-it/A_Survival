@@ -118,6 +118,7 @@ file(GLOB SERVER_SOURCES
     "src/Performance.cpp"
     "src/SharedConstants.cpp"
     "src/obsidian/ObsidianRuntime.cpp"
+    "src/obsidian/PlantRegistry.cpp"
 
     "src/client/IConfigListener.cpp"
     "src/client/Minecraft.cpp"
@@ -296,6 +297,7 @@ file(GLOB CLIENT_SOURCES
 
     "src/SharedConstants.cpp"
     "src/obsidian/ObsidianRuntime.cpp"
+    "src/obsidian/PlantRegistry.cpp"
     "src/main.cpp"
     "src/NinecraftApp.cpp"
 
