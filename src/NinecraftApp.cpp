@@ -1,4 +1,5 @@
 #include "NinecraftApp.h"
+#include "obsidian/ObsidianRuntime.h"
 //#include <EGL/egl.h>
 
 #ifdef RPI
@@ -70,6 +71,7 @@ NinecraftApp::~NinecraftApp()
 void NinecraftApp::init()
 {
 	// Global initialization goes here
+	LOGI("Obsidian runtime map: %s\n", ObsidianRuntime::RUNTIME_MAP_ID);
 	Mth::initMth();
 
 	//#ifdef DEMO_MODE

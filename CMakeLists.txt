@@ -117,6 +117,7 @@ file(GLOB SERVER_SOURCES
     "src/NinecraftApp.cpp"
     "src/Performance.cpp"
     "src/SharedConstants.cpp"
+    "src/obsidian/ObsidianRuntime.cpp"
 
     "src/client/IConfigListener.cpp"
     "src/client/Minecraft.cpp"

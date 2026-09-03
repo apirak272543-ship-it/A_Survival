@@ -115,3 +115,7 @@ client/public/__manus__/version.json
 
 # Local audit quarantine (user-provided archives and extracted review copies)
 .audit/
+
+# Native build/runtime outputs
+build-native/
+options.txt
