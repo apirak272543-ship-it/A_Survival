@@ -21,7 +21,7 @@
 
 namespace Touch {
 
-// 
+//
 // Start menu screen implementation
 //
 
@@ -80,7 +80,7 @@ void StartMenuScreen::init()
 		tabButtons.push_back(&bBuy);
 	#endif
 
-	copyright = "\xffMojang AB";//. Do not distribute!";
+	copyright = "Obsidian Frontier / A_Survival";
 
 	// always show base version string
 	std::string versionString = Common::getGameVersionString();
@@ -99,7 +99,7 @@ void StartMenuScreen::init()
 	#else
 		version = versionString;
 	#endif
-    
+
     #ifdef APPLE_DEMO_PROMOTION
         version = versionString + " (Demo)";
     #endif
@@ -108,9 +108,11 @@ void StartMenuScreen::init()
 }
 
 void StartMenuScreen::setupPositions() {
-	int yBase = 2 + height / 3;
+	const int safeMargin = 8;
+	int yBase = safeMargin + height / 3;
 	int buttonWidth = bHost.width;
-	float spacing = (width - (3.0f * buttonWidth)) / 4;
+	float spacing = (width - (2.0f * safeMargin) - (3.0f * buttonWidth)) / 4;
+	if (spacing < 4) spacing = 4;
 
 	//#ifdef ANDROID
 	bHost.y =	 yBase;
@@ -119,15 +121,15 @@ void StartMenuScreen::setupPositions() {
 	//#endif
 
 	// Center buttons
-	bJoin.x		= 0*buttonWidth + (int)(1*spacing);
-	bHost.x		= 1*buttonWidth + (int)(2*spacing);
-	bOptions.x	= 2*buttonWidth + (int)(3*spacing);
-    
-	// quit icon top-right (use size assigned in init)
-	bQuit.x = width - bQuit.width;
-	bQuit.y = 0;
+	bJoin.x		= safeMargin + 0*buttonWidth + (int)(1*spacing);
+	bHost.x		= safeMargin + 1*buttonWidth + (int)(2*spacing);
+	bOptions.x	= safeMargin + 2*buttonWidth + (int)(3*spacing);
 
-	copyrightPosX = width - minecraft->font->width(copyright) - 1;
+	// quit icon top-right (use size assigned in init)
+	bQuit.x = width - bQuit.width - safeMargin;
+	bQuit.y = safeMargin;
+
+	copyrightPosX = width - minecraft->font->width(copyright) - safeMargin;
 	versionPosX = (width - minecraft->font->width(version)) / 2;// - minecraft->font->width(version) - 2;
 }
 
@@ -168,7 +170,7 @@ void StartMenuScreen::render( int xm, int ym, float a )
 
 	// Show current username in the top-left corner
 	drawString(font, username, 2, 2, 0xffffffff);
-    
+
     glEnable2(GL_BLEND);
 
 #if defined(RPI)
@@ -202,7 +204,7 @@ void StartMenuScreen::render( int xm, int ym, float a )
 		glColor4f2(1, 1, 1, 1);
 		if (Textures::isTextureIdValid(minecraft->textures->loadAndBindTexture("gui/logo/github.png")))
 			blit(2, height - 10, 0, 0, 8, 8, 256, 256);
-		drawString(font, "Kolyah35/minecraft-pe-0.6.1", 12, height - 10, 0xffcccccc);
+		drawString(font, "A_Survival / Obsidian Frontier", 12, height - 10, 0xffcccccc);
 		//patch->draw(t, 0, 20);
 	}
 	Screen::render(xm, ym, a);
@@ -212,11 +214,11 @@ void StartMenuScreen::render( int xm, int ym, float a )
 
 void StartMenuScreen::mouseClicked(int x, int y, int buttonNum) {
 	const int logoX = 2;
-	const int logoW = 8 + 2 + font->width("Kolyah35/minecraft-pe-0.6.1");
+	const int logoW = 8 + 2 + font->width("A_Survival / Obsidian Frontier");
 	const int logoY = height - 10;
 	const int logoH = 10;
 	if (x >= logoX && x <= logoX + logoW && y >= logoY && y <= logoY + logoH)
-		minecraft->platform()->openURL("https://gitea.sffempire.ru/Kolyah35/minecraft-pe-0.6.1");
+		minecraft->platform()->openURL("https://github.com/apirak272543-ship-it/A_Survival");
 	else
 		Screen::mouseClicked(x, y, buttonNum);
 }
