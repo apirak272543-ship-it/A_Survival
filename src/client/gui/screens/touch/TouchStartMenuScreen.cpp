@@ -164,6 +164,14 @@ void StartMenuScreen::buttonClicked(::Button* button) {
 
 bool StartMenuScreen::isInGameScreen() { return false; }
 
+void StartMenuScreen::keyPressed(int eventKey) {
+    if (eventKey == Keyboard::KEY_RETURN) {
+        buttonClicked(&bHost);
+        return;
+    }
+    Screen::keyPressed(eventKey);
+}
+
 void StartMenuScreen::render( int xm, int ym, float a )
 {
 	renderBackground();

@@ -12,3 +12,9 @@ Browser console ยืนยัน `Obsidian runtime map: obsidian-frontier`, �
 เพิ่ม C ABI `obsidianWebFeedText`, export function ใน Web target, browser `keypress` fallback และ auto-focus ใน `UsernameScreen` แล้ว rebuild Web artifact สำเร็จ `[363/363]` หลัง reload browser สามารถส่ง character `O` เข้า TextBox ได้จริง เห็นข้อความ `O` ในช่อง username และกด `Enter` ผ่านไปยัง native start menu ได้จริง
 
 ผลล่าสุด: `web_load=PASS`, `username_input=PASS`, `username_to_start_menu=PASS`, `world_entry=UNVERIFIED`
+
+## Start Game transition result
+
+หลังเพิ่ม `Touch::StartMenuScreen::keyPressed` ให้ Enter เรียก `bHost` ผ่าน `buttonClicked` เดิม และ rebuild Web artifact สำเร็จ การส่ง Enter ผ่าน browser เปิดหน้า `Select world` ได้จริง เห็นปุ่ม `Create new` และรายการ world ว่าง
+
+ผลล่าสุด: `web_load=PASS`, `username_input=PASS`, `username_to_start_menu=PASS`, `start_menu_to_select_world=PASS`, `world_creation=UNVERIFIED`
