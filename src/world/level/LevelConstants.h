@@ -3,7 +3,12 @@
 
 
 const int LEVEL_HEIGHT = 128;
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+// Keep the first browser world responsive when generation is synchronous.
+const int CHUNK_CACHE_WIDTH = 4;
+#else
 const int CHUNK_CACHE_WIDTH = 16; // in chunks
+#endif
 const int CHUNK_WIDTH = 16; // in blocks
 const int CHUNK_DEPTH = 16;
 const int LEVEL_WIDTH = CHUNK_CACHE_WIDTH * CHUNK_WIDTH;

@@ -290,10 +290,13 @@ void Minecraft::setLevel(Level* level, const std::string& message /* ="" */, Loc
 		}
 		this->level = level;
 		_hasSignaledGeneratingLevelFinished = false;
-#ifdef STANDALONE_SERVER
-		const bool threadedLevelCreation = false;
+#if defined(STANDALONE_SERVER) || defined(__EMSCRIPTEN__)
+			// Web builds intentionally avoid detached pthreads. Generate the first
+			// cached area synchronously so the browser cannot remain locked in the
+			// loading state when pthreads are unavailable.
+			const bool threadedLevelCreation = false;
 #else
-		const bool threadedLevelCreation = true;
+			const bool threadedLevelCreation = true;
 #endif
 
 		if (threadedLevelCreation) {
