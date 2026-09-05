@@ -44,7 +44,7 @@ void TouchWorldSelectionList::selectItem( int item, bool doubleClick ) {
 		return;
 
 	const int delta = item - selectedItem;
-	
+
 	if (delta == -1)
 		stepLeft();
 	if (delta == +1)
@@ -200,7 +200,7 @@ void TouchWorldSelectionList::tick()
 		return;
 
 	// Handle the tween (when in "mode 1")
-	selectedItem = -1; 
+	selectedItem = -1;
 	if (mode == 1) {
 		if (++td.cur == td.dur) {
 			mode = 0;
@@ -430,7 +430,7 @@ void SelectWorldScreen::tick()
 			if (status > -1) {
 				if (status == 1) {
 					StringVector sv = minecraft->platform()->getUserInput();
-					
+
 					// Read the level name.
 					// 1) Trim name 2) Remove all bad chars 3) Append '-' chars 'til the name is unique
 					std::string levelName = Util::stringTrim(sv[0]);
@@ -571,6 +571,11 @@ bool SelectWorldScreen::isInGameScreen() { return true;  }
 
 void SelectWorldScreen::keyPressed( int eventKey )
 {
+	if (eventKey == Keyboard::KEY_RETURN) {
+		buttonClicked(&bCreate);
+		return;
+	}
+
 	if (bWorldView.selected) {
 		if (eventKey == minecraft->options.getIntValue(OPTIONS_KEY_LEFT))
 			worldsList->stepLeft();
