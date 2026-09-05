@@ -14,7 +14,14 @@ int main()
     for (std::size_t i = 0; i < count; ++i)
         assert(ObsidianRuntime::isValidPlantDefinition(definitions[i]));
 
-    assert(ObsidianRuntime::findPlantDefinition("wheat") != NULL);
+    const ObsidianRuntime::PlantDefinition* wheat =
+        ObsidianRuntime::findPlantDefinition("wheat");
+    const ObsidianRuntime::PlantDefinition* emberroot =
+        ObsidianRuntime::findPlantDefinition("emberroot");
+    assert(wheat != NULL);
+    assert(wheat->maxStage == 7);
+    assert(emberroot != NULL);
+    assert(emberroot->maxStage == 5);
     assert(ObsidianRuntime::findPlantDefinition("obsidian_bloom") != NULL);
     assert(ObsidianRuntime::findPlantDefinition("missing") == NULL);
     assert(ObsidianRuntime::findPlantDefinition(NULL) == NULL);

@@ -122,7 +122,12 @@ void CropTile::spawnResources( Level* level, int x, int y, int z, int data, floa
 }
 
 int CropTile::getResource( int data, Random* random ) {
-	if (data == 7) {
+	const ObsidianRuntime::PlantDefinition* definition =
+		ObsidianRuntime::findPlantDefinition("wheat");
+	const int maxStage = definition &&
+		ObsidianRuntime::isValidPlantDefinition(*definition) ?
+		definition->maxStage : 7;
+	if (data >= maxStage) {
 		return Item::wheat->id;
 	}
 	return -1;
