@@ -83,17 +83,18 @@ void SimpleChooseLevelScreen::init()
 
 void SimpleChooseLevelScreen::setupPositions()
 {
+    const int safeMargin = 8;
     int buttonHeight = bBack->height;
 
     // position back button in upper-right
-    bBack->x = width - bBack->width;
-    bBack->y = 0;
+    bBack->x = width - bBack->width - safeMargin;
+    bBack->y = safeMargin;
 
     // header occupies remaining top bar
     if (bHeader) {
-        bHeader->x = 0;
-        bHeader->y = 0;
-        bHeader->width = width - bBack->width;
+        bHeader->x = safeMargin;
+        bHeader->y = safeMargin;
+        bHeader->width = width - bBack->width - (2 * safeMargin);
         bHeader->height = buttonHeight;
     }
 
@@ -132,7 +133,7 @@ void SimpleChooseLevelScreen::setupPositions()
 
     bCreate->width = 100;
     bCreate->x = centerX - bCreate->width / 2;
-    int bottomPadding = 20;
+    int bottomPadding = 20 + safeMargin;
     bCreate->y = height - bottomPadding - bCreate->height;
 }
 

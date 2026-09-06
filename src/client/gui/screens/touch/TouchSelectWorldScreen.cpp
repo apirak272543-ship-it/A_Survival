@@ -330,18 +330,19 @@ void SelectWorldScreen::init()
 }
 
 void SelectWorldScreen::setupPositions() {
+	const int safeMargin = 8;
 	//#ifdef ANDROID
-	bCreate.y =	0;
-	bBack.y   = 0;
+	bCreate.y =	safeMargin;
+	bBack.y   = safeMargin;
 	bHeader.y = 0;
 	bDelete.y = height - 30;
 
 	// Center buttons
 	bDelete.x   = (width - bDelete.width) / 2;
-	bCreate.x   = width - bCreate.width;//width / 2					- bCreate.w / 2;
-	bBack.x     = 0;//width / 2 + 4 + bCreate.w - bBack.w / 2;
-	bHeader.x   = bBack.width;
-	bHeader.width   = width - (bBack.width + bCreate.width);
+	bCreate.x   = width - bCreate.width - safeMargin;//width / 2					- bCreate.w / 2;
+	bBack.x     = safeMargin;//width / 2 + 4 + bCreate.w - bBack.w / 2;
+	bHeader.x   = bBack.x + bBack.width;
+	bHeader.width   = width - (bHeader.x + bCreate.width + safeMargin);
 	bHeader.height   = bCreate.height;
 }
 
