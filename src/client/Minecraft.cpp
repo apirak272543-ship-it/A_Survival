@@ -247,9 +247,12 @@ void Minecraft::selectLevel( const std::string& levelId, const std::string& leve
 	// A world without an id cannot be safely persisted or associated with the
 	// Obsidian runtime namespace. Reject it before allocating a Level.
 	if (levelId.empty()) {
-		LOGE("Obsidian runtime rejected an empty level id\n");
-		return;
-	}
+			LOGE("Obsidian runtime rejected an empty level id\n");
+			return;
+		}
+	// Progression is scoped to the active expedition. Persistent save/load
+	// serialization can be layered on this owner without rebuilding registries.
+	progressionState_.reset();
 	LOGI("Obsidian level namespace: %s\n", ObsidianRuntime::storageNamespace(levelId).c_str());
 #if defined(CREATORMODE)
 	level = new CreatorLevel(

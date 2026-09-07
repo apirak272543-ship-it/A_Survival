@@ -41,6 +41,7 @@ struct PingedCompatibleServer;
 
 
 #include "../App.h"
+#include "obsidian/ProgressionState.h"
 #include "PixelCalc.h"
 class AppPlatform;
 class AppPlatform_android;
@@ -115,7 +116,10 @@ public:
 	// void onGraphicsLost() {}
 	void onGraphicsReset();
 
-	bool isLevelGenerated();
+		bool isLevelGenerated();
+
+	ObsidianRuntime::ProgressionState& progressionState() { return progressionState_; }
+	const ObsidianRuntime::ProgressionState& progressionState() const { return progressionState_; }
 
 	void handleMouseDown(int button, bool down);
 	
@@ -193,8 +197,9 @@ public:
 #endif
 	bool mouseGrabbed;
 
-    PixelCalc pixelCalc;
-    PixelCalc pixelCalcUi;
+	PixelCalc pixelCalc;
+	PixelCalc pixelCalcUi;
+	ObsidianRuntime::ProgressionState progressionState_;
 
 	HitResult hitResult;
 	volatile int progressStagePercentage;

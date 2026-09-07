@@ -124,6 +124,7 @@ file(GLOB SERVER_SOURCES
     "src/obsidian/PerformanceProfile.cpp"
     "src/obsidian/QuestProgression.cpp"
     "src/obsidian/CodexRegistry.cpp"
+    "src/obsidian/ProgressionState.cpp"
 
     "src/client/IConfigListener.cpp"
     "src/client/Minecraft.cpp"
@@ -306,6 +307,7 @@ file(GLOB CLIENT_SOURCES
     "src/obsidian/PerformanceProfile.cpp"
     "src/obsidian/QuestProgression.cpp"
     "src/obsidian/CodexRegistry.cpp"
+    "src/obsidian/ProgressionState.cpp"
     "src/main.cpp"
     "src/NinecraftApp.cpp"
 

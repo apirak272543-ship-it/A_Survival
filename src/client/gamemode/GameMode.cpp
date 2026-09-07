@@ -6,6 +6,7 @@
 #include "../../world/item/ItemInstance.h"
 #include "../player/LocalPlayer.h"
 #include "client/Options.h"
+#include "../../obsidian/PlantRegistry.h"
 #ifndef STANDALONE_SERVER
 #include "../sound/SoundEngine.h"
 #include "../particle/ParticleEngine.h"
@@ -74,8 +75,20 @@ bool GameMode::destroyBlock(int x, int y, int z, int face) {
 #ifndef STANDALONE_SERVER
         minecraft->soundEngine->play(oldTile->soundType->getBreakSound(), x + 0.5f, y + 0.5f, z + 0.5f, (oldTile->soundType->getVolume() + 1) / 2, oldTile->soundType->getPitch() * 0.8f);
 #endif
-        oldTile->destroy(level, x, y, z, data);
-		if (minecraft->options.getBooleanValue(OPTIONS_DESTROY_VIBRATION)) minecraft->platform()->vibrate(24);
+        		oldTile->destroy(level, x, y, z, data);
+			minecraft->progressionState().advanceQuest("frontier_arrival");
+			if (oldTile == Tile::crops) {
+				const ObsidianRuntime::PlantDefinition* wheat =
+					ObsidianRuntime::findPlantDefinition("wheat");
+				const int maxStage = wheat &&
+					ObsidianRuntime::isValidPlantDefinition(*wheat) ?
+					wheat->maxStage : 7;
+				if (data >= maxStage) {
+					minecraft->progressionState().advanceQuest("first_green");
+					minecraft->progressionState().discoverCodex("wheat");
+				}
+			}
+			if (minecraft->options.getBooleanValue(OPTIONS_DESTROY_VIBRATION)) minecraft->platform()->vibrate(24);
 
 		if (minecraft->isOnline()) {
 			RemoveBlockPacket packet(minecraft->player, x, y, z);

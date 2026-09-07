@@ -8,6 +8,8 @@
 #include "client/Options.h"
 #include "client/gui/components/Button.h"
 #include "client/gui/screens/OptionsScreen.h"
+#include "../../../obsidian/QuestProgression.h"
+#include <cstdio>
 
 PauseScreen::PauseScreen(bool wasBackPaused)
 	:	saveStep(0),
@@ -180,6 +182,20 @@ void PauseScreen::render(int xm, int ym, float a) {
 	//}
 
 	drawCenteredString(font, "Game menu", width / 2, 24, 0xffffff);
+
+	const ObsidianRuntime::QuestDefinition* activeQuest =
+		ObsidianRuntime::findQuestDefinition("frontier_arrival");
+	if (activeQuest) {
+		char questSummary[128];
+		std::snprintf(questSummary, sizeof(questSummary),
+			"Quest: %s %d/%d", activeQuest->id,
+			minecraft->progressionState().questProgress(activeQuest->id),
+			activeQuest->targetCount);
+		drawCenteredString(font, questSummary, width / 2, 40, 0xffdca8);
+	}
+	const char* codexSummary = minecraft->progressionState().isCodexDiscovered("wheat") ?
+		"Codex: Wheat discovered" : "Codex: Wheat undiscovered";
+	drawCenteredString(font, codexSummary, width / 2, 52, 0xffb8d8ff);
 
 	super::render(xm, ym, a);
 }
