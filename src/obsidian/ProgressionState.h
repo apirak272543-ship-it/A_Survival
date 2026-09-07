@@ -7,6 +7,8 @@
 #include "CodexRegistry.h"
 #include "QuestProgression.h"
 
+class CompoundTag;
+
 namespace ObsidianRuntime {
 
 class ProgressionState {
@@ -29,6 +31,9 @@ public:
 
     std::size_t questCount() const;
     std::size_t codexCount() const;
+
+    void saveToTag(CompoundTag* tag) const;
+    void loadFromTag(const CompoundTag* tag);
 
 private:
     std::vector<int> questProgress_;

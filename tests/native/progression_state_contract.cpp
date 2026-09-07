@@ -1,4 +1,5 @@
 #include "obsidian/ProgressionState.h"
+#include "nbt/CompoundTag.h"
 
 #include <cassert>
 
@@ -26,5 +27,15 @@ int main()
     assert(!state.discoverCodex("wheat"));
     assert(state.isCodexDiscovered("wheat"));
     assert(!state.isCodexDiscovered("missing"));
+
+    CompoundTag saved;
+    state.saveToTag(&saved);
+    ObsidianRuntime::ProgressionState restored;
+    restored.loadFromTag(&saved);
+    assert(restored.isQuestComplete("frontier_arrival"));
+    assert(restored.isQuestComplete("first_green"));
+    assert(restored.isQuestComplete("break_the_silence"));
+    assert(restored.isCodexDiscovered("wheat"));
+    assert(restored.highestCompletedMap() == 1);
     return 0;
 }

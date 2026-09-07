@@ -292,6 +292,8 @@ void Minecraft::setLevel(Level* level, const std::string& message /* ="" */, Loc
 			}
 		}
 		this->level = level;
+		// Existing worlds may contain an optional ObsidianProgression compound.
+		progressionState_ = level->getLevelData()->getProgressionState();
 		_hasSignaledGeneratingLevelFinished = false;
 #if defined(STANDALONE_SERVER) || defined(__EMSCRIPTEN__)
 			// Web builds intentionally avoid detached pthreads. Generate the first
@@ -329,6 +331,8 @@ void Minecraft::leaveGame(bool renameLevel /*=false*/)
 
 	raknetInstance->disconnect();
 	if (saveLevel) {
+		// Sync the cache-first runtime state once at save time, never per render.
+		level->getLevelData()->setProgressionState(progressionState_);
 		// If server or wanting to save level as client, save all unsaved chunks!
 		level->getChunkSource()->saveAll(true);
 	}

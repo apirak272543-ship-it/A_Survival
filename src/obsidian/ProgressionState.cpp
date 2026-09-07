@@ -1,4 +1,5 @@
 #include "ProgressionState.h"
+#include "../nbt/CompoundTag.h"
 
 #include <algorithm>
 #include <cstring>
@@ -135,6 +136,37 @@ std::size_t ProgressionState::questCount() const
 std::size_t ProgressionState::codexCount() const
 {
     return codexDiscovered_.size();
+}
+
+void ProgressionState::saveToTag(CompoundTag* tag) const
+{
+    if (tag == NULL)
+        return;
+
+    tag->putInt("Version", 1);
+    for (std::size_t i = 0; i < questProgress_.size(); ++i)
+        tag->putInt("Quest_" + std::to_string(i), questProgress_[i]);
+    for (std::size_t i = 0; i < codexDiscovered_.size(); ++i)
+        tag->putBoolean("Codex_" + std::to_string(i), codexDiscovered_[i]);
+}
+
+void ProgressionState::loadFromTag(const CompoundTag* tag)
+{
+    reset();
+    if (tag == NULL)
+        return;
+
+    std::size_t questTotal = 0;
+    const QuestDefinition* definitions = questDefinitions(questTotal);
+    for (std::size_t i = 0; i < questProgress_.size() && i < questTotal; ++i) {
+        const std::string key = "Quest_" + std::to_string(i);
+        const int value = tag->getInt(key);
+        questProgress_[i] = std::max(0, std::min(definitions[i].targetCount, value));
+    }
+    for (std::size_t i = 0; i < codexDiscovered_.size(); ++i) {
+        const std::string key = "Codex_" + std::to_string(i);
+        codexDiscovered_[i] = tag->getBoolean(key);
+    }
 }
 
 } // namespace ObsidianRuntime

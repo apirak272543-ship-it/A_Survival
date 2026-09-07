@@ -62,8 +62,9 @@ LevelData::LevelData( const LevelData& rhs )
 	generatorVersion(rhs.generatorVersion),
 	spawnMobs(rhs.spawnMobs),
 	allowCheats(rhs.allowCheats),
-	loadedPlayerTag(NULL),
-	playerData(rhs.playerData)
+		loadedPlayerTag(NULL),
+		playerData(rhs.playerData),
+		progressionState(rhs.progressionState)
 {
 	//LOGI("c-ctor: %p (%p)\n", this, &rhs);
 	setPlayerTag(rhs.loadedPlayerTag);
@@ -89,8 +90,9 @@ LevelData& LevelData::operator=( const LevelData& rhs )
 		playerDataVersion	= rhs.playerDataVersion;
 		generatorVersion	= rhs.generatorVersion;
 		storageVersion		= rhs.storageVersion;
-		setPlayerTag(rhs.loadedPlayerTag);
-	}
+			setPlayerTag(rhs.loadedPlayerTag);
+			progressionState = rhs.progressionState;
+		}
 
 	return *this;
 }
@@ -173,10 +175,14 @@ void LevelData::setTagData( CompoundTag* tag, CompoundTag* playerTag )
 	tag->putInt("StorageVersion", storageVersion);
 	tag->putInt("Platform", 2);
 
-	if (playerTag != NULL) {
-		tag->putCompound("Player", playerTag);
+		if (playerTag != NULL) {
+			tag->putCompound("Player", playerTag);
+		}
+
+		CompoundTag* progressionTag = new CompoundTag();
+		progressionState.saveToTag(progressionTag);
+		tag->putCompound("ObsidianProgression", progressionTag);
 	}
-}
 
 void LevelData::getTagData( const CompoundTag* tag )
 {
@@ -195,12 +201,14 @@ void LevelData::getTagData( const CompoundTag* tag )
 
 	spawnMobs = (gameType == GameType::Survival);
 
-	if (tag->contains("Player", Tag::TAG_Compound)) {
-		setPlayerTag(tag->getCompound("Player"));
+		if (tag->contains("Player", Tag::TAG_Compound)) {
+			setPlayerTag(tag->getCompound("Player"));
 
-		//dimension = loadedPlayerTag.getInt("Dimension");
+			//dimension = loadedPlayerTag.getInt("Dimension");
+		}
+		if (tag->contains("ObsidianProgression", Tag::TAG_Compound))
+			progressionState.loadFromTag(tag->getCompound("ObsidianProgression"));
 	}
-}
 
 void LevelData::setPlayerTag( CompoundTag* tag )
 {
@@ -359,6 +367,21 @@ void LevelData::setGameType( int type )
 bool LevelData::getSpawnMobs() const
 {
 	return spawnMobs;
+}
+
+ObsidianRuntime::ProgressionState& LevelData::getProgressionState()
+{
+	return progressionState;
+}
+
+const ObsidianRuntime::ProgressionState& LevelData::getProgressionState() const
+{
+	return progressionState;
+}
+
+void LevelData::setProgressionState(const ObsidianRuntime::ProgressionState& state)
+{
+	progressionState = state;
 }
 
 void LevelData::setSpawnMobs( bool doSpawn )

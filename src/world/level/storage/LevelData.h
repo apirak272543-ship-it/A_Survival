@@ -12,6 +12,7 @@
 #include "../../../raknet/BitStream.h"
 #include "../../../platform/time.h"
 #include "../../../nbt/CompoundTag.h"
+#include "../../../obsidian/ProgressionState.h"
 
 class LevelData
 {
@@ -72,6 +73,10 @@ public:
 	bool		getSpawnMobs() const;
 	void		setSpawnMobs(bool doSpawn);
 
+	ObsidianRuntime::ProgressionState& getProgressionState();
+	const ObsidianRuntime::ProgressionState& getProgressionState() const;
+	void setProgressionState(const ObsidianRuntime::ProgressionState& state);
+
 	bool		getAllowCheats() const;
 	void		setAllowCheats(bool allow);
 
@@ -96,6 +101,7 @@ private:
 	//@note: This version is never written or loaded to disk. The only purpose
 	//       is to use it in the level generator on server and clients.
 	int generatorVersion;
-};
+	ObsidianRuntime::ProgressionState progressionState;
+	};
 
 #endif /*NET_MINECRAFT_WORLD_LEVEL_STORAGE__LevelData_H__*/
