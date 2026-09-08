@@ -9,3 +9,7 @@
 ## Web end-to-end evidence
 
 หลังสร้างโลกใน Web build ล่าสุดแล้วกด Quit to title พบใน Emscripten FS ว่า `New expedition/level.dat` มีขนาด 1152 bytes และค้นพบ marker `ObsidianProgression` กับ `Quest_0` ในข้อมูล NBT หลัง save จากนั้นกลับเข้า Select world พบโลกเดิมพร้อม preview, timestamp และ Survival mode จึงยืนยันเส้นทาง create → save → list reload ใน browser ได้จริง
+
+## Reload result
+
+หลังกลับเข้า Select world พบ `New expedition` พร้อม preview และรายละเอียดเดิม การคลิก world card โหลดกลับเข้า gameplay ได้จริงอีกครั้ง จึงปิดเส้นทาง create → save → list reload → load gameplay ใน browser ได้ครบ
