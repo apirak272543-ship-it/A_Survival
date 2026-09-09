@@ -19,6 +19,9 @@ public:
 
     // Returns true only when this call completes the quest for the first time.
     bool advanceQuest(const char* questId, int amount = 1);
+    // Records one typed gameplay event against all matching quest definitions.
+    // Returns true when at least one quest is completed by this event.
+    bool recordObjective(QuestObjectiveType objective, int amount = 1);
     int questProgress(const char* questId) const;
     bool isQuestComplete(const char* questId) const;
 

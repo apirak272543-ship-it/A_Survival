@@ -12,14 +12,15 @@ int main()
     assert(state.isMapUnlocked(1));
     assert(!state.isMapUnlocked(2));
 
-    assert(!state.advanceQuest("frontier_arrival", 7));
+    assert(!state.recordObjective(ObsidianRuntime::QUEST_GATHER, 7));
     assert(state.questProgress("frontier_arrival") == 7);
-    assert(state.advanceQuest("frontier_arrival", 1));
+    assert(state.recordObjective(ObsidianRuntime::QUEST_GATHER, 1));
     assert(state.isQuestComplete("frontier_arrival"));
     assert(!state.advanceQuest("frontier_arrival", 1));
 
-    assert(state.advanceQuest("first_green", 3));
-    assert(state.advanceQuest("break_the_silence", 1));
+    assert(state.recordObjective(ObsidianRuntime::QUEST_HARVEST, 3));
+    assert(state.recordObjective(ObsidianRuntime::QUEST_DEFEAT, 1));
+    assert(!state.advanceQuest("break_the_silence", 1));
     assert(state.highestCompletedMap() == 1);
     assert(state.isMapUnlocked(2));
 

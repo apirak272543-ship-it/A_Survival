@@ -76,7 +76,7 @@ bool GameMode::destroyBlock(int x, int y, int z, int face) {
         minecraft->soundEngine->play(oldTile->soundType->getBreakSound(), x + 0.5f, y + 0.5f, z + 0.5f, (oldTile->soundType->getVolume() + 1) / 2, oldTile->soundType->getPitch() * 0.8f);
 #endif
         		oldTile->destroy(level, x, y, z, data);
-			minecraft->progressionState().advanceQuest("frontier_arrival");
+			minecraft->progressionState().recordObjective(ObsidianRuntime::QUEST_GATHER);
 			if (oldTile == Tile::crops) {
 				const ObsidianRuntime::PlantDefinition* wheat =
 					ObsidianRuntime::findPlantDefinition("wheat");
@@ -84,7 +84,7 @@ bool GameMode::destroyBlock(int x, int y, int z, int face) {
 					ObsidianRuntime::isValidPlantDefinition(*wheat) ?
 					wheat->maxStage : 7;
 				if (data >= maxStage) {
-					minecraft->progressionState().advanceQuest("first_green");
+					minecraft->progressionState().recordObjective(ObsidianRuntime::QUEST_HARVEST);
 					minecraft->progressionState().discoverCodex("wheat");
 				}
 			}

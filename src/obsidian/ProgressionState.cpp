@@ -21,6 +21,23 @@ void ProgressionState::reset()
     codexDiscovered_.assign(codexTotal, false);
 }
 
+bool ProgressionState::recordObjective(QuestObjectiveType objective, int amount)
+{
+    if (amount <= 0)
+        return false;
+
+    bool completed = false;
+    std::size_t count = 0;
+    const QuestDefinition* definitions = questDefinitions(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        if (definitions[i].objective != objective ||
+            questProgress_[i] >= definitions[i].targetCount)
+            continue;
+        completed = advanceQuest(definitions[i].id, amount) || completed;
+    }
+    return completed;
+}
+
 bool ProgressionState::advanceQuest(const char* questId, int amount)
 {
     if (questId == NULL || amount <= 0)
